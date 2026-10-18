@@ -103,11 +103,12 @@ release-cli:
 # arches cross-compile. Linked as a GUI program (no console window), with
 # the icon, version and a DPI-aware manifest from build/windows.
 WINVER = $(shell echo $(VERSION) | sed -E 's/^v//; s/[^0-9.].*//')
+WINARCHES ?= amd64 arm64
 release-windows:
 	@mkdir -p dist
 	@go run github.com/tc-hib/go-winres@v0.3.3 make --in build/windows/winres.json --arch amd64,arm64 --out rsrc \
 		--file-version "$(or $(WINVER),0.0.0)" --product-version "$(or $(WINVER),0.0.0)"
-	@for arch in amd64 arm64; do \
+	@for arch in $(WINARCHES); do \
 		echo "  windows/$$arch (app)"; \
 		CGO_ENABLED=0 GOOS=windows GOARCH=$$arch go build -tags production -trimpath -ldflags="$(LDFLAGS) -H windowsgui" -o dist/tiny-magpie-windows-$$arch.exe . || exit 1; \
 	done; rm -f rsrc_windows_*.syso
