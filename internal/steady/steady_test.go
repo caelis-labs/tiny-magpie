@@ -12,7 +12,8 @@ import (
 func TestStatWaitsOutAReplace(t *testing.T) {
 	windows = true
 	defer func() { windows, stat, readFile = runtime.GOOS == "windows", os.Stat, os.ReadFile }()
-	missing := 3
+	// Two Windows writers can hide the file beyond the old 15 probes.
+	missing := 20
 	stat = func(p string) (fs.FileInfo, error) {
 		if missing > 0 {
 			missing--
@@ -24,7 +25,7 @@ func TestStatWaitsOutAReplace(t *testing.T) {
 	if _, err := Stat(p); err != nil {
 		t.Fatalf("a file being replaced taken for gone: %v", err)
 	}
-	missing = 3
+	missing = 20
 	readFile = func(p string) ([]byte, error) {
 		if missing > 0 {
 			missing--

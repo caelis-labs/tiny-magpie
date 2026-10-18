@@ -25,11 +25,11 @@ const (
 	pause = 10 * time.Millisecond
 )
 
-// goneTries and gonePause bound the wait on a file not there to 15ms or
-// so: the moment a rename over it leaves is a couple of milliseconds, and
-// a file that is really not there is waited on that long.
+// goneTries and gonePause bound the wait on a file not there to 50ms or
+// so: concurrent Windows replacements exhausted the former 15ms window. A
+// file that is really not there is waited on that long.
 const (
-	goneTries = 15
+	goneTries = 50
 	gonePause = time.Millisecond
 )
 

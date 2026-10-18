@@ -230,9 +230,13 @@ and `TestHistoricalWindowHoldsUsesEachWindowsOwnReading`.
 `filememo.Forget` after a write and `filememo.Look` after taking a file lock
 invalidate remembered absence as well as parsed data. Otherwise a newly created
 `logins.json` can still be treated as previously missing and skip the existing
-Windows replacement retry. Retry budgets and real-deletion behavior are
-unchanged. `TestChangedFileAfterMissing` covers both invalidation paths and real
-deletion; `TestLoginsKeptWhileAnotherMagpieWrites` exercises native replacements.
+Windows replacement retry. The existing missing-file retry window is about
+50ms: native concurrent replacements exhausted its former 15ms budget, returning
+`stat`/`open` absence after 22–35ms. A genuinely deleted file still becomes
+missing after this bounded wait. `TestChangedFileAfterMissing` covers both
+invalidation paths and real deletion; `TestStatWaitsOutAReplace` injects a gap
+longer than the old window, and `TestLoginsKeptWhileAnotherMagpieWrites` exercises
+native replacements.
 
 ## Verification
 
