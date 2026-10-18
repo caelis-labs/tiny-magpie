@@ -25,12 +25,13 @@ const (
 	pause = 10 * time.Millisecond
 )
 
-// goneTries and gonePause bound the wait on a file not there to 15ms or
-// so: the moment a rename over it leaves is a couple of milliseconds, and
-// a file that is really not there is waited on that long.
+// goneTries and gonePause give a missing file the same half-second budget
+// as a sharing violation. Concurrent Windows replacements can keep Stat or
+// ReadThere returning not-exist beyond 50ms; treating that as deletion can
+// erase accounts at the next write. A real deletion is still reported.
 const (
-	goneTries = 15
-	gonePause = time.Millisecond
+	goneTries = tries
+	gonePause = pause
 )
 
 // windows is whether files behave as Windows' do; a test sets it.
@@ -96,16 +97,6 @@ func ReadFile(p string) ([]byte, error) {
 
 // Rename is os.Rename, waiting out a reader holding newpath open.
 func Rename(oldpath, newpath string) error {
-	if windows && filepath.Dir(oldpath) == filepath.Dir(newpath) {
-		// Go's Root.Rename uses handle-based POSIX replacement on Windows,
-		// avoiding MoveFileEx's disappearing destination under two writers.
-		dir, err := os.OpenRoot(filepath.Dir(oldpath))
-		if err != nil {
-			return err
-		}
-		defer dir.Close()
-		return retry(func() error { return dir.Rename(filepath.Base(oldpath), filepath.Base(newpath)) })
-	}
 	return retry(func() error { return os.Rename(oldpath, newpath) })
 }
 

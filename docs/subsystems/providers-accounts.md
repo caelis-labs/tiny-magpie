@@ -230,11 +230,12 @@ and `TestHistoricalWindowHoldsUsesEachWindowsOwnReading`.
 `filememo.Forget` after a write and `filememo.Look` after taking a file lock
 invalidate remembered absence as well as parsed data. Otherwise a newly created
 `logins.json` can still be treated as previously missing and skip the existing
-Windows replacement retry. Same-directory Windows replacements use Go's
-`os.Root.Rename`, whose handle-based POSIX operation avoids the disappearing
-destination seen with `os.Rename`/MoveFileEx under two writers. Existing retries
-and real-deletion behavior remain unchanged. `TestChangedFileAfterMissing`
-covers both invalidation paths and real deletion;
+Windows replacement retry. Missing-file reads use the same bounded half-second
+retry budget as sharing violations: native concurrent replacements exhausted
+both 15ms and 50ms windows. A real deletion is still reported after that bound;
+accounts are not restored from memory when the file is genuinely gone.
+`TestChangedFileAfterMissing` covers both invalidation paths and real deletion;
+`TestStatWaitsOutAReplace` covers replacement beyond the old probe count, and
 `TestLoginsKeptWhileAnotherMagpieWrites` exercises native replacements.
 
 ## Verification

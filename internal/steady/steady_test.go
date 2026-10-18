@@ -6,16 +6,17 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"time"
 )
 
 // as Windows has it: a file being renamed over is, for a moment, not there
 func TestStatWaitsOutAReplace(t *testing.T) {
 	windows = true
 	defer func() { windows, stat, readFile = runtime.GOOS == "windows", os.Stat, os.ReadFile }()
-	missing := 3
+	// A replacement can outlast both former 15ms and 50ms budgets.
+	missingUntil := time.Now().Add(100 * time.Millisecond)
 	stat = func(p string) (fs.FileInfo, error) {
-		if missing > 0 {
-			missing--
+		if time.Now().Before(missingUntil) {
 			return nil, fs.ErrNotExist
 		}
 		return os.Stat(p)
@@ -24,10 +25,9 @@ func TestStatWaitsOutAReplace(t *testing.T) {
 	if _, err := Stat(p); err != nil {
 		t.Fatalf("a file being replaced taken for gone: %v", err)
 	}
-	missing = 3
+	missingUntil = time.Now().Add(100 * time.Millisecond)
 	readFile = func(p string) ([]byte, error) {
-		if missing > 0 {
-			missing--
+		if time.Now().Before(missingUntil) {
 			return nil, &fs.PathError{Op: "open", Path: p, Err: fs.ErrNotExist}
 		}
 		return []byte("accounts"), nil
