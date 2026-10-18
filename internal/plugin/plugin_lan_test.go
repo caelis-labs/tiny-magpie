@@ -60,36 +60,34 @@ func askedProxy(t *testing.T) (string, func() []string) {
 			}
 			go func(c net.Conn) {
 				defer c.Close()
-				var head []byte
-				b := make([]byte, 1)
-				for !strings.HasSuffix(string(head), "\r\n\r\n") {
-					if _, err := c.Read(b); err != nil {
-						return
-					}
-					head = append(head, b[0])
-				}
-				f := strings.Fields(string(head))
-				if len(f) < 2 {
+				reader := bufio.NewReader(c)
+				r, err := http.ReadRequest(reader)
+				if err != nil {
 					return
 				}
+				// Drain POST bodies before closing: Windows can reset a socket
+				// with unread input and discard the proxy's response.
+				io.Copy(io.Discard, r.Body)
+				r.Body.Close()
+				target := r.RequestURI
 				mu.Lock()
-				asked = append(asked, f[1])
+				asked = append(asked, target)
 				mu.Unlock()
-				if f[0] == "CONNECT" {
-					if f[1] != "203.0.113.5:9" {
+				if r.Method == http.MethodConnect {
+					if target != "203.0.113.5:9" {
 						fmt.Fprint(c, "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
 						return
 					}
 					fmt.Fprint(c, "HTTP/1.1 200 Connection Established\r\n\r\n")
-					r, err := http.ReadRequest(bufio.NewReader(c))
+					r, err := http.ReadRequest(reader)
 					if err != nil {
 						return
 					}
 					io.Copy(io.Discard, r.Body)
 					r.Body.Close()
-					f[1] = "http://" + f[1] + r.URL.RequestURI()
+					target = "http://" + target + r.URL.RequestURI()
 				}
-				body := "proxy " + f[1]
+				body := "proxy " + target
 				fmt.Fprintf(c, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", len(body), body)
 			}(c)
 		}
