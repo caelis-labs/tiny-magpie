@@ -32,6 +32,7 @@ func TestAsideInitialReadOffersStageWithoutWrites(t *testing.T) {
 }
 
 func TestAsideOfflineDisconnectRestoresWithoutDaemon(t *testing.T) {
+	judgeFor(t, "linux") // this fixture has a CLI-only installation, not Windows' shared app folder
 	settings, models := asideHome(t)
 	before := readFile(settings)
 	a := mustFindAside(t)

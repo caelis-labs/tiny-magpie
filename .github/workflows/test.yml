@@ -30,6 +30,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
@@ -44,20 +47,14 @@ jobs:
       - name: Go suite
         shell: bash
         run: |
-          mkdir -p output
           tiny_test_status=0
-          go test -tags nogui -timeout 20m ./... > output/go-test.log 2>&1 || tiny_test_status=$?
-          python3 -X utf8 - <<'PY'
-          from pathlib import Path
-          for line in Path('output/go-test.log').read_text(encoding='utf-8', errors='replace').splitlines():
-              print(line[:2000] + (' [long line; see complete log artifact]' if len(line) > 2000 else ''))
-          PY
+          go test -json -tags nogui -timeout 20m ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
           exit "$tiny_test_status"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: go-test-${{ matrix.os }}
-          path: output/go-test.log
+          path: output/go-test.*
       - name: Linux legacy Tiny data migration
         if: runner.os == 'Linux'
         shell: bash
