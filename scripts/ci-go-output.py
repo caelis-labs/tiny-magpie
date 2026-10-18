@@ -6,6 +6,27 @@ import sys
 
 path = pathlib.Path('output/go-test.log')
 path.parent.mkdir(exist_ok=True)
+pending = {}
+
+
+def console(prefix, output):
+    # test2json splits an oversized logical line across Output events.
+    # Bound that whole line, rather than printing every small fragment.
+    buffered, truncated = pending.get(prefix, ('', False))
+    while output:
+        fragment, newline, output = output.partition('\n')
+        if not truncated:
+            buffered += fragment[:2001 - len(buffered)]
+            if len(buffered) > 2000:
+                print(prefix + ': ' + buffered[:2000] + ' [long line; see complete log artifact]', flush=True)
+                buffered, truncated = '', True
+        if newline:
+            if not truncated:
+                print(prefix + ': ' + buffered.rstrip('\r'), flush=True)
+            buffered, truncated = '', False
+    pending[prefix] = buffered, truncated
+
+
 with path.open('w', encoding='utf-8') as log, path.with_suffix('.jsonl').open('w', encoding='utf-8') as raw:
     for line in sys.stdin:
         raw.write(line)
@@ -21,6 +42,7 @@ with path.open('w', encoding='utf-8') as log, path.with_suffix('.jsonl').open('w
             continue
         log.write(output)
         log.flush()
-        for text in output.splitlines():
-            prefix = event.get('Package', event.get('ImportPath', 'go'))
-            print(prefix + ': ' + text[:2000] + (' [long line; see complete log artifact]' if len(text) > 2000 else ''), flush=True)
+        console(event.get('Package', event.get('ImportPath', 'go')), output)
+for prefix, (buffered, _) in pending.items():
+    if buffered:
+        print(prefix + ': ' + buffered, flush=True)
