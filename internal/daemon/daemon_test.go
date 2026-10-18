@@ -84,7 +84,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 	if err := Install(Options{}); err != nil {
 		t.Fatal(err)
 	}
-	file := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
+	file := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "tiny-magpie.service")
 	b, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Join(calls(t, log), "\n")
-	want := "systemctl --user is-system-running\nsystemctl --user daemon-reload\nsystemctl --user enable magpie.service\nsystemctl --user restart magpie.service"
+	want := "systemctl --user is-system-running\nsystemctl --user daemon-reload\nsystemctl --user enable tiny-magpie.service\nsystemctl --user restart tiny-magpie.service"
 	if got != want {
 		t.Errorf("install ran\n%s\nwant\n%s", got, want)
 	}
@@ -131,7 +131,7 @@ func TestSystemdInstallAndUninstall(t *testing.T) {
 		t.Errorf("the unit is still there: %v", err)
 	}
 	got = strings.Join(calls(t, log), "\n")
-	want = "systemctl --user is-system-running\nsystemctl --user disable --now magpie.service\nsystemctl --user daemon-reload"
+	want = "systemctl --user is-system-running\nsystemctl --user disable --now tiny-magpie.service\nsystemctl --user daemon-reload"
 	if got != want {
 		t.Errorf("uninstall ran\n%s\nwant\n%s", got, want)
 	}
@@ -186,7 +186,7 @@ func TestSystemdStatus(t *testing.T) {
 	if len(st.Advice) != 1 || !strings.Contains(st.Advice[0], "sudo loginctl enable-linger ") {
 		t.Errorf("advice %q, want enable-linger", st.Advice)
 	}
-	if !strings.HasPrefix(st.Logs, "journalctl --user -u magpie") {
+	if !strings.HasPrefix(st.Logs, "journalctl --user -u tiny-magpie") {
 		t.Errorf("logs %q", st.Logs)
 	}
 	// stopped by hand: SIGTERM's 15 is no failure to show
@@ -337,17 +337,17 @@ func TestPick(t *testing.T) {
 		t.Skip("links")
 	}
 	dir := t.TempDir()
-	real := filepath.Join(dir, "Cellar", "magpie", "1.0", "magpie")
+	real := filepath.Join(dir, "Cellar", "tiny-magpie", "1.0", "tiny-magpie")
 	os.MkdirAll(filepath.Dir(real), 0o755)
 	write(t, real, "x")
 	os.Chmod(real, 0o755)
 	bin := filepath.Join(dir, "bin")
 	os.MkdirAll(bin, 0o755)
-	if err := os.Symlink(real, filepath.Join(bin, "magpie")); err != nil {
+	if err := os.Symlink(real, filepath.Join(bin, "tiny-magpie")); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin)
-	if got, err := pick(real, real); err != nil || got != filepath.Join(bin, "magpie") {
+	if got, err := pick(real, real); err != nil || got != filepath.Join(bin, "tiny-magpie") {
 		t.Errorf("got %q, %v; want the link on PATH", got, err)
 	}
 	// another magpie on PATH: this one
@@ -358,7 +358,7 @@ func TestPick(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 	for _, p := range []string{
-		filepath.Join(os.TempDir(), "go-build123", "b001", "exe", "magpie"),
+		filepath.Join(os.TempDir(), "go-build123", "b001", "exe", "tiny-magpie"),
 		"/private/var/folders/x/T/AppTranslocation/ABC/d/magpie.app/Contents/MacOS/magpie",
 	} {
 		if _, err := pick(p, p); err == nil {
@@ -442,7 +442,7 @@ func TestInstallWithWeb(t *testing.T) {
 		arg, keyIn string
 	}{
 		{"linux", func() string {
-			return filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
+			return filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "tiny-magpie.service")
 		}, "ExecStart=\"/opt/my magpie/magpie%%1\" serve \"--web=0.0.0.0:3430\"\n", "Environment=\"MAGPIE_WEB_KEY=" + key + "\"\n"},
 		{"darwin", func() string {
 			return filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "dev.caelis.tiny-magpie.serve.plist")

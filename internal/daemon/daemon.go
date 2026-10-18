@@ -24,8 +24,8 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 )
 
-// Name is the service's name: magpie.service, dev.caelis.tiny-magpie.serve.
-const Name = "magpie"
+// Name is the service's name: tiny-magpie.service, dev.caelis.tiny-magpie.serve.
+const Name = "tiny-magpie"
 
 // Status is what the system says of the service.
 type Status struct {

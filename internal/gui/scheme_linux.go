@@ -91,20 +91,15 @@ func installIcon(data string) error {
 	return os.Rename(tmp, path)
 }
 
-// keepWebData moves WebKitGTK's data (the pages' localStorage, which holds
-// choices like favourite models and masked emails) to the folder it now
-// uses. WebKitGTK names that folder after the program, which was the
-// executable's name until magpie set programName: a release run as
-// downloaded kept it in ~/.local/share/magpie-linux-amd64. It moves only
-// WebKit's own folder (one holding localstorage), and only when magpie's
-// isn't there yet.
+// keepWebData preserves WebKit choices from older tiny-named builds.
+// An original Magpie or unrelated executable's data must stay in place.
 func keepWebData() {
 	exe, err := os.Executable()
 	if err != nil {
 		return
 	}
 	old := filepath.Base(exe)
-	if old == programName || old == "." || old == string(filepath.Separator) {
+	if !strings.HasPrefix(old, programName+"-") {
 		return
 	}
 	data := dataHome()

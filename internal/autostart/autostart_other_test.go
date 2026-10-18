@@ -4,6 +4,7 @@ package autostart
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -51,5 +52,32 @@ func TestSetThenTruncatedRecordReadsAsOff(t *testing.T) {
 	}
 	if Enabled() {
 		t.Error("a desktop entry with an empty Exec reads as on")
+	}
+}
+
+func TestTinyAutostartPreservesOriginalMagpie(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", root)
+	original := filepath.Join(root, "autostart", "magpie.desktop")
+	os.MkdirAll(filepath.Dir(original), 0700)
+	before := []byte("[Desktop Entry]\nType=Application\nExec=/original/magpie\n")
+	if err := os.WriteFile(original, before, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if Enabled() {
+		t.Fatal("original entry was mistaken for tiny")
+	}
+	if err := enable("/fixture/tiny-magpie"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "autostart", "tiny-magpie.desktop")); err != nil {
+		t.Fatal(err)
+	}
+	if err := disable(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(original)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("original autostart changed: %v %q", err, after)
 	}
 }
