@@ -7,6 +7,25 @@ import (
 	"testing"
 )
 
+func TestTinyRejectsPureToolExtension(t *testing.T) {
+	sandbox(t)
+	file := filepath.Join(t.TempDir(), "tools.js")
+	if err := os.WriteFile(file, []byte(`export default async () => ({tool:{ping:{args:{},execute:async()=>"pong"}}})`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Add(t.Context(), file); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Plugins(t.Context())
+	if err != nil || len(loaded) != 1 || !strings.Contains(loaded[0].Error, "tool-only plugins are not supported") {
+		t.Fatalf("pure tool extension: %+v %v", loaded, err)
+	}
+	tools, err := Tools(t.Context())
+	if err != nil || len(tools) != 0 {
+		t.Fatalf("rejected tools exposed: %+v %v", tools, err)
+	}
+}
+
 func TestTinyMarketKeepsGatewayExtensions(t *testing.T) {
 	rows, err := parseMarket([]byte(`{"plugins":[
         {"package":"@fixture/provider","community":true},

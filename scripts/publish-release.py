@@ -30,7 +30,7 @@ def main(tag):
     if sha != tagged:
         raise SystemExit('Release checkout must equal tagged source')
     expected = {}
-    for line in (OUT / 'SHA256SUMS').read_text().splitlines():
+    for line in (OUT / 'SHA256SUMS').read_text(encoding='utf-8').splitlines():
         checksum, name = line.split('  ', 1)
         if pathlib.Path(name).name != name or digest(OUT / name) != checksum:
             raise SystemExit(f'Invalid local checksum: {name}')

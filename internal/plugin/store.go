@@ -139,6 +139,8 @@ var pluginsList struct {
 // changed; Load gives the mutable copy.
 func list() List {
 	path := listPath()
+	pluginsList.Lock()
+	defer pluginsList.Unlock()
 	// one a crash left all zero (#1505) is its last good generation: the
 	// plugins installed are unknown, never none
 	b, err := lastgood.Read(path, lastgood.JSON)
@@ -146,8 +148,6 @@ func list() List {
 		// Do not cache read failures; a later call will read the file again.
 		return List{}
 	}
-	pluginsList.Lock()
-	defer pluginsList.Unlock()
 	if pluginsList.path == path && bytes.Equal(pluginsList.raw, b) {
 		return pluginsList.list
 	}
@@ -228,7 +228,12 @@ func save(l List) error {
 	if err := lastgood.Keep(listPath(), lastgood.JSON, 0o600); err != nil {
 		return err
 	}
-	if err := writeWhole(listPath(), append(b, '\n')); err != nil {
+	// Readers on Windows hold the destination against replacement. Share
+	// their lock so continuous Load calls cannot starve our own rename.
+	pluginsList.Lock()
+	err = writeWhole(listPath(), append(b, '\n'))
+	pluginsList.Unlock()
+	if err != nil {
 		return err
 	}
 	listSeen.Lock()

@@ -1,6 +1,6 @@
 # Upstream maintenance
 
-Tiny is a reduction fork of [yetone/magpie](https://github.com/yetone/magpie), with its complete Git history and MIT notices. `UPSTREAM.json` records the exact integrated SHA and retained built-in assembly. The Go module and internal layout deliberately remain upstream's to keep merges small. Tiny's binary, OS registrations and data directories are independent.
+Tiny is a reduction fork of [yetone/magpie](https://github.com/yetone/magpie), with its complete Git history and MIT notices. `UPSTREAM.json` records the exact integrated SHA and retained built-in assembly. The Go module and internal layout deliberately remain upstream's to keep merges small. Tiny's binary, OS registrations and data directories are independent. Build with the documented Make targets: the inherited `make install` target is removed because raw `go install .` uses the upstream module's command name.
 
 Use tested main commits, normally weekly; bring protocol, authentication and security fixes forward sooner. Merge a complete upstream interval rather than accumulating unrelated cherry-picks. Record the source SHA of an urgent cherry-pick, then reconcile it in the next merge. Do not accept a whole conflicted file with `ours`, resurrect a removed service to clear a conflict, or weaken a retained regression.
 

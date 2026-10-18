@@ -63,7 +63,9 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: linux-arm64
           - os: windows-latest
-            platform: windows
+            platform: windows-amd64
+          - os: windows-11-arm
+            platform: windows-arm64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     env:
@@ -77,6 +79,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          architecture: ${{ endsWith(matrix.platform, '-arm64') && 'arm64' || 'x64' }}
       - name: Linux WebView dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
@@ -86,7 +89,7 @@ jobs:
           set -euo pipefail
           case "$RUNNER_OS" in
             macOS) make app VERSION="$VERSION"; targets="darwin/$(go env GOARCH)" ;;
-            Windows) make release-windows VERSION="$VERSION"; targets='windows/amd64 windows/arm64' ;;
+            Windows) make release-windows VERSION="$VERSION" WINARCHES="$(go env GOARCH)"; targets="windows/$(go env GOARCH)" ;;
             Linux) make release-linux VERSION="$VERSION"; targets="linux/$(go env GOARCH)" ;;
           esac
           make release-cli VERSION="$VERSION" TARGETS="$targets"
@@ -103,13 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$RUNNER_OS" = Windows ]; then
-            for arch in amd64 arm64; do
-              python scripts/release-artifacts.py package --version "$VERSION" --platform "windows-$arch"
-            done
-          else
-            python3 scripts/release-artifacts.py package --version "$VERSION" --platform '${{ matrix.platform }}'
-          fi
+          python3 scripts/release-artifacts.py package --version "$VERSION" --platform '${{ matrix.platform }}'
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
@@ -129,6 +126,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.source.outputs.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:

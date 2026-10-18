@@ -43,6 +43,7 @@ mkdir "$work/submission"
 ditto "$app" "$work/submission/$app"
 cp "$cli" "$work/submission/"
 ditto -c -k --sequesterRsrc --keepParent "$work/submission" "$work/submission.zip"
+cp "$work/submission.zip" "output/notary/$platform-submission.zip"
 notary=(--apple-id "$APPLE_NOTARY_APPLE_ID" --password "$APPLE_NOTARY_PASSWORD" --team-id "$APPLE_TEAM_ID")
 # Persist the upload receipt before waiting. A timeout is an unknown outcome;
 # inspect this ID rather than automatically resubmitting the signed bytes.
@@ -50,7 +51,7 @@ xcrun notarytool submit "$work/submission.zip" "${notary[@]}" --output-format js
 submission_id=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["id"])' "output/notary/$platform-submit.json")
 xcrun notarytool wait "$submission_id" "${notary[@]}" --timeout 60m --output-format json > "output/notary/$platform-status.json"
 python3 - "$platform" "$APPLE_TEAM_ID" <<'PY'
-import json, pathlib, sys
+import hashlib, json, pathlib, sys
 platform, team = sys.argv[1:]
 status = json.loads(pathlib.Path(f'output/notary/{platform}-status.json').read_text())
 if status.get('status') != 'Accepted' or not status.get('id'):
@@ -58,6 +59,7 @@ if status.get('status') != 'Accepted' or not status.get('id'):
 pathlib.Path(f'output/notary/{platform}-accepted.json').write_text(json.dumps({
     'submission_id': status['id'], 'status': 'Accepted', 'team_id': team,
     'hardened_runtime': True,
+    'submission_sha256': hashlib.sha256(pathlib.Path(f'output/notary/{platform}-submission.zip').read_bytes()).hexdigest(),
     'app_ticket': 'stapled', 'cli_ticket': 'online (Mach-O cannot be stapled)',
 }, indent=2) + '\n')
 PY

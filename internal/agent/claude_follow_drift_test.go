@@ -89,6 +89,8 @@ func TestClaudeFollowerOnTheMainModelIsNoDrift(t *testing.T) {
 // stopped: a stopped one reads what was last seen there.
 func TestWSLClaudeFollowerOnTheMainModelIsNoDrift(t *testing.T) {
 	root, home := claudeDistroHome(t, `{"model": "opus"}`)
+	fakeWSL(t, "Ubuntu\n", "Ubuntu\n", map[string]string{"Ubuntu": "home:/home/me\ndir:.claude\n"}, map[string]string{"Ubuntu": root})
+	wslDistros() // initialize all cache maps through the same path as a native refresh
 	d := distro{Name: "Ubuntu", Root: root, Home: "/home/me", Has: map[string]bool{"dir:.claude": true},
 		Gateway: "172.20.0.1", Mirrored: true, Running: true}
 	// what magpie sees there is kept for when the distro stops
@@ -108,6 +110,11 @@ func TestWSLClaudeFollowerOnTheMainModelIsNoDrift(t *testing.T) {
 	}
 	if dr := a.Drift(); dr != nil {
 		t.Fatalf("drift on a tier following magpie's model: %+v", *dr)
+	}
+	// A native Windows refresh must see the fixture distro too; otherwise
+	// it removes the hand-seeded last-seen fields before the asleep read.
+	if ds := wslDistros(); len(ds) != 1 || ds[0].Name != "Ubuntu" {
+		t.Fatalf("fixture distro disappeared on refresh: %+v", ds)
 	}
 	d.Running = false
 	stopped := wslAgent(wslKindOf("claude"), d)

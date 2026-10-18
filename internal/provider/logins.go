@@ -166,11 +166,12 @@ func loginsPath() string { return filepath.Join(filepath.Dir(Path()), "logins.js
 // (a file half there, one magpie can't open for a moment) is them, not no
 // accounts, which the next change of an account would write back over
 // every account. loginsKnown is whether there are any such, read or
-// written by this magpie.
+// written by this magpie, scoped to lastLoginsPath.
 var (
-	lastLoginsMu sync.Mutex
-	lastLogins   []savedLogin
-	loginsKnown  bool
+	lastLoginsMu   sync.Mutex
+	lastLogins     []savedLogin
+	loginsKnown    bool
+	lastLoginsPath string
 )
 
 // parseLogins is logins.json's accounts.
@@ -201,13 +202,29 @@ func readLogins() []savedLogin {
 	// dozens of times (every agent's drift and models), and with the
 	// accounts' credentials in it the file is large — a Save of a profile
 	// waited seconds on it
-	ls, err := filememo.Read("logins", loginsPath(), parseLogins)
+	path := loginsPath()
+	ls, err := filememo.Read("logins", path, parseLogins)
 	lastLoginsMu.Lock()
 	defer lastLoginsMu.Unlock()
+	if lastLoginsPath != path {
+		lastLogins, loginsKnown, lastLoginsPath = nil, false, path
+	}
+	if errors.Is(err, fs.ErrNotExist) && loginsKnown && len(lastLogins) > 0 {
+		// This file held accounts. A Windows replacement can hide it
+		// longer than the short probe used for never-created files.
+		var b []byte
+		b, err = steady.ReadThere(path)
+		if err == nil {
+			ls, err = parseLogins(b)
+		}
+	}
 	switch {
 	case err == nil:
 		lastLogins, loginsKnown = ls, true
 	case errors.Is(err, fs.ErrNotExist):
+		if loginsKnown && len(lastLogins) > 0 {
+			log.Printf("logins.json: the account file is no longer available: %v", err)
+		}
 		lastLogins, loginsKnown = nil, true
 	case loginsKnown:
 		log.Printf("logins.json: %v; the accounts read before are kept", err)
@@ -216,7 +233,7 @@ func readLogins() []savedLogin {
 		// magpie just started on a file that doesn't read (all zero after
 		// a crash, #1505): the accounts are its last good generation's
 		ls = nil
-		if b, ferr := lastgood.Fallback(loginsPath(), unreadBytes(loginsPath()), validLogins); ferr == nil {
+		if b, ferr := lastgood.Fallback(path, unreadBytes(path), validLogins); ferr == nil {
 			ls, _ = parseLogins(b)
 			lastLogins, loginsKnown = ls, true
 		} else {
@@ -252,16 +269,17 @@ func writeLogins(ls []savedLogin) error {
 	}
 	defer Changed() // an account added, switched or gone: All builds anew
 	beforeLoginsWrite()
+	path := loginsPath()
 	// the file there now is kept first: as its last good generation, or
 	// copied aside when it doesn't read, never written over unkept
-	if err := lastgood.Keep(loginsPath(), validLogins, 0o600); err != nil {
+	if err := lastgood.Keep(path, validLogins, 0o600); err != nil {
 		return err
 	}
-	if err := writePrivate(loginsPath(), append(b, '\n')); err != nil {
+	if err := writePrivate(path, append(b, '\n')); err != nil {
 		return err
 	}
 	lastLoginsMu.Lock()
-	lastLogins, loginsKnown = slices.Clone(ls), true
+	lastLogins, loginsKnown, lastLoginsPath = slices.Clone(ls), true, path
 	lastLoginsMu.Unlock()
 	return nil
 }

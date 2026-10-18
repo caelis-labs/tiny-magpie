@@ -25,9 +25,8 @@ const (
 	pause = 10 * time.Millisecond
 )
 
-// goneTries and gonePause bound the wait on a file not there to 15ms or
-// so: the moment a rename over it leaves is a couple of milliseconds, and
-// a file that is really not there is waited on that long.
+// Stat also probes files that have never existed. Keep that wait short;
+// ReadThere gives a file known to exist the sharing-violation budget.
 const (
 	goneTries = 15
 	gonePause = time.Millisecond
@@ -52,10 +51,10 @@ func retry(f func() error) error {
 }
 
 // retryGone is retry, waiting out a moment of the file not there too.
-func retryGone(f func() error) error {
+func retryGone(f func() error, n int, wait time.Duration) error {
 	err := retry(f)
-	for i := 0; err != nil && windows && errors.Is(err, fs.ErrNotExist) && i < goneTries; i++ {
-		time.Sleep(gonePause)
+	for i := 0; err != nil && windows && errors.Is(err, fs.ErrNotExist) && i < n; i++ {
+		time.Sleep(wait)
 		err = retry(f)
 	}
 	return err
@@ -69,18 +68,19 @@ func Stat(p string) (fs.FileInfo, error) {
 	err := retryGone(func() (err error) {
 		fi, err = stat(p)
 		return err
-	})
+	}, goneTries, gonePause)
 	return fi, err
 }
 
-// ReadThere is ReadFile of a file just found there (Stat): not there now is
-// it being replaced, waited out.
+// ReadThere is ReadFile of a file known to exist: concurrent replacements
+// can keep it missing beyond 50ms. Use the sharing-violation budget; a real
+// deletion is still reported after the bounded wait.
 func ReadThere(p string) ([]byte, error) {
 	var b []byte
 	err := retryGone(func() (err error) {
 		b, err = readFile(p)
 		return err
-	})
+	}, tries, pause)
 	return b, err
 }
 

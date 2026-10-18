@@ -50,8 +50,10 @@ func TestLoginsKeptWhileAnotherMagpieWrites(t *testing.T) {
 	misses := 0
 	for end := time.Now().Add(5 * time.Second); time.Now().Before(end); {
 		loginsMu.Lock()
+		readAt := time.Now()
 		if ls := readLogins(); !has(ls) {
 			misses++
+			t.Logf("empty read completed after %v", time.Since(readAt))
 			// what every change to an account does next: the list read,
 			// changed, written back
 			_ = writeLogins(ls)

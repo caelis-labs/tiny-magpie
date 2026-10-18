@@ -9,7 +9,12 @@ import (
 // A shortcut is made, left be while it opens this exe, and pointed at the
 // exe again once that was moved.
 func TestWrite(t *testing.T) {
-	dir := t.TempDir()
+	// Ensure resolves the executable before writing the shell link. Use
+	// that spelling here too; WScript expands Windows' 8.3 temp path.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	lnk := filepath.Join(dir, Name+".lnk")
 	exe := filepath.Join(dir, "a", "magpie.exe")
 	moved := filepath.Join(dir, "b", "magpie.exe")

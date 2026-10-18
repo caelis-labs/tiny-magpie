@@ -63,5 +63,5 @@ func TestMain(m *testing.M) {
 	// there (a reverse proxy, #1985): known, and not magpie, as for a
 	// relay; the proxy-kept tests answer it
 	magpieAt = func(string) (bool, bool) { return false, true }
-	os.Exit(testenv.Run(m))
+	os.Exit(testenv.RunIn(m, func(string) { testenv.Offline() }))
 }

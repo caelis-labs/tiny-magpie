@@ -134,7 +134,12 @@ func TestSharedAgentsSkills(t *testing.T) {
 }
 
 func TestRealDir(t *testing.T) {
-	d := t.TempDir()
+	// Windows' temp root can be spelled RUNNER~1, while EvalSymlinks
+	// expands it to runneradmin. Start from one spelling for the fixture.
+	d, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	skill(t, filepath.Join(d, "a/real"), "real", "")
 	symlink(t, filepath.Join(d, "a/real"), filepath.Join(d, "b/abs"))
 	symlink(t, filepath.Join("..", "b", "abs"), filepath.Join(d, "c/rel"))

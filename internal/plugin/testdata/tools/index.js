@@ -1,5 +1,6 @@
-// A plugin giving tools (OpenCode's tool hook), which magpie offers every
-// agent through its plugin tools MCP server. A real plugin writes
+// A mixed provider/tool plugin: Tiny keeps the Provider facet while its
+// public plugin-tools MCP server and advertised tool metadata are removed.
+// A real plugin writes
 //
 //   import { tool } from "@opencode-ai/plugin"
 //   tool({ description, args: { text: tool.schema.string().describe("…") }, execute })
@@ -29,6 +30,10 @@ const z = {
 }
 
 export const ToolsExample = async () => ({
+  auth: { provider: "tools-fixture", methods: [] },
+  config(config) {
+    config.provider["tools-fixture"] = { name: "Tools fixture", models: { m1: { name: "m1" } } }
+  },
   tool: {
     // zod arguments: checked, defaults filled in, before execute
     shout: {

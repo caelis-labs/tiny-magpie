@@ -93,6 +93,16 @@ Each is left off when it isn't known: no folder said, or a folder not on this co
 
 `TestPluginToldWhereTheAgentWorks` ([`plugin_workdir_test.go`](../../internal/gateway/plugin_workdir_test.go)) sends Claude Code's and Codex's captured requests and Pi-style ones from a folder in a repository and one not, through the fake plugin, and checks what the plugin read and that the vendor got neither header.
 
+## Plugin list persistence
+
+`plugins.json` reads and replacements share the existing `pluginsList` mutex in
+[`store.go`](../../internal/plugin/store.go). On Windows, continuous reads in this
+process must finish before its writer renames the flushed replacement over the
+file; otherwise those readers can exhaust `steady.Rename`'s bounded wait. The
+last-good backup, atomic replacement, file format and cross-process retry rules
+remain unchanged. `TestLoadConcurrentWithSavesAndEdits` exercises four continuous
+readers alongside add, disable and remove operations.
+
 ## Two plugins for one provider id
 
 The host runs one plugin per provider id. When two installed plugins have `auth` hooks for the same id, such as a third-party plugin and the user's own copy added by its folder, `auths()` in `host.js` takes the one picked for that id in `plugins.json`'s `prefer` map (provider id → spec). Without a pick it takes the last one in the list, as OpenCode does. Only the serving plugin's `provider.models` hook runs for that id. Every plugin's `config` hook still runs, so another plugin can still add models or a name to `config.provider[id]`.
