@@ -3,6 +3,7 @@
 package gui
 
 import (
+	"github.com/godbus/dbus/v5"
 	"log"
 	"reflect"
 	"unsafe"

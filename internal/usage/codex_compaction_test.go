@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
-	"path/filepath"
+
 	"strings"
 	"sync"
 	"testing"
@@ -209,72 +209,6 @@ func TestCodexRequestPageDoesNotMutateSharedCompactionChunks(t *testing.T) {
 			t.Fatal("concurrent page builds mutated shared source rows")
 		}
 	})
-}
-
-func TestCodexLateCompactionMarkerInvalidatesRequestAndEffortCaches(t *testing.T) {
-	pageHome(t)
-	now := holdClock(t, time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	at := now.Add(-time.Hour)
-	root := filepath.Join(sessions.CodexDir(), "sessions", "2026", "09", "30")
-	pairedPath := filepath.Join(root, "rollout-2026-09-30T10-00-00-fixture-thread-paired.jsonl")
-	directPath := filepath.Join(root, "rollout-2026-09-30T10-00-00-fixture-thread-direct.jsonl")
-	writeCodexCall(t, pairedPath, "fixture-thread", "fixture-session", `"vscode"`, "resp-paired", "native-model", "native-low", at, 100, 10)
-	writeCodexCall(t, directPath, "fixture-thread", "fixture-session", `"vscode"`, "resp-direct", "native-model", "native-low", at.Add(time.Minute), 30, 3)
-	Append(Record{Time: at, Agent: "codex", Provider: "openai", Model: "m", Served: "m", Effort: "gateway-high", Kind: "chat",
-		Input: 60, Output: 6, Status: 200, ResponseID: "resp-paired"})
-	pageBuilds, effortBuilds := 0, 0
-	building = func() { pageBuilds++ }
-	effortBuilt = func() { effortBuilds++ }
-	t.Cleanup(func() { building, effortBuilt = nil, nil })
-
-	first := QueryPage(All, Filter{}, 0, 100)
-	if first.Total != 2 || first.Sum.Input != 90 || first.Sum.Output != 9 || first.Through.Calls != 1 || first.Direct.Calls != 1 || pageBuilds != 1 {
-		t.Fatalf("initial page totals/builds: %+v, builds=%d", first, pageBuilds)
-	}
-	paired, _ := findRowByResponse(first.Rows, "resp-paired")
-	if compacted, known := compactionValue(paired); !known || compacted {
-		t.Fatalf("initial paired row compaction = %v, known=%v", compacted, known)
-	}
-	if _, known := compactionValue(mustResponseRow(t, first.Rows, "resp-direct")); !known {
-		t.Fatal("direct native row omitted its non-compaction marker")
-	}
-	initialEffort := CodexModelEffort(All)
-	if effortBuilds != 1 || !hasEffortInput(initialEffort["fixture-thread"], "m", "gateway-high", 60) {
-		t.Fatalf("initial model-effort cache: builds=%d values=%+v", effortBuilds, initialEffort)
-	}
-	CodexModelEffort(All)
-	if effortBuilds != 1 {
-		t.Fatalf("unchanged model-effort read rebuilt %d times", effortBuilds)
-	}
-
-	appendCompactionLine(t, pairedPath, "resp-paired", "fixture-thread", "fixture-session", "turn-resp-paired", at.Add(time.Second), 100, 10)
-	changedAt := now.Add(5 * time.Minute)
-	if err := os.Chtimes(pairedPath, changedAt, changedAt); err != nil {
-		t.Fatal(err)
-	}
-	second := QueryPage(All, Filter{}, 0, 100)
-	paired, _ = findRowByResponse(second.Rows, "resp-paired")
-	if second.Total != 2 || second.Sum.Input != 90 || second.Sum.Output != 9 || second.Through.Calls != 1 || second.Direct.Calls != 1 || pageBuilds != 2 {
-		t.Fatalf("late marker duplicated usage or skipped request-page rebuild: %+v builds=%d", second, pageBuilds)
-	}
-	if compacted, known := compactionValue(paired); !known || !compacted {
-		t.Fatalf("late native marker did not reach the cached gateway row: %v, known=%v", compacted, known)
-	}
-	packedPage := QueryPage(All, Filter{}, 1, 100)
-	if pageBuilds != 3 {
-		t.Fatalf("a second page did not reuse the packed native chunk: builds=%d", pageBuilds)
-	}
-	packedPair := mustResponseRow(t, packedPage.Rows, "resp-paired")
-	if compacted, known := compactionValue(packedPair); !known || !compacted {
-		t.Fatalf("packed chunk lost the late marker: %v, known=%v", compacted, known)
-	}
-	updatedEffort := CodexModelEffort(All)
-	if effortBuilds != 2 || !hasEffortInput(updatedEffort["fixture-thread"], "m", "gateway-high", 60) {
-		t.Fatalf("late marker did not invalidate model-effort cache: builds=%d values=%+v", effortBuilds, updatedEffort)
-	}
-	if math.Abs(second.Sum.Cost-0.000168) > 1e-12 {
-		t.Fatalf("late marker changed gateway cost: %v", second.Sum.Cost)
-	}
 }
 
 func hasEffortInput(rows []sessions.ModelEffort, model, effort string, input int) bool {

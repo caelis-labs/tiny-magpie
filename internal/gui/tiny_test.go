@@ -1,7 +1,9 @@
 package gui
 
 import (
+	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -51,5 +53,25 @@ func TestTinyProviderEditLeavesAgentConfig(t *testing.T) {
 	after, err := os.ReadFile(path)
 	if err != nil || string(after) != string(before) {
 		t.Fatalf("provider edit changed Agent config: %v %q", err, after)
+	}
+}
+
+func TestTinyDoesNotAttachToAnotherGateway(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"name":"magpie","version":"99.0.0","models":42,"window":true}`))
+	}))
+	defer other.Close()
+	t.Setenv("MAGPIE_ADDR", strings.TrimPrefix(other.URL, "http://"))
+	before := served.Swap(nil)
+	defer served.Store(before)
+	state := providersState()
+	if state.Gateway.Running || state.Gateway.Mine || state.Gateway.Window || !state.Gateway.Taken {
+		t.Fatalf("attached to other gateway: %+v", state.Gateway)
+	}
+	if !gateway.Running() {
+		t.Fatal("other gateway was stopped")
 	}
 }

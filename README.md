@@ -34,9 +34,11 @@ python3 scripts/check-scope.py
 npm ci
 npx playwright install chromium webkit
 npm run test:ui
+docker build -t tiny-magpie:local-validation .
+./scripts/check-container.sh tiny-magpie:local-validation
 python3 scripts/verify-gateway.py --baseline /path/to/pinned-magpie --tiny ./tiny-magpie
 ```
 
-The differential harness runs both binaries with temporary profiles, fake credentials and a loopback fixture upstream. It checks discovery, four-by-four protocol routing with HTTP/SSE and removed endpoints. It cannot establish real-vendor or native-window acceptance. Never test against a user's running Magpie or real Agent configuration.
+The differential harness runs both binaries with temporary profiles, fake credentials and a loopback fixture upstream. It checks discovery, four-by-four protocol routing with HTTP/SSE, tools/screenshots, both vendor requests and client replies, and removed endpoints. It cannot establish real-vendor or native-window acceptance. Never test against a user's running Magpie or real Agent configuration.
 
 Upstream source remains MIT licensed; retain [LICENSE](LICENSE) and the original contributor history.

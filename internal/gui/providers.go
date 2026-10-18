@@ -19,7 +19,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
 	"github.com/yetone/magpie/internal/upstream"
 )
 
@@ -427,6 +426,7 @@ type gatewayJSON struct {
 	// image), so every caller is shown a gateway key, and LAN is true too:
 	// callers from elsewhere, a container's host among them, need one
 	OnNetwork bool `json:"onNetwork,omitempty"`
+	Taken     bool `json:"taken,omitempty"`
 	Running   bool `json:"running"`
 	Mine      bool `json:"mine"`   // this process serves it
 	Window    bool `json:"window"` // the magpie serving it shows its routing
@@ -935,13 +935,10 @@ func providersState() providersJSON {
 		}
 		s.Gateway.Lanes = gw.Lanes()
 	} else {
-		o := gateway.ServedBy()
-		s.Gateway.Running, s.Gateway.Window, s.Gateway.Version = o.Running, o.Window, o.Version
-		s.Gateway.Older = o.Running && update.Newer(gateway.Version, o.Version)
+		// The tiny window never attaches its state to another gateway.
+		s.Gateway.Taken = gateway.Taken()
 	}
-	s.Gateway.Archive = archiveState()
-	s.CodexDaemon = provider.CodexDaemonStale()
-	s.CodexApp = provider.CodexAppStale()
+
 	s.Plugins = pluginSubs()
 	s.Fetching = provider.FetchingNew()
 	return s

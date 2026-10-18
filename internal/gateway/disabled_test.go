@@ -202,7 +202,7 @@ func TestDisabledModelRefusedOnEveryRoute(t *testing.T) {
 	if w := chat("spare/m2"); w.Code != 200 || !strings.Contains(w.Body.String(), "from-spare") {
 		t.Fatal("enabled again", w.Code, w.Body.String())
 	}
-	if w := do("POST", "/v1/systemone", ask); w.Code != 200 || decided != 1 {
+	if w := do("POST", "/v1/systemone", ask); w.Code != 404 || decided != 0 {
 		t.Fatal("decision enabled again", w.Code, w.Body.String())
 	}
 }

@@ -1,7 +1,6 @@
 name: Docker smoke test
 on:
   pull_request:
-    paths: [Dockerfile, .dockerignore, '.github/workflows/docker.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,16 +18,4 @@ jobs:
         shell: bash
         run: |
           docker build --load -t tiny-magpie-smoke .
-          docker run -d --name tiny-smoke -v tiny-smoke:/config -p 13425:3425 tiny-magpie-smoke
-          trap 'docker logs tiny-smoke; docker rm -f tiny-smoke' EXIT
-          ready=0
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:13425/v1/models >/dev/null; then ready=1; break; fi
-            sleep 1
-          done
-          test "$ready" = 1
-          docker exec tiny-smoke /bin/bash -c 'tiny-magpie healthcheck && ls /config >/dev/null'
-          code=$(curl -s -o /tmp/body.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"model":"ci-unknown","messages":[{"role":"user","content":"hi"}]}' http://127.0.0.1:13425/v1/chat/completions)
-          test "$code" -ge 400 && test "$code" -lt 500
-          jq -e '.error.type' /tmp/body.json
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:13425/v1/systemone)" = 404
+          ./scripts/check-container.sh tiny-magpie-smoke

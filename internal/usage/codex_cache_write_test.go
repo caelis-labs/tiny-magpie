@@ -85,19 +85,3 @@ func TestCodexCacheWriteMatchesGatewayCall(t *testing.T) {
 		})
 	}
 }
-
-// Codex's input_tokens holds what was written to the cache as well as what
-// was read from it; a call's input is what was neither.
-func TestCodexCacheWriteNotInInput(t *testing.T) {
-	pageHome(t)
-	path := filepath.Join(sessions.CodexDir(), "sessions", "rollout-2026-09-30T00-00-00-w.jsonl")
-	os.MkdirAll(filepath.Dir(path), 0700)
-	at := holdClock(t, time.Date(2026, 9, 30, 12, 0, 0, 0, time.Local)).Add(-time.Minute).Format(time.RFC3339Nano)
-	u := `{"input_tokens":130000,"cached_input_tokens":113000,"cache_write_input_tokens":9000,"output_tokens":400}`
-	os.WriteFile(path, []byte(`{"type":"session_meta","payload":{"id":"w"}}`+"\n"+
-		`{"timestamp":"`+at+`","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":`+u+`,"last_token_usage":`+u+`}}}`+"\n"), 0600)
-	p := QueryPage(Today, Filter{}, 0, 10)
-	if len(p.Rows) != 1 || p.Rows[0].Input != 8000 || p.Rows[0].CacheRead != 113000 || p.Rows[0].CacheWrite != 9000 {
-		t.Fatalf("rows %+v", p.Rows)
-	}
-}

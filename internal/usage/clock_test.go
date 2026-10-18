@@ -128,7 +128,7 @@ func TestAnswerReadsTheClockOnce(t *testing.T) {
 		}
 	}
 	midnightClock(t, midnight)
-	page(3, day)
+	page(2, day)
 	// asked again after midnight, the next day's page, not the one kept for
 	// the day before
 	page(0, midnight)

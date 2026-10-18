@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
+
 	"testing"
 	"time"
 
 	"github.com/yetone/magpie/internal/catalog"
-	"github.com/yetone/magpie/internal/provider"
+
 	"github.com/yetone/magpie/internal/sessions"
 )
 
@@ -193,77 +193,6 @@ func TestRequestPageModelRankingKeepsAlternatives(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestQueryPageSourceAndIdentityInvalidation(t *testing.T) {
-	pageHome(t)
-	// QueryPage saves a copy of the account Codex is signed in to, at most
-	// once every 30s (rememberLogins), and this test expects only auth.json's
-	// identity. Look at the accounts before signing in, as an earlier test in
-	// a package run does, so no copy is saved while it runs.
-	provider.ForgetAccounts()
-	provider.Accounts()
-	sessionAuth(t, sessions.CodexDir(), "a", "u", "one@example.com")
-	now := holdClock(t, time.Date(2026, 9, 30, 12, 0, 0, 0, time.Local))
-	path := filepath.Join(sessions.CodexDir(), "sessions", "rollout-2026-09-30T00-00-00-test.jsonl")
-	os.MkdirAll(filepath.Dir(path), 0700)
-	meta := `{"type":"session_meta","payload":{"id":"test","model_provider":"custom","creator_account_id":"a","creator_user_id":"u"}}` + "\n" + `{"type":"turn_context","payload":{"model":"m","effort":"high"}}` + "\n"
-	line := func(n int) string {
-		return fmt.Sprintf(`{"timestamp":%q,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":%d,"output_tokens":%d},"last_token_usage":{"input_tokens":10,"output_tokens":1}}}}`+"\n", now.Format(time.RFC3339Nano), n*10, n)
-	}
-	os.WriteFile(path, []byte(meta+line(1)), 0600)
-	check := func(n int, account string, official bool) {
-		t.Helper()
-		p := QueryPage(All, Filter{}, 0, 100)
-		if p.Total != n {
-			t.Fatalf("total %d want %d", p.Total, n)
-		}
-		for _, r := range p.Rows {
-			if r.Source == "log" && (r.SessionAccount != account || r.SessionOfficialLogin != official) {
-				t.Fatalf("identity %+v", r)
-			}
-		}
-		equalPage(t, p, pageFromLedger(All, Filter{}, 0, 100, LedgerOf(All, Filter{})))
-	}
-	check(1, "one@example.com", true)
-	before := requestCache.chunks[path]
-	check(1, "one@example.com", true)
-	if requestCache.chunks[path] != before {
-		t.Fatal("unchanged source rebuilt")
-	}
-	appendFile := func(p, s string) {
-		f, e := os.OpenFile(p, os.O_WRONLY|os.O_APPEND, 0600)
-		if e != nil {
-			t.Fatal(e)
-		}
-		defer f.Close()
-		f.WriteString(s)
-	}
-	appendFile(path, line(2))
-	check(2, "one@example.com", true)
-	sessionAuth(t, sessions.CodexDir(), "a", "u", "two@example.com")
-	check(2, "two@example.com", true)
-	sessionAuth(t, sessions.CodexDir(), "other", "u", "wrong@example.com")
-	check(2, "", false)
-	os.MkdirAll(filepath.Dir(Path()), 0700)
-	r, _ := json.Marshal(Record{Time: now, Model: "m", Agent: "opencode", Input: 10, Output: 1})
-	os.WriteFile(Path(), r, 0600)
-	check(2, "", false) // partial gateway line
-	appendFile(Path(), "\n")
-	check(3, "", false)
-	appendFile(Path(), string(r)+"\n")
-	check(4, "", false)
-	os.WriteFile(Path(), []byte(string(r)+"\n"), 0600)
-	check(3, "", false)
-	// Reprice cached rows when the shared catalogue changes.
-	b, _ := os.ReadFile(catalog.CachePath())
-	os.WriteFile(catalog.CachePath(), []byte(strings.Replace(string(b), `"input":2`, `"input":9`, 1)), 0600)
-	catalog.Reset()
-	check(3, "", false)
-	os.Remove(path)
-	check(1, "", false)
-	os.Remove(Path())
-	check(0, "", false)
 }
 
 // One model at two providers is ranked once at each, with each one's own

@@ -44,3 +44,20 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
     });
   }
 }
+
+for (const [engine, driver] of [['chromium', chromium], ['webkit', webkit]]) {
+  test(`${engine}: occupied gateway stays separate (Web, light theme)`, async t => {
+    const browser = await driver.launch();
+    t.after(() => browser.close());
+    const page = await browser.newPage({viewport:{width:1100,height:820}});
+    const mutations = [], errors = [];
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.route('**/*',fixture('en','light',mutations,{web:true,taken:true}));
+    await page.goto('http://magpie.test/?view=gateway');
+    await page.getByText('Port 3999 is in use by another program: quit it, or move the gateway to another port in Settings.', {exact:true}).waitFor();
+    assert.equal(await page.locator('#gateway .dot.on').count(),0);
+    assert.equal(await page.locator('#gateway .gw-fix').count(),0);
+    assert.deepEqual(errors,[]);
+    assert.deepEqual(mutations,[]);
+  });
+}

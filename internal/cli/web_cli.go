@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/yetone/magpie/internal/daemon"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/gui"
 	"github.com/yetone/magpie/internal/stats"
@@ -49,35 +48,14 @@ func webCmd(args []string) error {
 		_, port, _ := net.SplitHostPort(webAddr)
 		addr = "0.0.0.0:" + port
 	}
-	// the service serves the page already: its own, beside the gateway
-	// it serves, is the one to open
-	if a, k := daemon.Web(); a != "" && gateway.ServedBy().Running {
-		link := webLink(a, k)
-		fmt.Println(green.Render("●"), "the magpie service serves this page:", bold.Render(link))
-		fmt.Println(muted.Render("  magpie daemon web off turns it off"))
-		if open {
-			openInBrowser(link)
-		}
-		return nil
-	}
 	w, err := gui.StartWeb(addr, version)
 	if err != nil {
 		return err
 	}
 	if !w.ServesGateway() {
-		// another magpie has the gateway (the service, magpie serve, the
-		// app): this page shows its settings and accounts, read from the
-		// same files, and takes the gateway up when that one stops
-		o := gateway.ServedBy()
-		who := "another magpie"
-		if o.Version != "" {
-			who += " (" + o.Version + ")"
-		}
-		fmt.Println(muted.Render("  the gateway on " + gateway.URL() + " is served by " + who + "; this page shows the same settings and accounts, and serves the gateway once that one stops"))
-		if st, err := daemon.Get(); err == nil && st.Running {
-			fmt.Println(muted.Render("  to have the service serve this page itself: magpie daemon web on"))
-		}
+		return fmt.Errorf("tiny-magpie could not bind its gateway; stop the port's owner or set MAGPIE_ADDR")
 	}
+
 	printWeb(w)
 	if open {
 		openInBrowser(w.Link)

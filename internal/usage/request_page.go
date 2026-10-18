@@ -13,7 +13,7 @@ import (
 	"io"
 	"maps"
 	"os"
-	"path/filepath"
+
 	"slices"
 	"sort"
 	"strings"
@@ -374,14 +374,7 @@ func readRequestState(now time.Time) requestState {
 		fmt.Fprintf(h, "%q:%q:%v:%t:%t:%t;", current.ID, current.Where(), current.Catalogs(), current.IsPlugin(), current.Account == nil, current.Key != "")
 		fmt.Fprint(h, statKey(catalog.LivePath(current.ID)))
 	}
-	for _, root := range sessions.DesktopDataDirs() {
-		for _, kind := range []string{"local-agent-mode-sessions", "claude-code-sessions"} {
-			files, _ := sessions.SessionGlob(filepath.Join(root, kind, "*", "*", "local_*.json"))
-			for _, path := range files {
-				fmt.Fprint(h, statKey(path))
-			}
-		}
-	}
+
 	meta += fmt.Sprintf("|%x|%s", h.Sum(nil), statKey(catalog.LivePath("antigravity")))
 	h.Reset()
 	snapshot := readLogSnapshot()

@@ -9,11 +9,8 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 )
 
-// An older magpie keeping the gateway's port sends every agent's request
-// its own way (#506: a Factory 403 worded as v0.1.550 words it, to people
-// on v0.1.630). The Gateway page says which version serves and that it is
-// older; a newer or the same one is just another magpie.
-func TestGatewayServedByAnOlderMagpie(t *testing.T) {
+// Tiny reports an occupied port without attaching to any other version.
+func TestGatewayDoesNotAttachToAnyMagpieVersion(t *testing.T) {
 	h := t.TempDir()
 	t.Setenv("HOME", h)
 	t.Setenv("USERPROFILE", h)
@@ -48,7 +45,7 @@ func TestGatewayServedByAnOlderMagpie(t *testing.T) {
 	} {
 		answer = c.answer
 		g := providersState().Gateway
-		if !g.Running || g.Mine || g.Version != c.version || g.Older != c.older || g.Window != c.window {
+		if g.Running || g.Mine || g.Version != "" || g.Older || g.Window || !g.Taken {
 			t.Errorf("%s: running %v mine %v version %q older %v window %v", c.answer, g.Running, g.Mine, g.Version, g.Older, g.Window)
 		}
 	}

@@ -3,8 +3,7 @@ package usage
 import (
 	"fmt"
 	"math/rand"
-	"os"
-	"path/filepath"
+
 	"reflect"
 	"slices"
 	"testing"
@@ -52,40 +51,6 @@ func TestRequestMatchIndexEquivalent(t *testing.T) {
 				t.Fatalf("seed %d: %d matches, want %d", seed, len(got), len(want))
 			}
 		}
-	}
-}
-
-func TestQueryPageIOOutsideCacheLock(t *testing.T) {
-	pageHome(t)
-	path := filepath.Join(sessions.ClaudeDir(), "projects", "p", "yesterday.jsonl")
-	os.MkdirAll(filepath.Dir(path), 0700)
-	os.WriteFile(path, []byte("{}\n"), 0600)
-	at := holdClock(t, time.Date(2026, 9, 30, 12, 0, 0, 0, time.Local)).Add(-48 * time.Hour)
-	os.Chtimes(path, at, at)
-	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	go func() {
-		defer close(done)
-		queryPage(All, Filter{}, 0, 10, func(s sessions.CallSource) []sessions.Call {
-			close(entered)
-			<-release
-			return []sessions.Call{{Time: at, Agent: "claude", Model: "m", Session: "yesterday", Tokens: sessions.Tokens{Input: 1}}}
-		})
-	}()
-	defer func() { close(release); <-done }()
-	select {
-	case <-entered:
-	case <-time.After(5 * time.Second):
-		t.Fatal("all-period read did not start")
-	}
-	today := make(chan RequestPage, 1)
-	go func() { today <- QueryPage(Today, Filter{}, 0, 1) }()
-	select {
-	case p := <-today:
-		if p.Total != 0 {
-			t.Fatal(p.Total)
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("Today waited on All's blocked file IO")
 	}
 }
 

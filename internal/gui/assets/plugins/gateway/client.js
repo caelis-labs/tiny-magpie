@@ -92,7 +92,7 @@ function renderGatewayView() {
 let gatewayFix = { busy: false, err: "", when: "" };
 const gatewayFixWhen = (g) => [g.running, g.mine, g.version || ""].join("|");
 function gatewayFixButton(g, older) {
-  if (g.running && !g.mine && !older) return null;
+  if (g.taken || (g.running && !g.mine && !older)) return null;
   // bordered: a plain text button read as words on the card in dark mode
   const b = el("button", "text action gw-fix");
   b.textContent = gatewayFix.busy
@@ -149,7 +149,9 @@ function renderGateway() {
   const routed = new Set();
   for (const p of providers.providers) for (const a of p.agents) if (a.current) routed.add(a.id);
   const n = routed.size;
-  if (older) {
+  if (g.taken) {
+    who.append(name, el("div", "sub old err", t("Port {port} is in use by another program: quit it, or move the gateway to another port in Settings.", {port: new URL(g.url).port})));
+  } else if (older) {
     who.append(name, el("div", "sub old", t("Agents' requests go through magpie {v} and are sent as it sends them, without this version's fixes. Quit it here and this one serves the gateway at once.", { v: g.version })));
   } else who.append(name, el("div", "sub", g.running
     ? [t(g.models === 1 ? "{n} model" : "{n} models", { n: g.models }), n ? t(n === 1 ? "{n} agent routed through it" : "{n} agents routed through it", { n }) : t("no agent routed through it yet"), t("four model APIs, one URL")].join(" · ")
