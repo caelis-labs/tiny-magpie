@@ -17,4 +17,5 @@ for path in ('POST /v1/systemone','POST /v1/images/generations','POST /v1/videos
     assert f'mux.HandleFunc("{path}"' not in s,path
 for workflow in (root/'.github/workflows').glob('*'):
     assert 'yetone/magpie-releases' not in workflow.read_text(encoding='utf-8'),f'upstream release target in {workflow}'
+assert 'go install ' not in (root/'Makefile').read_text(encoding='utf-8'), 'upstream-named installer resurrected'
 print('PASS: tiny assembly/lifecycle scope')

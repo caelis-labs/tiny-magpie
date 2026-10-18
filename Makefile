@@ -32,16 +32,13 @@ ifeq ($(shell go env GOOS),android)
   TAGS = nogui
 endif
 
-.PHONY: build cli install test test-ui app icons release release-cli release-windows release-linux clean dev dev-once
+.PHONY: build cli test test-ui app icons release release-cli release-windows release-linux clean dev dev-once
 
 build:
 	go build -tags "$(TAGS)" -trimpath -ldflags="$(LDFLAGS)" -o tiny-magpie .
 
 cli:
 	CGO_ENABLED=0 go build -tags nogui -trimpath -ldflags="$(LDFLAGS)" -o tiny-magpie .
-
-install:
-	go install -tags "$(TAGS)" -trimpath -ldflags="$(LDFLAGS)" .
 
 test:
 	go vet -tags "$(TAGS)" ./... && go test -tags "$(TAGS)" ./...
