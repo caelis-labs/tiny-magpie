@@ -44,6 +44,8 @@ var (
 	// on again (steady.Stat): one there before and not now may be being
 	// replaced (Windows), and is
 	gone = map[string]bool{}
+	// A test finishes a simulated replacement when revalidation begins.
+	statAfterChange = steady.Stat
 )
 
 // heldFor is how long a file found unchanged is taken as unchanged, while
@@ -71,6 +73,7 @@ func Hold() (release func()) {
 func Forget() {
 	mu.Lock()
 	gen++
+	clear(gone)
 	mu.Unlock()
 }
 
@@ -80,6 +83,7 @@ func Forget() {
 func Look(path string) {
 	mu.Lock()
 	defer mu.Unlock()
+	delete(gone, path)
 	for k, e := range seen {
 		if strings.HasSuffix(k, "\x00"+path) && !e.checked.IsZero() {
 			e.checked = time.Time{}
@@ -159,7 +163,7 @@ func statFile(path string) (os.FileInfo, error) {
 	if wasGone {
 		fi, err = os.Stat(path)
 	} else {
-		fi, err = steady.Stat(path)
+		fi, err = statAfterChange(path)
 	}
 	mu.Lock()
 	if errors.Is(err, fs.ErrNotExist) {

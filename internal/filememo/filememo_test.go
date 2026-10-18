@@ -8,6 +8,48 @@ import (
 	"time"
 )
 
+// A newly written file must not keep the old "not there" fast path:
+// Windows may momentarily hide it while another process replaces it.
+func TestChangedFileAfterMissing(t *testing.T) {
+	for _, change := range []string{"write", "locked read"} {
+		t.Run(change, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "accounts.json")
+			parse := func(b []byte) (string, error) { return string(b), nil }
+			if _, err := Read("changed", p, parse); !os.IsNotExist(err) {
+				t.Fatalf("initial absence: %v", err)
+			}
+			staged := p + ".replacement"
+			if err := os.WriteFile(staged, []byte("accounts"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			before := statAfterChange
+			t.Cleanup(func() { statAfterChange = before })
+			statAfterChange = func(path string) (os.FileInfo, error) {
+				// The file becomes visible during the normal retry path.
+				if err := os.Rename(staged, path); err != nil {
+					return nil, err
+				}
+				return before(path)
+			}
+			if change == "write" {
+				Forget()
+			} else {
+				Look(p)
+			}
+			if got, err := Read("changed", p, parse); err != nil || got != "accounts" {
+				t.Fatalf("new accounts read as absent: %q, %v", got, err)
+			}
+			statAfterChange = before
+			if err := os.Remove(p); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Read("changed", p, parse); !os.IsNotExist(err) {
+				t.Fatalf("real deletion wasn't observed: %v", err)
+			}
+		})
+	}
+}
+
 func TestRead(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	os.WriteFile(p, []byte("a"), 0o600)
