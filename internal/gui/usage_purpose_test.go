@@ -65,15 +65,5 @@ func TestUsagePurposeRoutes(t *testing.T) {
 			t.Fatalf("CSV contains another purpose: %v", row)
 		}
 	}
-	var exported struct {
-		Path string
-		Rows int
-	}
-	if err := json.Unmarshal(get("POST", "/api/usage/requests/export").Body.Bytes(), &exported); err != nil || exported.Rows != 3 {
-		t.Fatalf("export: %+v %v", exported, err)
-	}
-	b, err := os.ReadFile(filepath.Join(home, "Downloads", filepath.Base(exported.Path)))
-	if err != nil || string(b) != csvData {
-		t.Fatalf("desktop export differs from filtered download: %v", err)
-	}
+
 }

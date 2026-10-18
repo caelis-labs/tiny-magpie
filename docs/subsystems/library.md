@@ -1,5 +1,7 @@
 # Library: instructions, MCP servers, skills, hooks, subagents and RTK
 
+> tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
+
 The library keeps what every agent should know in one place: the
 instructions each agent reads before a conversation, the MCP servers it can
 call, the skills it can load, the hooks it runs at points of its turn, and

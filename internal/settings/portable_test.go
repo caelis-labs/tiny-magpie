@@ -24,7 +24,7 @@ func TestPortableSettings(t *testing.T) {
 	t.Cleanup(func() { appdir.UseExecutable("") })
 
 	exe := filepath.Join(r, "Magpie", "magpie.exe")
-	data := filepath.Join(r, "Magpie", "data")
+	data := filepath.Join(r, "Magpie", "tiny-data")
 	if err := os.MkdirAll(data, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -55,13 +55,13 @@ func TestPortableSettings(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(data, "settings.json")); err != nil {
 		t.Fatalf("settings not saved in the data folder: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(r, "home", ".config", "magpie")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(r, "home", ".config", "tiny-magpie")); !os.IsNotExist(err) {
 		t.Fatalf("the profile's ~/.config/magpie was touched: %v", err)
 	}
 
 	// without the data folder it's the profile again
 	appdir.UseExecutable("")
-	if got, want := Path(), filepath.Join(r, "home", ".config", "magpie", "settings.json"); got != want {
+	if got, want := Path(), filepath.Join(r, "home", ".config", "tiny-magpie", "settings.json"); got != want {
 		t.Fatalf("installed Path() = %q, want %q", got, want)
 	}
 }

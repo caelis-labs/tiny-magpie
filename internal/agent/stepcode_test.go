@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
-
 	"github.com/yetone/magpie/internal/access"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/edit"

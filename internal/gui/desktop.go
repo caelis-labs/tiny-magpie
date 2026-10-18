@@ -7,4 +7,4 @@ package gui
 // downloaded, which no desktop entry names, so the dock drew a gear (#2626).
 // The entry registerScheme writes names it in StartupWMClass. WebKitGTK keys
 // its data folder by it too (~/.local/share/magpie), see keepWebData.
-const programName = "magpie"
+const programName = "tiny-magpie"

@@ -60,10 +60,6 @@ func checkCacheContinuation(t *testing.T, delta string, hour int) {
 	wantCacheLedger(t, hour)
 }
 
-func TestProbe1717SearchTotalZeroSplit(t *testing.T) {
-	checkCacheSearch(t, zeroSplitDelta, 15)
-}
-
 func checkCacheSearch(t *testing.T, delta string, hour int) {
 	t.Helper()
 	for _, stream := range []bool{true, false} {

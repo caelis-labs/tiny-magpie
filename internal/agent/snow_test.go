@@ -429,23 +429,6 @@ func TestSnowSyncedKeepsTheUsers(t *testing.T) {
 
 // With magpie's Vision on, a model that takes no images has them described
 // at the gateway, so Snow is told it takes them and sends them on.
-func TestSnowVisionThroughMagpie(t *testing.T) {
-	_, dir := snowHome(t)
-	snowUser(t, dir)
-	snowSees(t)
-	st := settings.Load()
-	st.Vision = "relay/glm-4.5v"
-	if err := settings.Save(st); err != nil {
-		t.Fatal(err)
-	}
-	a, _ := Find("snow")
-	if err := a.Apply("model", "magpie/relay/glm-4.6"); err != nil {
-		t.Fatal(err)
-	}
-	if sc := snowCfg(t, filepath.Join(dir, "profiles", "magpie.json")); sc["supportsVision"] != true {
-		t.Fatalf("supportsVision %v with GLM-4.5V to describe images", sc["supportsVision"])
-	}
-}
 
 // A vision model of the user's profile comes into magpie's only with an
 // endpoint and key of its own: on the profile's, it would go to the

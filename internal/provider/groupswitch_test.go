@@ -87,10 +87,6 @@ func TestSwitchGroup(t *testing.T) {
 	if _, ok := DisabledGroup("group/inner"); !ok {
 		t.Fatal("a save switched it on")
 	}
-	// it classifies for no one while off
-	if err := SaveGroup(Group{Name: "Ruled", Members: []string{"b/x"}, Classifier: "group/inner", Effort: EffortAuto}); err == nil || !strings.Contains(err.Error(), "switched off") {
-		t.Fatalf("classifier switched off: %v", err)
-	}
 
 	if err := SwitchGroup("inner", true); err != nil {
 		t.Fatal(err)
@@ -98,13 +94,7 @@ func TestSwitchGroup(t *testing.T) {
 	if s := outer(); s != "a/x b/x" || !listed("group/inner") {
 		t.Fatalf("on again: %s, listed %v", s, listed("group/inner"))
 	}
-	// one classifying for another stays on
-	if err := SaveGroup(Group{Name: "Ruled", Members: []string{"b/x"}, Classifier: "group/inner", Effort: EffortAuto}); err != nil {
-		t.Fatal(err)
-	}
-	if err := SwitchGroup("inner", false); err == nil || !strings.Contains(err.Error(), "classifier") {
-		t.Fatalf("classifier: %v", err)
-	}
+
 	if err := SwitchGroup("nope", false); err == nil {
 		t.Fatal("a group magpie hasn't")
 	}

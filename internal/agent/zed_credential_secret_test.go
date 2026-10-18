@@ -6,14 +6,13 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"github.com/godbus/dbus/v5"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/godbus/dbus/v5"
 )
 
 func TestZedSecretService(t *testing.T) {

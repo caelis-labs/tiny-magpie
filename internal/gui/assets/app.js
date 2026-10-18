@@ -16,8 +16,8 @@ const web = !!window.bootPrefs?.web;
 // gateway for other computers' agents leaves out this computer's agents'
 // pages — Agents, Sessions, Library — and their settings; Settings ›
 // General turns it off, and they are back.
-let gatewayMode = web && !!window.bootPrefs?.gateway;
-const GATEWAY_HIDES = ["agents", "library"];
+let gatewayMode = true;
+const GATEWAY_HIDES = ["agents", "library", "sessions"];
 // Plugins › Built-in (builtins.go; Lxxyx on X: too much to look through):
 // the optional parts of the window switched off, by id. Whatever is marked
 // data-feature="<id>" leaves the page while its feature is off — by a
@@ -30,7 +30,7 @@ const GATEWAY_HIDES = ["agents", "library"];
 // says what went and turns it back on (bigbenniu on X: with routing
 // groups off, the Routing page offered no new group and said nothing of
 // why).
-let featuresOff = new Set(window.bootPrefs?.featuresOff || []);
+let featuresOff = new Set(["tiny-removed", "library", "sessions", "search", "tools", "warmups", "otel", ...(window.bootPrefs?.featuresOff || [])]);
 const featureSel = () => [...featuresOff].map((id) => `[data-feature~="${id}"]`).join(",");
 const featureHides = (n) => { const sel = featureSel(); return !!sel && !!n?.closest(sel); };
 function featureStyle() {
@@ -62,7 +62,7 @@ if (window.bootPrefs) setLocale(window.bootPrefs.lang);
 let state = { agents: [], profiles: [], catalog: "", settings: {} };
 let prefs = null; // the settings page: theme, lang, version, dir, gateway
 let providers = null; // { providers, presets, gateway }
-let view = "agents";
+let view = "providers";
 let showAllAgents = false; // the agents no one has set anything on, folded away
 let showHiddenAgents = false; // under them, the ones hidden by hand: a fold of their own, shut until asked
 let period = "today"; // usage window
@@ -3961,8 +3961,8 @@ async function load(again) {
     status(e.message, "err");
   }
   renderUpdateBadge();
-  cliBehindOnce();
-  whatsNewOnce();
+
+
   recoveredOnce();
 }
 
@@ -4009,7 +4009,8 @@ function updatePath(p) {
 // itself, out (a click opens the release page). The user may keep it away:
 // for good (Settings), or for this version (its ×, or a right-click), until
 // a newer one is out. magpie still downloads it and puts it in on quitting.
-async function renderUpdateBadge() {
+async function renderUpdateBadge() { return; // tiny uses its own releases
+
   const b = $("#update"), label = b.querySelector("span");
   const u = await api(updatePath("update")).catch(() => null);
   // pulling: a click is downloading it again, and restarts once it's in
@@ -8661,7 +8662,7 @@ function slide(box, key) {
   th.animate([f, t], { duration: THUMB_MS, easing: THUMB_EASE, id: "thumb" });
 }
 
-const PROTOS = [["chat", "OpenAI", "Chat Completions — most agents"], ["responses", "Responses", "OpenAI Responses — what Codex speaks"], ["anthropic", "Anthropic", "Anthropic Messages — what Claude Code speaks"], ["gemini", "Gemini", "Gemini generateContent — what the Gemini CLI speaks"], ["decide", "System One", "A decision API on System One (TypeSafe's Jev, a gateway's, or Bailian's decision model) — what a routing group asks as a turn begins"]];
+const PROTOS = [["chat", "OpenAI", "Chat Completions — most agents"], ["responses", "Responses", "OpenAI Responses — what Codex speaks"], ["anthropic", "Anthropic", "Anthropic Messages — what Claude Code speaks"], ["gemini", "Gemini", "Gemini generateContent — what the Gemini CLI speaks"]];
 // Gemini generateContent at a Vertex AI provider's project, as its
 // endpoint is shown and tested
 const VERTEX_EP_HINT = "Gemini generateContent — what Vertex AI serves at your Google Cloud project";
@@ -8902,7 +8903,7 @@ function drawEditor(p, presetID) {
     // that serves only the Responses API is added (and tested) with that
     // alone, since /chat/completions would only fail (#73)
     const seg = el("div", "segs base-apis");
-    for (const [v, hint] of [["openai", "…/v1 — chat completions, and responses when the vendor has it"], ["responses", "…/v1 — for a vendor that serves only the Responses API, not chat completions"], ["anthropic", "the root URL, what ANTHROPIC_BASE_URL would take"], ["gemini", "…/v1beta — Google's Gemini API (generateContent), or one that answers as it does; the key goes in x-goog-api-key"], ["decide", "a decision API's root, POST …/systemone under it: its models are a routing group's classifier, never an agent's"]]) {
+    for (const [v, hint] of [["openai", "…/v1 — chat completions, and responses when the vendor has it"], ["responses", "…/v1 — for a vendor that serves only the Responses API, not chat completions"], ["anthropic", "the root URL, what ANTHROPIC_BASE_URL would take"], ["gemini", "…/v1beta — Google's Gemini API (generateContent), or one that answers as it does; the key goes in x-goog-api-key"]]) {
       const b = el("button", "opt" + (draft.api === v ? " on" : ""), t(API_NAMES[v]));
       b.title = t(hint);
       b.onclick = () => {
@@ -16263,14 +16264,14 @@ if (mode === "panel") {
   // Escape closes them in profileEscape, and the name field's is its own
   addEventListener("resize", placeProfiles);
 }
-let panelTab = "agents";
-try { panelTab = localStorage.getItem("magpie.panelTab") || "agents"; } catch {}
+let panelTab = "usage";
+try { panelTab = localStorage.getItem("magpie.panelTab") || "usage"; } catch {}
 function setPanelTab(tab) {
   const tabs = $("#ptabs");
   // no usage to show, no tab for it (nor for profiles: they open from the
   // foot), nor for a page a built-in plugin switched off (Routing)
   const b = tabs.querySelector(`[data-ptab="${tab}"]`);
-  if (!b || b.hidden || featureHides(b)) tab = "agents";
+  if (!b || b.hidden || featureHides(b) || tab === "agents") tab = "usage";
   closeProfiles();
   if (tab !== "usage") panelPeek = "";
   panelTab = tab;
@@ -18715,7 +18716,7 @@ async function loadSettings() {
   // rebuilt under whoever is typing in it
   syncView = null;
   // gateway mode turned in another tab, or the agents here come and gone
-  if (web && !!s.gatewayOn !== gatewayMode) setGatewayMode(!!s.gatewayOn);
+  if (!!s.gatewayOn !== gatewayMode) setGatewayMode(!!s.gatewayOn);
   renderSettings();
 }
 
@@ -21390,11 +21391,7 @@ function renderRedact(s, keep) {
   i.onblur = save;
   row(t("Masked words"), t("Your own words to keep from vendors, separated by commas"), i);
   renderRedactRules(s, row);
-  row(t("Count me as a user"), t("Once a day, a random id for this computer with magpie's version and system"),
-    onOff(!s.noStats, (on) => savePrefs({ ...keep, noStats: !on })));
-  // rides on that event: nothing goes without it
-  if (!s.noStats) row(t("Share the agents, providers and models I use"), t("Sent with that event, by magpie's own ids, with how many of each, and how often each partner was shown, opened and added; a provider you added yourself is only “custom”. No names, addresses, accounts, keys or usage"),
-    onOff(!s.noUsageStats, (on) => savePrefs({ ...keep, noUsageStats: !on })));
+
 }
 
 function renderOTel(s, keep) {
@@ -22642,7 +22639,7 @@ if (mode === "window") for (const b of $("#nav").querySelectorAll("button[data-v
 // setGatewayMode shows or leaves out gateway mode's pages' tabs; the page
 // open, one of them, gives way to Providers
 function setGatewayMode(on) {
-  gatewayMode = on;
+  gatewayMode = true; on = true;
   document.body.classList.toggle("gateway-mode", on);
   if (mode !== "window") return;
   navHides();
@@ -22664,7 +22661,7 @@ function applyFeatures(list) {
   if (!Array.isArray(list)) return;
   // each plugin's settings to its code in the page (kernel.js)
   for (const f of list) if (f.schema) magpie.configure(f.id, f.config);
-  const off = new Set(list.filter((f) => !f.on).map((f) => f.id));
+  const off = new Set(["tiny-removed", "library", "sessions", "search", "tools", "warmups", "otel", ...list.filter((f) => !f.on).map((f) => f.id)]);
   if (off.size === featuresOff.size && [...off].every((id) => featuresOff.has(id))) return;
   featuresOff = off;
   featureStyle();
@@ -23123,7 +23120,6 @@ function navMorph(change) {
 // and picks them there, the page's own strip hidden (app.css)
 var NAV_SUBS = {
   usage: () => $("#usageTab"),
-  library: () => $("#view-library .lib-tabs"),
   plugins: () => $("#view-plugins .lib-tabs"),
   settings: () => $("#setTabs"),
 };

@@ -40,38 +40,38 @@ func TestResolve(t *testing.T) {
 	r := root(t)
 
 	// no data folder: installed
-	exe := touch(t, filepath.Join(r, "plain", "magpie"))
+	exe := touch(t, filepath.Join(r, "plain", "tiny-magpie"))
 	if got := Resolve(exe); got != "" {
 		t.Errorf("no data folder: %q, want installed", got)
 	}
 	// a file named data is not the folder
-	touch(t, filepath.Join(r, "plain", "data"))
+	touch(t, filepath.Join(r, "plain", "tiny-data"))
 	if got := Resolve(exe); got != "" {
 		t.Errorf("data is a file: %q, want installed", got)
 	}
 
 	// a data folder beside it
 	exe = touch(t, filepath.Join(r, "port", "magpie.exe"))
-	mkdir(t, filepath.Join(r, "port", "data"))
-	if got, want := Resolve(exe), filepath.Join(r, "port", "data"); got != want {
+	mkdir(t, filepath.Join(r, "port", "tiny-data"))
+	if got, want := Resolve(exe), filepath.Join(r, "port", "tiny-data"); got != want {
 		t.Errorf("data folder: %q, want %q", got, want)
 	}
 
 	// a .portable marker: the data folder is made beside it when written
-	exe = touch(t, filepath.Join(r, "marker", "magpie"))
-	touch(t, filepath.Join(r, "marker", ".portable"))
-	if got, want := Resolve(exe), filepath.Join(r, "marker", "data"); got != want {
+	exe = touch(t, filepath.Join(r, "marker", "tiny-magpie"))
+	touch(t, filepath.Join(r, "marker", ".tiny-portable"))
+	if got, want := Resolve(exe), filepath.Join(r, "marker", "tiny-data"); got != want {
 		t.Errorf(".portable: %q, want %q", got, want)
 	}
 
 	// a Mac app: beside the bundle, never inside it
-	exe = touch(t, filepath.Join(r, "mac", "Magpie.app", "Contents", "MacOS", "magpie"))
-	mkdir(t, filepath.Join(r, "mac", "Magpie.app", "Contents", "MacOS", "data"))
+	exe = touch(t, filepath.Join(r, "mac", "Magpie.app", "Contents", "MacOS", "tiny-magpie"))
+	mkdir(t, filepath.Join(r, "mac", "Magpie.app", "Contents", "MacOS", "tiny-data"))
 	if got := Resolve(exe); got != "" {
 		t.Errorf("data inside the bundle: %q, want installed", got)
 	}
-	mkdir(t, filepath.Join(r, "mac", "data"))
-	if got, want := Resolve(exe), filepath.Join(r, "mac", "data"); got != want {
+	mkdir(t, filepath.Join(r, "mac", "tiny-data"))
+	if got, want := Resolve(exe), filepath.Join(r, "mac", "tiny-data"); got != want {
 		t.Errorf("Mac app: %q, want %q", got, want)
 	}
 }
@@ -82,19 +82,19 @@ func TestResolveSymlinkedExe(t *testing.T) {
 	}
 	t.Setenv("APPIMAGE", "")
 	r := root(t)
-	real := touch(t, filepath.Join(r, "app", "magpie"))
+	real := touch(t, filepath.Join(r, "app", "tiny-magpie"))
 	mkdir(t, filepath.Join(r, "bin"))
-	link := filepath.Join(r, "bin", "magpie")
+	link := filepath.Join(r, "bin", "tiny-magpie")
 	if err := os.Symlink(real, link); err != nil {
 		t.Fatal(err)
 	}
 	// a data folder beside the link only: the link isn't where magpie is
-	mkdir(t, filepath.Join(r, "bin", "data"))
+	mkdir(t, filepath.Join(r, "bin", "tiny-data"))
 	if got := Resolve(link); got != "" {
 		t.Errorf("data beside the link: %q, want installed", got)
 	}
-	mkdir(t, filepath.Join(r, "app", "data"))
-	if got, want := Resolve(link), filepath.Join(r, "app", "data"); got != want {
+	mkdir(t, filepath.Join(r, "app", "tiny-data"))
+	if got, want := Resolve(link), filepath.Join(r, "app", "tiny-data"); got != want {
 		t.Errorf("symlinked exe: %q, want %q", got, want)
 	}
 }
@@ -104,16 +104,16 @@ func TestResolveAppImage(t *testing.T) {
 		t.Skip("AppImage is Linux's")
 	}
 	r := root(t)
-	exe := touch(t, filepath.Join(r, "mount", "usr", "bin", "magpie"))
+	exe := touch(t, filepath.Join(r, "mount", "usr", "bin", "tiny-magpie"))
 	img := touch(t, filepath.Join(r, "apps", "Magpie.AppImage"))
-	mkdir(t, filepath.Join(r, "apps", "data"))
+	mkdir(t, filepath.Join(r, "apps", "tiny-data"))
 	t.Setenv("APPIMAGE", img)
 	t.Setenv("APPDIR", filepath.Join(r, "mount"))
-	if got, want := Resolve(exe), filepath.Join(r, "apps", "data"); got != want {
+	if got, want := Resolve(exe), filepath.Join(r, "apps", "tiny-data"); got != want {
 		t.Errorf("AppImage: %q, want %q", got, want)
 	}
 	// inherited from another AppImage (a terminal): magpie isn't in its mount
-	other := touch(t, filepath.Join(r, "bin", "magpie"))
+	other := touch(t, filepath.Join(r, "bin", "tiny-magpie"))
 	if got := Resolve(other); got != "" {
 		t.Errorf("inherited APPIMAGE: %q, want installed", got)
 	}
@@ -127,15 +127,15 @@ func TestFolders(t *testing.T) {
 	t.Cleanup(func() { UseExecutable("") })
 
 	UseExecutable("")
-	if Portable() != "" || Config() != filepath.Join(r, "cfg", "magpie") || Cache() != filepath.Join(r, "cache", "magpie") {
+	if Portable() != "" || Config() != filepath.Join(r, "cfg", "tiny-magpie") || Cache() != filepath.Join(r, "cache", "tiny-magpie") {
 		t.Errorf("installed: portable %q, config %q, cache %q", Portable(), Config(), Cache())
 	}
-	if d, _ := SystemCache(); filepath.Base(d) != "magpie" {
+	if d, _ := SystemCache(); filepath.Base(d) != "tiny-magpie" {
 		t.Errorf("installed system cache %q", d)
 	}
 
-	exe := touch(t, filepath.Join(r, "port", "magpie"))
-	data := filepath.Join(r, "port", "data")
+	exe := touch(t, filepath.Join(r, "port", "tiny-magpie"))
+	data := filepath.Join(r, "port", "tiny-data")
 	mkdir(t, data)
 	UseExecutable(exe)
 	if Portable() != data || Config() != data || Cache() != filepath.Join(data, "cache") {
@@ -158,9 +158,9 @@ func TestWebView(t *testing.T) {
 		t.Errorf("installed: WebView() = %q, want the default", got)
 	}
 	exe := touch(t, filepath.Join(r, "port", "magpie.exe"))
-	touch(t, filepath.Join(r, "port", ".portable"))
+	touch(t, filepath.Join(r, "port", ".tiny-portable"))
 	UseExecutable(exe)
-	if got, want := WebView(), filepath.Join(r, "port", "data", "webview2"); got != want {
+	if got, want := WebView(), filepath.Join(r, "port", "tiny-data", "webview2"); got != want {
 		t.Errorf("portable: WebView() = %q, want %q", got, want)
 	}
 }
@@ -177,8 +177,8 @@ func TestResolveSharedFolder(t *testing.T) {
 	t.Cleanup(func() { sharedFolder = was })
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(r, "cfg"))
 
-	exe := touch(t, filepath.Join(apps, "Magpie.app", "Contents", "MacOS", "magpie"))
-	data := filepath.Join(apps, "data")
+	exe := touch(t, filepath.Join(apps, "Magpie.app", "Contents", "MacOS", "tiny-magpie"))
+	data := filepath.Join(apps, "tiny-data")
 	mkdir(t, filepath.Join(data, "nodes"))
 	touch(t, filepath.Join(data, "install-id"))
 
@@ -196,7 +196,7 @@ func TestResolveSharedFolder(t *testing.T) {
 		t.Errorf("nothing installed: Passed %q", got)
 	}
 	// installed magpie has its files: the data folder isn't taken
-	touch(t, filepath.Join(r, "cfg", "magpie", "providers.json"))
+	touch(t, filepath.Join(r, "cfg", "tiny-magpie", "providers.json"))
 	if got := Resolve(exe); got != "" {
 		t.Errorf("installed has files: %q, want installed", got)
 	}
@@ -205,19 +205,19 @@ func TestResolveSharedFolder(t *testing.T) {
 	}
 	t.Cleanup(func() { UseExecutable("") })
 	UseExecutable(exe)
-	if Config() != filepath.Join(r, "cfg", "magpie") {
+	if Config() != filepath.Join(r, "cfg", "tiny-magpie") {
 		t.Errorf("Config %q, want the installed folder", Config())
 	}
 	// asked for with .portable: portable
-	touch(t, filepath.Join(apps, ".portable"))
+	touch(t, filepath.Join(apps, ".tiny-portable"))
 	if got := Resolve(exe); got != data {
 		t.Errorf(".portable: %q, want %q", got, data)
 	}
 
 	// any other folder: a data folder beside magpie is its own, as before
-	other := touch(t, filepath.Join(r, "usb", "Magpie.app", "Contents", "MacOS", "magpie"))
-	mkdir(t, filepath.Join(r, "usb", "data"))
-	if got, want := Resolve(other), filepath.Join(r, "usb", "data"); got != want {
+	other := touch(t, filepath.Join(r, "usb", "Magpie.app", "Contents", "MacOS", "tiny-magpie"))
+	mkdir(t, filepath.Join(r, "usb", "tiny-data"))
+	if got, want := Resolve(other), filepath.Join(r, "usb", "tiny-data"); got != want {
 		t.Errorf("own folder: %q, want %q", got, want)
 	}
 }
@@ -235,7 +235,7 @@ func TestResolveDownloads(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "")
 	dl := filepath.Join(h, "Downloads")
 	exe := touch(t, filepath.Join(dl, "magpie.exe"))
-	data := filepath.Join(dl, "data")
+	data := filepath.Join(dl, "tiny-data")
 	touch(t, filepath.Join(data, "report.json"))
 
 	if got := Resolve(exe); got != "" {
@@ -248,14 +248,14 @@ func TestResolveDownloads(t *testing.T) {
 	if got := Resolve(exe); got != data {
 		t.Errorf("portable run before: %q, want %q", got, data)
 	}
-	touch(t, filepath.Join(h, ".config", "magpie", "logins.json"))
+	touch(t, filepath.Join(h, ".config", "tiny-magpie", "logins.json"))
 	if got := Resolve(exe); got != "" {
 		t.Errorf("installed has files: %q, want installed", got)
 	}
 	if got := Passed(exe); got != data {
 		t.Errorf("Passed %q, want %q", got, data)
 	}
-	touch(t, filepath.Join(dl, ".portable"))
+	touch(t, filepath.Join(dl, ".tiny-portable"))
 	if got := Resolve(exe); got != data {
 		t.Errorf(".portable: %q, want %q", got, data)
 	}
@@ -268,7 +268,7 @@ func TestSharedFolders(t *testing.T) {
 			t.Errorf("%s not shared", d)
 		}
 	}
-	for _, d := range []string{filepath.Join(h, "Downloads", "magpie"), filepath.Join(h, "tools")} {
+	for _, d := range []string{filepath.Join(h, "Downloads", "tiny-magpie"), filepath.Join(h, "tools")} {
 		if sharedFolder(d) {
 			t.Errorf("%s shared", d)
 		}

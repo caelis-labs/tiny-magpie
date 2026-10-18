@@ -1,11 +1,10 @@
 package edit
 
 import (
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestYAMLTopStringScalars(t *testing.T) {

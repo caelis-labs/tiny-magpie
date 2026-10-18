@@ -41,7 +41,7 @@ func directRows(p Period, now time.Time) []Row {
 	since, until := p.Since(now), p.Until(now)
 	reader := LogCalls
 	if reader == nil {
-		reader = sessions.Calls
+		reader = func(time.Time) []sessions.Call { return nil }
 	}
 	logs, others := reader(since), sharedRecords(since)
 	matched := map[int]bool{}

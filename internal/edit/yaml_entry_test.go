@@ -1,13 +1,12 @@
 package edit
 
 import (
+	"gopkg.in/yaml.v3"
 	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 // A key set or removed at the top of a YAML file goes in or out with the

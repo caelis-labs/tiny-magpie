@@ -40,7 +40,7 @@ func TestWindowPageStaysInside(t *testing.T) {
 	if !slices.Equal(w.Reads, []string{"usage:summary"}) {
 		t.Errorf("reads %v, want only the one magpie has, once", w.Reads)
 	}
-	if !InMagpieOnly(good) || notPlugin(good) != nil {
+	if !InMagpieOnly(good) || notPlugin(good) == nil {
 		t.Errorf("a page-only plugin: InMagpieOnly %v, notPlugin %v", InMagpieOnly(good), notPlugin(good))
 	}
 	if _, only := Window(mk("main", `{"name":"m","main":"index.js","magpie":{"page":{"file":"page/index.html"}}}`)); only {
@@ -118,7 +118,7 @@ func TestWindowPanels(t *testing.T) {
 	if !slices.Equal(w.Reads, []string{"providers:list"}) {
 		t.Errorf("reads %v", w.Reads)
 	}
-	if !InMagpieOnly(d) || notPlugin(d) != nil {
+	if !InMagpieOnly(d) || notPlugin(d) == nil {
 		t.Errorf("a panels-only plugin: InMagpieOnly %v, notPlugin %v", InMagpieOnly(d), notPlugin(d))
 	}
 

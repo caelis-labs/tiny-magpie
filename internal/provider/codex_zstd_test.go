@@ -8,13 +8,13 @@ import (
 	"image"
 	"image/png"
 	"io"
-	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
+	"math/rand/v2"
 )
 
 // A ChatGPT turn goes as Codex's client sends it (openai/codex

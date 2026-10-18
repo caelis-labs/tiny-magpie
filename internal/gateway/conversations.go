@@ -2,18 +2,13 @@ package gateway
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/redact"
 	"github.com/yetone/magpie/internal/sessions"
-	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/usage"
 )
 
 const conversationBodyMax = 8 << 20
@@ -28,20 +23,7 @@ func withGatewaySession(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	WhileServing = append(WhileServing, func(ctx context.Context) {
-		tick := time.NewTicker(time.Hour)
-		defer tick.Stop()
-		for {
-			if err := sessions.PruneGatewayConversations(time.Now()); err != nil {
-				log.Printf("gateway conversation cleanup failed: %v", err)
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-tick.C:
-			}
-		}
-	})
+
 }
 
 type conversationWriter struct {
@@ -59,35 +41,7 @@ func (w *conversationWriter) WriteHeader(status int) {
 // recordConversation wraps the client-facing path, outside middleware and
 // translation, so retries never become duplicate assistant replies.
 func recordConversation(w http.ResponseWriter, r *http.Request, proto provider.Protocol, body []byte) (http.ResponseWriter, func()) {
-	id := sessionOf(r.Header)
-	generation := sessions.GatewayRecordingGeneration()
-	if !settings.Load().GatewayConversations || id == "" {
-		return w, func() {}
-	}
-	at := time.Now()
-	input := append([]byte(nil), body[:min(len(body), conversationBodyMax)]...)
-	sink := &conversationWriter{captureResponseWriter: &captureResponseWriter{
-		ResponseWriter: w, full: &spool{limit: conversationBodyMax, pattern: "magpie-conversation-*"},
-	}}
-	return sink, func() {
-		defer sink.full.discard()
-		cut := len(body) > conversationBodyMax || sink.full.cut()
-		output, err := sink.full.read()
-		if err != nil {
-			log.Printf("gateway conversation capture failed: %v", err)
-			return
-		}
-		turn := conversationTurn(proto, input, output)
-		turn.Agent, turn.Session, turn.Time = usage.AgentOf(callerOf(r).agent), id, at
-		turn.Status = sink.status
-		if turn.Status == 0 {
-			turn.Status = http.StatusOK
-		}
-		turn.Cut = turn.Cut || cut
-		if err := sessions.SaveGatewayTurnGeneration(turn, generation); err != nil {
-			log.Printf("gateway conversation save failed: %v", err)
-		}
-	}
+	return w, func() {}
 }
 
 func conversationParts(role string, parts []Part) []sessions.Part {

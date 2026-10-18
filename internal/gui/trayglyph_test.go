@@ -4,11 +4,10 @@ package gui
 
 import (
 	"bytes"
+	"github.com/godbus/dbus/v5"
 	"image/color"
 	"image/png"
 	"testing"
-
-	"github.com/godbus/dbus/v5"
 )
 
 // ylorn on Discord: a Linux bar's tray icon was the app's icon, a bird on

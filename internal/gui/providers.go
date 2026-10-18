@@ -835,7 +835,7 @@ func providersState() providersJSON {
 	// models, not magpie's own list of them (#204): asked behind the page,
 	// which is told so and asks again, never waited for (#541)
 	provider.FetchNewBehind(8 * time.Second)
-	agents := agent.Detected()
+	var agents []*agent.Agent
 	s := providersJSON{Providers: []providerJSON{}, Presets: []presetJSON{}, Excluded: []excludedJSON{}}
 	s.OnPlugins = provider.OnPlugins()
 	s.Movable = provider.MovableIDs()
@@ -889,6 +889,9 @@ func providersState() providersJSON {
 		s.Presets = append(s.Presets, presetJSON{PresetDef: pa.PresetDef, Added: have[pa.ID], Notes: pa.Notes, Langs: pa.Langs, New: !have[pa.ID] && !provider.PartnerNoticed(pa.ID), OwnClient: presetOwnClient(pa.PresetDef)})
 	}
 	for _, pr := range provider.Presets() {
+		if pr.Decide != "" && pr.Chat == "" && pr.Responses == "" && pr.Anthropic == "" {
+			continue
+		}
 		bases := provider.Provider{Chat: pr.Chat, Responses: pr.Responses, Anthropic: pr.Anthropic}
 		team := provider.TakesZhipuTeam(bases)
 		vendor, keyRegions := presetAccessKey(pr)
@@ -975,7 +978,6 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 	pluginRoutes(mux, w)
 	traceRoutes(mux)
 	contextRoutesAPI(mux)
-	tuneRoutes(mux)
 	groupRoutes(mux)
 	// how each key's or account's requests stand under its limit on
 	// requests at once (#892), read every two seconds while a provider's
@@ -1275,7 +1277,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			// on it all the same)
 			if in.Models != nil && !in.NoModels {
 				var err error
-				if moved, err = agent.Reseat(func() error { return provider.SetModels(in.ID, in.Models) }); err != nil {
+				if moved, err = providerChange(func() error { return provider.SetModels(in.ID, in.Models) }); err != nil {
 					fail(rw, err)
 					return
 				}
@@ -1620,7 +1622,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 					return
 				}
 				if rename {
-					if _, err := agent.RenameProvider(in.ID, to); err != nil {
+					if _, err := renameProvider(in.ID, to); err != nil {
 						fail(rw, err)
 						return
 					}
@@ -1705,12 +1707,12 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			// Promoting the first row is the same account switch as Make first:
 			// keep the agents' catalogs in sync with the new primary sign-in.
 			var err error
-			moved, err = agent.Reseat(func() error { return provider.SetAccountOrder(in.ID, req.AccountOrder) })
+			moved, err = providerChange(func() error { return provider.SetAccountOrder(in.ID, req.AccountOrder) })
 			if err != nil {
 				fail(rw, err)
 				return
 			}
-			agent.SyncCatalog()
+
 		case "accountmodels":
 			if err := provider.SetAccountModels(in.ID, req.Account, req.Allow); err != nil {
 				fail(rw, err)
@@ -1747,38 +1749,13 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			// through catalog.Changed, and the agents on one of its models
 			// are moved to another
 			var err error
-			if moved, err = agent.Reseat(func() error {
+			if moved, err = providerChange(func() error {
 				return provider.SetOff(in.ID, r.PathValue("action") == "off")
 			}); err != nil {
 				fail(rw, err)
 				return
 			}
 			provider.ForgetBalances()
-		case "keeplogin":
-			// Codex or Claude Code stays signed in to the first account, or
-			// to one of the user's choosing (keepLoginAs), which signs it in
-			// to that one now, and back to the first when let go (#524)
-			var err error
-			moved, err = agent.Reseat(func() error {
-				if in.KeepLogin && in.KeepLoginAs != "" {
-					return provider.SetKeepLoginAs(in.ID, in.KeepLoginAs)
-				}
-				return provider.SetKeepLogin(in.ID, in.KeepLogin)
-			})
-			if err != nil {
-				fail(rw, err)
-				return
-			}
-			agent.SyncCatalog()
-		case "switchonly":
-			// magpie only switches Codex's own sign-in, its requests going
-			// straight to OpenAI, or routes them for failover again
-			// (#1907); the agent's config follows at once
-			if err := provider.SetSwitchOnly(in.ID, in.SwitchOnly); err != nil {
-				fail(rw, err)
-				return
-			}
-			agent.SyncCatalog()
 		case "affinity":
 			if err := provider.SetAffinity(in.ID, in.Affinity); err != nil {
 				fail(rw, err)
@@ -1791,7 +1768,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			}
 		case "delete":
 			var err error
-			if moved, err = agent.Reseat(func() error { return provider.Delete(in.ID) }); err != nil {
+			if moved, err = providerChange(func() error { return provider.Delete(in.ID) }); err != nil {
 				fail(rw, err)
 				return
 			}
@@ -1818,7 +1795,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			writeJSON(rw, struct {
 				Results  []provider.Result `json:"results"`
 				Provider providerJSON      `json:"provider"`
-			}{p.Test(ctx), providerInfo(saved, agentUses(agent.Detected(), provider.GroupFinder()))})
+			}{p.Test(ctx), providerInfo(saved, agentUses(nil, provider.GroupFinder()))})
 			return
 		case "detect":
 			// which APIs answer at the URL typed (Model, or one from the
@@ -1966,7 +1943,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				Count    int          `json:"count"`
 				Dropped  []string     `json:"dropped,omitempty"`
 				Provider providerJSON `json:"provider"`
-			}{fetchedCount(*p, len(ms)), dropped, providerInfo(*p, agentUses(agent.Detected(), provider.GroupFinder()))})
+			}{fetchedCount(*p, len(ms)), dropped, providerInfo(*p, agentUses(nil, provider.GroupFinder()))})
 			return
 		default:
 			http.NotFound(rw, r)
@@ -1993,7 +1970,8 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 		var change func() error
 		switch r.PathValue("action") {
 		case "switch":
-			change = func() error { return provider.SwitchLogin(in.Agent, in.User) }
+			fail(rw, fmt.Errorf("tiny-magpie does not switch another agent's account"))
+			return
 		case "forget":
 			change = func() error { return provider.ForgetLogin(in.Agent, in.User) }
 		case "on", "off":
@@ -2004,14 +1982,14 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 		}
 		// the last account signed out or off takes the sign-in's models
 		// away: the agents on them are moved to others
-		moved, err := agent.Reseat(change)
+		moved, err := providerChange(change)
 		if err != nil {
 			fail(rw, err)
 			return
 		}
 		// an agent on its own models goes through magpie while more of
 		// its accounts are on, and straight to its vendor again once not
-		agent.SyncCatalog()
+
 		st := providersState()
 		st.Moved = moved
 		writeJSON(rw, st)
@@ -2020,26 +1998,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 	// or on the model list before a change (the Agents row's Restart):
 	// restarting it (Codex 0.162's sessions on it reconnect, after a turn
 	// running, for up to a minute; an older Codex's end), or letting it be.
-	mux.HandleFunc("POST /api/codex/daemon/{action}", func(rw http.ResponseWriter, r *http.Request) {
-		switch r.PathValue("action") {
-		case "restart":
-			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-			defer cancel()
-			if err := provider.RestartCodexDaemon(ctx); err != nil {
-				fail(rw, err)
-				return
-			}
-			agent.CodexDaemonRestarted()
-		case "dismiss":
-			provider.DismissCodexDaemon()
-		case "dismiss-app":
-			provider.DismissCodexApp()
-		default:
-			http.NotFound(rw, r)
-			return
-		}
-		writeJSON(rw, providersState())
-	})
+
 	// A provider's several keys: add one, put one in use, name or remove it.
 	mux.HandleFunc("POST /api/keys/{action}", func(rw http.ResponseWriter, r *http.Request) {
 		var in struct {
@@ -2069,16 +2028,16 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			err = provider.UseKey(in.ID, in.Ref)
 		case "remove":
 			// the last key gone, or off, takes the provider's models away
-			moved, err = agent.Reseat(func() error { return provider.RemoveKey(in.ID, in.Ref) })
+			moved, err = providerChange(func() error { return provider.RemoveKey(in.ID, in.Ref) })
 		case "remove-many":
 			// the keys picked in a long list, or every dead one, at once
-			moved, err = agent.Reseat(func() (err error) { removed, err = provider.RemoveKeys(in.ID, in.Refs); return err })
+			moved, err = providerChange(func() (err error) { removed, err = provider.RemoveKeys(in.ID, in.Refs); return err })
 		case "rename":
 			err = provider.RenameKey(in.ID, in.Ref, in.Name)
 		case "replace":
 			err = replaceKey(in.ID, in.Ref, in.Key)
 		case "on", "off":
-			moved, err = agent.Reseat(func() error { return provider.SetKeyOn(in.ID, in.Ref, r.PathValue("action") == "on") })
+			moved, err = providerChange(func() error { return provider.SetKeyOn(in.ID, in.Ref, r.PathValue("action") == "on") })
 		default:
 			http.NotFound(rw, r)
 			return
@@ -2180,7 +2139,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 			fail(rw, err)
 			return
 		}
-		agent.SyncCatalog()
+
 		writeJSON(rw, struct {
 			Results   []provider.ImportedAccount `json:"results"`
 			Providers providersJSON              `json:"providers"`
@@ -2240,20 +2199,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 	// the add sheet counts what it showed of the partners and what was
 	// opened of them (provider.CountPartner); only listed partners count.
 	// Those shown are no longer new (provider.NoticePartners).
-	mux.HandleFunc("POST /api/partner", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			What string
-			IDs  []string
-		}
-		_ = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&in)
-		if len(in.IDs) <= provider.MaxPartners {
-			provider.CountPartner(in.What, in.IDs...)
-			if in.What == provider.PartnerShown {
-				provider.NoticePartners(in.IDs...)
-			}
-		}
-		rw.WriteHeader(http.StatusNoContent)
-	})
+
 	mux.HandleFunc("POST /api/open", func(rw http.ResponseWriter, r *http.Request) {
 		var in struct{ URL string }
 		_ = json.NewDecoder(r.Body).Decode(&in)

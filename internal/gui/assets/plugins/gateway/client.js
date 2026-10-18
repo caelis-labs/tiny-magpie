@@ -152,7 +152,7 @@ function renderGateway() {
   if (older) {
     who.append(name, el("div", "sub old", t("Agents' requests go through magpie {v} and are sent as it sends them, without this version's fixes. Quit it here and this one serves the gateway at once.", { v: g.version })));
   } else who.append(name, el("div", "sub", g.running
-    ? [t(g.models === 1 ? "{n} model" : "{n} models", { n: g.models }), n ? t(n === 1 ? "{n} agent routed through it" : "{n} agents routed through it", { n }) : t("no agent routed through it yet"), t("five APIs, one URL")].join(" · ")
+    ? [t(g.models === 1 ? "{n} model" : "{n} models", { n: g.models }), n ? t(n === 1 ? "{n} agent routed through it" : "{n} agents routed through it", { n }) : t("no agent routed through it yet"), t("four model APIs, one URL")].join(" · ")
     : t("start it with magpie serve, or open magpie at login")));
   const fix = gatewayFixButton(g, older);
   if (fix) who.append(fix);
@@ -254,46 +254,9 @@ const ai = new GoogleGenAI({
 const r = await ai.models.generateContent({ model: "${m}", contents: "hi" });
 console.log(r.text);`,
   },
-  // magpie's own System One API (ARNO on Discord: gateway添加system one
-  // api 有想法吗): a decision model — Jev, Clef, Bailian's — answers typed
-  // questions about a state; no SDK speaks it, so no shell variables
-  systemone: {
-    name: "System One", base: (u) => u + "/v1", decide: true,
-    note: "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].",
-    curl: (b, m, k = "magpie") => ({ url: `${b}/systemone`, headers: [`Authorization: Bearer ${k}`],
-      body: `{"model": "${m}",\n "state": {"message": "My order never arrived, refund it"},\n "questions": {"team": {"type": "choice",\n   "instructions": "Which team should answer the message?",\n   "criteria": {"billing": "Payments and refunds", "shipping": "Deliveries", "other": "Anything else"}}}}` }),
-    python: (b, m, k = "magpie") => `import requests
-
-r = requests.post("${b}/systemone",
-    headers={"Authorization": "Bearer ${k}"},
-    json={
-        "model": "${m}",
-        "state": {"message": "My order never arrived, refund it"},
-        "questions": {"team": {
-            "type": "choice",
-            "instructions": "Which team should answer the message?",
-            "criteria": {"billing": "Payments and refunds", "shipping": "Deliveries", "other": "Anything else"},
-        }},
-    })
-a = r.json()["answers"]["team"]
-print(a["choice"], a["confidence"])`,
-    node: (b, m, k = "magpie") => `const r = await fetch("${b}/systemone", {
-  method: "POST",
-  headers: { Authorization: "Bearer ${k}", "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model: "${m}",
-    state: { message: "My order never arrived, refund it" },
-    questions: { team: {
-      type: "choice",
-      instructions: "Which team should answer the message?",
-      criteria: { billing: "Payments and refunds", shipping: "Deliveries", other: "Anything else" },
-    } },
-  }),
-});
-const a = (await r.json()).answers.team;
-console.log(a.choice, a.confidence);`,
-  },
 };
+if (!FLAVORS[flavor]) flavor = "openai";
+
 // The Shell and curl snippets are written for one shell: PowerShell on
 // Windows ($env: in place of export, and the curl.exe that ships with it,
 // as plain curl there is Invoke-WebRequest; the body goes in on stdin,

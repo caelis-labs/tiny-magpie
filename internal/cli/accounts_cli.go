@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/provider"
 )
@@ -193,7 +192,7 @@ func accountsCmd(args []string) error {
 			return err
 		}
 		if args[1] == "forget" {
-			moved, err := agent.Reseat(func() error { return provider.ForgetLogin(id, args[3]) })
+			moved, err := providerChange(func() error { return provider.ForgetLogin(id, args[3]) })
 			if err != nil {
 				return err
 			}
@@ -863,7 +862,7 @@ func switchOnlyCmd(args []string) error {
 		return err
 	}
 	// Codex's config.toml follows now, not at the next start
-	agent.SyncCatalog()
+
 	if on {
 		fmt.Println(green.Render("✓"), "magpie only switches Codex's sign-in to an account with room; its requests go straight to OpenAI. A Codex app or session already open stays on its account until it is opened again.")
 	} else {

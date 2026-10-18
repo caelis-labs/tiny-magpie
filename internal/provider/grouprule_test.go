@@ -248,63 +248,6 @@ func TestSaveGroupRules(t *testing.T) {
 	}
 }
 
-// A group with an intent needs a classifier: a model magpie knows, or
-// another group, never itself. Without intents it keeps none.
-func TestSaveGroupClassifier(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("USERPROFILE", t.TempDir())
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	for _, id := range []string{"a", "b"} {
-		if err := Save(Provider{ID: id, Name: id, Key: "k", Chat: "http://127.0.0.1:1/v1", Models: []string{"m", "big"}}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	intent := []Rule{{Use: "b/big", Intent: "planning"}}
-	for _, tc := range []struct {
-		classifier, err string
-	}{
-		{"", "needs the group's classifier"},
-		{"group/other", "no group"},
-		{"group/r", "its own classifier"},
-		{"z/nothing", "knows no model"},
-	} {
-		err := SaveGroup(Group{Name: "R", Members: []string{"a/m", "b/big"}, Rules: intent, Classifier: tc.classifier})
-		if err == nil || !strings.Contains(err.Error(), tc.err) {
-			t.Errorf("%q: %v, want …%s", tc.classifier, err, tc.err)
-		}
-	}
-	if err := SaveGroup(Group{Name: "R", Members: []string{"a/m", "b/big"}, Rules: intent, Classifier: " magpie/a/m "}); err != nil {
-		t.Fatal(err)
-	}
-	g, _, _ := FindGroup(GroupPrefix + "r")
-	if g.Classifier != "a/m" || g.Rules[0].Intent != "planning" {
-		t.Fatalf("%+v", g)
-	}
-	// another group classifies with its failover; renamed, it is followed,
-	// and it can't be removed while it does
-	if err := SaveGroup(Group{Name: "Fast", Members: []string{"a/m", "b/m"}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := SaveGroup(Group{Name: "R", Members: []string{"a/m", "b/big"}, Rules: intent, Classifier: "group/fast"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := RenameGroup("fast", "quick"); err != nil {
-		t.Fatal(err)
-	}
-	if g, _, _ := FindGroup(GroupPrefix + "r"); g.Classifier != "group/quick" {
-		t.Fatalf("classifier %q after the rename", g.Classifier)
-	}
-	if err := DeleteGroup("quick"); err == nil || !strings.Contains(err.Error(), "classifier") {
-		t.Fatalf("%v", err)
-	}
-	if err := SaveGroup(Group{Name: "R", Members: []string{"a/m", "b/big"}, Rules: []Rule{{Use: "b/big", Tokens: 5}}, Classifier: "a/m"}); err != nil {
-		t.Fatal(err)
-	}
-	if g, _, _ := FindGroup(GroupPrefix + "r"); g.Classifier != "" {
-		t.Fatalf("kept %q without an intent", g.Classifier)
-	}
-}
-
 func TestThenUses(t *testing.T) {
 	rules := []Rule{
 		{Use: "codex/gpt", Images: true},

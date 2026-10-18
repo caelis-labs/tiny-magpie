@@ -1,0 +1,29 @@
+name: Upstream inventory
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare integrated base with upstream main
+        shell: bash
+        run: |
+          git remote add upstream https://github.com/yetone/magpie.git
+          git fetch upstream main
+          base=$(python3 -c 'import json;print(json.load(open("UPSTREAM.json"))["base"])')
+          mkdir -p output
+          git log --oneline "$base..upstream/main" > output/upstream-commits.txt
+          git diff --stat "$base..upstream/main" > output/upstream-files.txt
+          cat output/upstream-commits.txt >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/check-scope.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-inventory
+          path: output/upstream-*.txt

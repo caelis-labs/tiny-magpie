@@ -164,7 +164,7 @@ func parseMarket(b []byte) ([]Listing, error) {
 	for _, l := range r.Plugins {
 		// magpie's community's alone: others' OpenCode plugins weren't
 		// written against magpie's sign-ins, and are found by a search
-		if l.Package != "" && pkgName.MatchString(l.Package) && l.Community {
+		if l.Package != "" && pkgName.MatchString(l.Package) && l.Community && (l.Kind == "" || l.Kind == "middleware") {
 			if l.Name == "" {
 				l.Name = l.Package
 			}

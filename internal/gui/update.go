@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -117,21 +116,7 @@ func updateDue(s settings.Settings, last, now time.Time) bool {
 }
 
 func (u *updater) start() {
-	u.place(runtime.GOOS, update.GUI)
-	go func() {
-		time.Sleep(5 * time.Second) // let the app settle first
-		for {
-			u.mu.Lock()
-			last := u.asked
-			u.mu.Unlock()
-			s := settings.Load()
-			if updateDue(s, last, time.Now()) {
-				u.checkByClock()
-			}
-			u.autoTick(s)
-			time.Sleep(time.Minute)
-		}
-	}()
+	// Application updates use tiny releases; never contact the upstream feed.
 }
 
 // bundleOf and executable are update.Bundle and update.Executable; tests
@@ -267,13 +252,7 @@ func (u *updater) freshen() {
 // already downloaded checks too: a newer one out since takes its place,
 // so the restart goes straight to the latest.
 func (u *updater) begin() bool {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	if u.state == "checking" || u.state == "downloading" {
-		return false
-	}
-	u.state, u.err, u.retry, u.mirror, u.asked, u.byClock, u.fetch = "checking", "", false, "", time.Now(), false, false
-	return true
+	return false
 }
 
 func (u *updater) run() {

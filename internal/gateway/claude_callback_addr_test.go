@@ -144,7 +144,7 @@ func TestOnlyALiveRunsCallbackSkipsTheKey(t *testing.T) {
 		{"POST", "/x" + claudeMCPPath + token},
 		{"GET", claudeMCPPath + token},
 		{"POST", "/v1/messages"}, {"POST", "/v1/chat/completions"}, {"GET", "/v1/models"},
-		{"GET", "/v1/magpie/quotas"}, {"POST", "/mcp/neon"},
+		{"GET", "/v1/magpie/quotas"},
 	} {
 		if c, b := call(p[0], p[1]); c != http.StatusUnauthorized {
 			t.Errorf("%s %s: %d %.120s", p[0], p[1], c, b)

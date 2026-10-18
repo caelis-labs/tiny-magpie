@@ -69,6 +69,10 @@ func (s *Server) codexBackend(w http.ResponseWriter, r *http.Request) {
 	// newer: the backend serves a model only to a client that knows it
 	provider.SawCodexClient(r.Header)
 	rest := strings.TrimPrefix(r.URL.Path, CodexPath)
+	if rest == AlphaSearchPath || strings.HasPrefix(rest, "/images/") || strings.HasPrefix(rest, "/audio/") || strings.HasPrefix(rest, "/videos") {
+		http.NotFound(w, r)
+		return
+	}
 	body, ok := s.readRequestBody(w, r, provider.Responses, 0)
 	if !ok {
 		return
@@ -77,21 +81,6 @@ func (s *Server) codexBackend(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet && rest == "/models":
 		s.codexModels(w, r)
-		return
-	case r.Method == http.MethodPost && rest == AlphaSearchPath:
-		// web.run on a magpie model is searched where the model is
-		// served, never relayed on Codex's own sign-in; one of Codex's
-		// own models goes through magpie's accounts when its turns do
-		// (codexAccounts), else on as it came
-		model := modelOf(body)
-		if !strings.Contains(model, "/") {
-			id, ok := codexAccounts(r, model)
-			if !ok {
-				break
-			}
-			body = withModel(body, id)
-		}
-		s.alphaSearchBody(w, r, body)
 		return
 	case r.Method == http.MethodPost && (rest == "/responses" || rest == "/responses/compact"):
 		var model string

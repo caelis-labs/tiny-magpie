@@ -6,3 +6,13 @@
 /rsrc_windows_*.syso
 /magpie-dev-backend
 /magpie-dev.new
+
+# Local baseline, caches and verification artifacts
+.tiny/
+/tiny-magpie
+/tiny-magpie.exe
+/tiny-magpie.app/
+/node_modules/
+/output/
+
+__pycache__/

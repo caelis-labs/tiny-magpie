@@ -32,11 +32,11 @@
         "fixed": { "file_version": "0.0.0.0", "product_version": "0.0.0.0" },
         "info": {
           "0409": {
-            "CompanyName": "magpie",
-            "FileDescription": "magpie",
+            "CompanyName": "caelis-labs",
+            "FileDescription": "tiny-magpie",
             "LegalCopyright": "© 2026 yetone · MIT",
-            "OriginalFilename": "magpie.exe",
-            "ProductName": "magpie"
+            "OriginalFilename": "tiny-magpie.exe",
+            "ProductName": "tiny-magpie"
           }
         }
       }

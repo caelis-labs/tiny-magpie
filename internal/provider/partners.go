@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
@@ -93,16 +92,7 @@ var partnerID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,40}$`)
 func partnerCacheFile() string { return filepath.Join(appdir.Cache(), "partners.json") }
 
 func partnersSource() string {
-	src := os.Getenv("MAGPIE_PARTNERS")
-	if src == "" {
-		if testing.Testing() {
-			// a test never asks the real site; one that wants a list
-			// names its own
-			return "off"
-		}
-		src = PartnersURL
-	}
-	return src
+	return "off"
 }
 
 // Partners are the partners listed now, in the list's order: what was

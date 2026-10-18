@@ -135,7 +135,7 @@ func TestRemoteMagpieDecisionRefresh(t *testing.T) {
 	for _, p := range []Provider{
 		{Preset: RemoteMagpiePreset, Responses: up.URL + "/v1"},
 		{Preset: RemoteMagpiePreset, Anthropic: up.URL},
-		{Preset: RemoteMagpiePreset, Decide: up.URL + "/v1/systemone"},
+
 		{Preset: RemoteMagpiePreset, Chat: up.URL + "/typesafe"},
 	} {
 		p = normalize(p)

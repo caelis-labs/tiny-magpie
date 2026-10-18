@@ -82,7 +82,7 @@ func builtinsState() []builtinJSON {
 // builtinsOff are the ids of the plugins the window leaves out now, for
 // boot.js to hide them before the page paints.
 func builtinsOff(list []builtinJSON) []string {
-	out := []string{}
+	out := []string{"library", "sessions", "otel", "search", "tools", "warmups", "tiny-removed"}
 	for _, b := range list {
 		if !b.On {
 			out = append(out, b.ID)

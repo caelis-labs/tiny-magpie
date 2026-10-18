@@ -17,9 +17,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/tidwall/jsonc"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/yetone/magpie/internal/agentenv"
 	"github.com/yetone/magpie/internal/testenv"
 )

@@ -1,11 +1,10 @@
 package agent
 
 import (
+	"gopkg.in/yaml.v3"
 	"os"
 	"strings"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 // dshRouteCompat is each model's compat on route key of a patch list's

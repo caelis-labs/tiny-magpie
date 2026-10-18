@@ -212,33 +212,6 @@ func TestLegacyCallerWithReadOnlyConfiguration(t *testing.T) {
 	}
 }
 
-func TestCallerUsageSystemOne(t *testing.T) {
-	fresh(t)
-	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer upstream" {
-			t.Error("caller key reached System One upstream")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"model":"jev","usage":{"input_tokens":120,"output_tokens":2}}`)
-	}))
-	defer up.Close()
-	if err := provider.Save(provider.Provider{ID: "jev", Name: "Jev", Key: "upstream", Decide: up.URL + "/v1"}); err != nil {
-		t.Fatal(err)
-	}
-	keys, secrets := newCaller(t, "System One client")
-	r := httptest.NewRequest("POST", "/v1/systemone", strings.NewReader(`{"model":"jev/jev-latest","state":{"message":"hi"},"questions":{}}`))
-	r.Header.Set("Authorization", "Bearer "+secrets[0])
-	w := httptest.NewRecorder()
-	s := New()
-	s.Handler().ServeHTTP(w, r)
-	if w.Code != 200 {
-		t.Fatal(w.Code, w.Body)
-	}
-	if rec := lastUsage(t); rec.RouteID == 0 || rec.RouteID != lastRoute(s).ID || rec.CallerKeyID != keys[0].ID || rec.CallerKeyName != "System One client" || rec.ProviderKeyID != provider.KeyID("upstream") || rec.Input != 120 {
-		t.Fatal(rec)
-	}
-}
-
 func TestCallerUsageCodexOwnModel(t *testing.T) {
 	setup(t, provider.Chat, &fake{t: t})
 	chatgpt(t, func(w http.ResponseWriter, r *http.Request) {

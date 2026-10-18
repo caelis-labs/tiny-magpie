@@ -382,7 +382,9 @@ func CodexModelEffort(p Period) map[string][]sessions.ModelEffort {
 	return cloneEffort(value)
 }
 
-func codexCalls(since time.Time) []sessions.Call { return sessions.AgentCalls(since, "codex") }
+func codexCalls(since time.Time) []sessions.Call {
+	return nil
+}
 
 // forgetEffortPeriods drops the answers asked for longest ago, keeping p's
 // entry; codexEffort is held.

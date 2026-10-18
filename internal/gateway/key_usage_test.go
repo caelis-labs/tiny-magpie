@@ -85,18 +85,3 @@ func TestUsageNamesTheKeyThatAnswered(t *testing.T) {
 		})
 	}
 }
-
-func TestImageUsageNamesTheKey(t *testing.T) {
-	s, _ := easeled(t)
-	p, _ := provider.Find("art")
-	p.KeyName = "Images"
-	if err := provider.Save(*p); err != nil {
-		t.Fatal(err)
-	}
-	if code, body := sendTo(s, "/v1/images/generations", `{"model":"art/gpt-image-1","prompt":"a bird"}`); code != 200 {
-		t.Fatalf("reply: %d %s", code, body)
-	}
-	if r := lastUsage(t); r.ProviderKeyID != provider.KeyID("key") || r.ProviderKeyName != "Images" || r.Input != 7 || r.Output != 100 {
-		t.Fatalf("image usage: %+v", r)
-	}
-}

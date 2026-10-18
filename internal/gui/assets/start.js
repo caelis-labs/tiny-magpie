@@ -18,8 +18,7 @@ function keptView() {
   return OPEN_VIEWS.includes(v) ? v : ""; // one gateway mode leaves out, show() makes Providers
 }
 const firstView = mode === "window" ? keptView() : "";
-if (OPEN_VIEWS.includes(firstView)) show(firstView);
-else if (mode === "window" && !gatewayMode && !sideNav()) slide($("#nav"), "nav");
+if (mode === "window") show(OPEN_VIEWS.includes(firstView) ? firstView : "providers");
 // in gateway mode the first page is Providers, Agents' tab gone
 if (gatewayMode) setGatewayMode(true);
 load();

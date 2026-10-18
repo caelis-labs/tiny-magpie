@@ -20,7 +20,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/stats"
 )
 
 var amber = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B45309", Dark: "#F2B544"})
@@ -417,7 +416,7 @@ func providerCmd(args []string) error {
 			return err
 		}
 		if to != from {
-			moved, err := agent.RenameProvider(from, to)
+			moved, err := renameProvider(from, to)
 			if err != nil {
 				return err
 			}
@@ -514,7 +513,7 @@ func providerCmd(args []string) error {
 		if err != nil {
 			return err
 		}
-		moved, err := agent.Reseat(func() error { return provider.Delete(p.ID) })
+		moved, err := providerChange(func() error { return provider.Delete(p.ID) })
 		if err != nil {
 			return err
 		}
@@ -615,7 +614,7 @@ func providerCmd(args []string) error {
 		if err != nil {
 			return err
 		}
-		moved, err := agent.Reseat(func() error { return provider.SetOff(p.ID, verb == "off") })
+		moved, err := providerChange(func() error { return provider.SetOff(p.ID, verb == "off") })
 		if err != nil {
 			return err
 		}
@@ -1243,7 +1242,6 @@ func advertisedURL() string {
 // serve: `magpie serve` — the gateway alone, in the foreground.
 func serve() error {
 	s := gateway.New()
-	go stats.Run(version, "serve")
 	go catalog.KeepFresh() // new models' prices, in a gateway left running
 	// a signed-in account's list exists only at its vendor: asked for here
 	// as the app and the terminal ask (#1789), or a headless gateway offered
@@ -1255,7 +1253,6 @@ func serve() error {
 	}()
 	// Codex's background app-server, restarted when it has the list from
 	// before a change and no codex session is on it
-	go agent.KeepCodexDaemonCurrent(context.Background())
 	public := advertisedURL()
 	fmt.Println(green.Render("●"), "magpie gateway on", bold.Render(gateway.URL()))
 	fmt.Println(muted.Render("  OpenAI  "), public+"/v1/chat/completions", muted.Render("·"), public+"/v1/responses")
@@ -1948,4 +1945,50 @@ func autoIncludeCmd(rest []string) error {
 	}
 	fmt.Printf("%s · a newly listed model is exposed when one of these matches its id: %s\n", p.Name, strings.Join(p.AutoInclude, " "))
 	return nil
+}
+
+func explainHidden(id string, hidden []provider.Entry) {
+	_, kept := provider.ListedFor(id)
+	if n := len(hidden) - len(kept); n > 0 {
+		if _, only := provider.PickedModels(id); only {
+			fmt.Println(faint.Render("  " + id + " is shown only the models picked for it: " + fmt.Sprint(n) + " not picked, and a new one stays off until it is ticked · magpie visible " + id + " --show-new shows new ones"))
+		} else {
+			fmt.Println(faint.Render("  " + fmt.Sprint(n) + " taken out of " + id + "'s list on the Agents page"))
+		}
+	} else if _, only := provider.PickedModels(id); only {
+		fmt.Println(faint.Render("  " + id + " is shown only the models picked for it; a new one stays off until it is ticked · magpie visible " + id + " --show-new shows new ones"))
+	}
+	hidden = kept
+	names, ok := provider.VisibleTo(id)
+	if !ok {
+		fmt.Println(faint.Render("  " + id + " is shown every provider's models · magpie visible " + id + " <family>,… narrows it"))
+		return
+	}
+	fmt.Println(faint.Render("  " + id + " is shown " + strings.Join(names, ", ")))
+	if len(hidden) == 0 {
+		return
+	}
+	by := map[string][]string{}
+	var order []string
+	for _, e := range hidden {
+		k := strings.Join(e.Names()[:1], "")
+		if e.Family == "" {
+			k = "no family · " + k
+		} else {
+			k = "family " + k
+		}
+		if _, seen := by[k]; !seen {
+			order = append(order, k)
+		}
+		by[k] = append(by[k], e.ID)
+	}
+	fmt.Println(amber.Render("  ! "+fmt.Sprint(len(hidden))) + muted.Render(" kept from "+id+", in none of those:"))
+	for _, k := range order {
+		ids := by[k]
+		more := ""
+		if len(ids) > 4 {
+			ids, more = ids[:4], fmt.Sprintf(" +%d", len(by[k])-4)
+		}
+		fmt.Println(muted.Render("    " + k + ": " + strings.Join(ids, ", ") + more))
+	}
 }

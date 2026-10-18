@@ -1180,6 +1180,9 @@ func SaveGroup(g Group) error {
 	if g.Levels, err = CleanLevels(g.Levels); err != nil {
 		return err
 	}
+	if g.Classifier != "" || g.Effort == EffortAuto || slices.ContainsFunc(g.Rules, func(r Rule) bool { return r.Intent != "" }) {
+		return fmt.Errorf("intent routing is not available in tiny-magpie")
+	}
 	g.Classifier = strings.TrimPrefix(strings.TrimSpace(g.Classifier), "magpie/")
 	g.Effort = strings.ToLower(strings.TrimSpace(g.Effort))
 	intents := slices.ContainsFunc(g.Rules, func(r Rule) bool { return r.Intent != "" })

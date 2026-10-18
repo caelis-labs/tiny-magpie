@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
@@ -42,7 +41,6 @@ func startBackend() (gw *gateway.Server) {
 	go watchGateway(backendCtx, gatewayWatch)
 	// Codex's background app-server, restarted when it has the list from
 	// before a change and no codex session is on it (luci)
-	go agent.KeepCodexDaemonCurrent(backendCtx)
 	// Model lists are fetched, never compiled in: whatever the agents can see
 	// comes from the models.dev catalog plus each vendor's own /models answer.
 	// Keep both halves warm without making the user click anything.
@@ -59,7 +57,6 @@ func startBackend() (gw *gateway.Server) {
 		provider.FetchNew(20 * time.Second)
 		// lists an older magpie wrote into agents' files, without what
 		// it has learnt since (context windows, providers added)
-		agent.SyncCatalog()
 		// and fetched again each day it stays open, for new models' prices
 		catalog.KeepFresh()
 	}()
@@ -117,6 +114,7 @@ func serveGatewayLocked() *gateway.Server {
 	// once this one listens beside it
 	if !gateway.Handover {
 		if o := gateway.ServedBy(); o.Running {
+			log.Printf("tiny-magpie: gateway port %s is occupied; stop its owner or set MAGPIE_ADDR", gateway.Port())
 			if update.Newer(gateway.Version, o.Version) {
 				log.Printf("gateway: magpie %s serves %s, older than this one (%s); agents' requests go through it until it quits", o.Version, gateway.URL(), gateway.Version)
 			}

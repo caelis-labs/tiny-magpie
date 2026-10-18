@@ -246,7 +246,7 @@ func LedgerOf(p Period, f Filter) Ledgered {
 func LedgerOfAt(p Period, f Filter, now time.Time) Ledgered {
 	reader := LogCalls
 	if reader == nil {
-		reader = sessions.Calls
+		reader = func(time.Time) []sessions.Call { return nil }
 	}
 	return ledgerOfAt(p, f, now, reader)
 }
@@ -421,7 +421,7 @@ func ledgerMatched(since, until time.Time, f Filter, recs []Record, logs []sessi
 	// the rows here are what a reader compares a bill against
 	wires := settings.Load().ModelWires
 	priceOf := Pricer()
-	codexIdentities := sessions.CodexIdentities()
+	codexIdentities := map[string]sessions.CodexIdentity{}
 	rows = make([]Row, 0, len(recs)+len(logs))
 	agents, providers = []string{}, []string{}
 	identities := newSessionResolver(logs)

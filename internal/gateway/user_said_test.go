@@ -148,34 +148,6 @@ func TestLastUserTextSkipsWhatTheAgentPutIn(t *testing.T) {
 	}
 }
 
-// An agent's message after the turn is not a turn: the classifier isn't
-// asked about it, and the turn's rule holds (#1826: a TodoWrite nudge sent
-// a 常规 turn to the 复杂 member).
-func TestIntentHoldsPastWhatTheAgentPutIn(t *testing.T) {
-	s, _, _, c := intented(t, provider.Rule{Use: "b/big", Intent: "complex tasks"})
-	c.set("0", 0)
-	ms := []string{`{"role":"user","content":"合并远程分支，推到 master"}`}
-	body := func() string { return `{"model":"group/r","messages":[` + strings.Join(ms, ",") + `]}` }
-	out, r := postOK(t, s, "s1", body())
-	if !strings.Contains(out, "from ka") || r.Rule.Classified == nil || c.n() != 1 {
-		t.Fatalf("turn 1: %s %+v %d", out, r.Rule, c.n())
-	}
-	c.set("1", 0) // what the nudge was classified as
-	for _, injected := range []string{zcodeTodo, "<system-reminder>\n" + zcodeTodo + "\n</system-reminder>", taskNotification, agentList} {
-		ms = append(ms, `{"role":"assistant","content":"merged"}`, `{"role":"user","content":`+quote(injected)+`}`)
-		out, r = postOK(t, s, "s1", body())
-		if !strings.Contains(out, "from ka") || !r.Rule.Held || r.Rule.Turn != 1 || r.Rule.Classified != nil || c.n() != 1 {
-			t.Fatalf("%.30q: %s %+v asked %d", injected, out, r.Rule, c.n())
-		}
-	}
-	// the user's own words are a turn, and only they are asked about
-	ms = append(ms, `{"role":"assistant","content":"merged"}`, `{"role":"user","content":"继续 不要全量跑单元测试"}`)
-	_, r = postOK(t, s, "s1", body())
-	if r.Rule.Turn != 2 || r.Rule.Classified == nil || c.n() != 2 || !strings.Contains(c.last(), "不要全量跑单元测试") || strings.Contains(c.last(), "TodoWrite") {
-		t.Fatalf("turn 2: %+v %d %s", r.Rule, c.n(), c.last())
-	}
-}
-
 func TestUserSaysPastAReminderWithASource(t *testing.T) {
 	for _, s := range []string{goalContinuation, taskNotification, pluginRef, agentList, zcodeAgentList, zcodeTodo, envContext, codexAgents,
 		"<turn_aborted>\nThe user interrupted.\n</turn_aborted>", inAppBrowser + "## My request:\n"} {

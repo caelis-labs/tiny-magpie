@@ -71,6 +71,9 @@ const webRunKey = "MAGPIE_WEB_RUNKEY"
 // anyone else on the network reaches the settings and keys behind it.
 func StartWeb(addr, version string) (*Web, error) {
 	Version = version
+	if served.Load() == nil && gateway.Taken() {
+		return nil, fmt.Errorf("tiny-magpie gateway port %s is occupied; stop its owner or set MAGPIE_ADDR", gateway.Port())
+	}
 	key, fixed, err := webKey()
 	if err != nil {
 		return nil, err
@@ -115,8 +118,6 @@ func StartWeb(addr, version string) (*Web, error) {
 		}
 		return false
 	}
-	updates.start()
-	news.start()
 	return w, nil
 }
 

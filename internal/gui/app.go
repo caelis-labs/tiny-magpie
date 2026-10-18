@@ -19,15 +19,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
-	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/autostart"
-	"github.com/yetone/magpie/internal/library"
 	"github.com/yetone/magpie/internal/omarchy"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/shortcut"
-	"github.com/yetone/magpie/internal/stats"
 	"github.com/yetone/magpie/internal/update"
 )
 
@@ -336,7 +333,6 @@ func Run(version string, showMain bool, link string) error {
 	// the app has started (applyZoom)
 	h.textSize.Store(int64(settings.Load().TextSize))
 	zoom := h.zoom()
-	go stats.Run(version, "app")
 	handler := devShell(h)
 	if handler == nil {
 		handler = Handler(h, startBackend())
@@ -346,8 +342,8 @@ func Run(version string, showMain bool, link string) error {
 		// second launch); it hands its arguments to the running one and quits.
 		// The Mac sends the link to the running app itself.
 		SingleInstance: singleInstance(h),
-		Name:           "magpie",
-		Description:    "one place to pick every agent's model",
+		Name:           "tiny-magpie",
+		Description:    "multi-provider model gateway",
 		Icon:           appIconFor(),
 		Assets:         application.AssetOptions{Handler: ownWindow(handler)},
 		Mac:            application.MacOptions{ActivationPolicy: dockPolicy(settings.Load().Dock)},
@@ -363,12 +359,7 @@ func Run(version string, showMain bool, link string) error {
 		// again (Sync).
 		OnShutdown: func() {
 			proc.EndProbes()
-			if served.Load() != nil {
-				if err := agent.EndCodexFailover(); err != nil {
-					log.Println("codex failover:", err)
-				}
-			}
-			updates.install(false)
+
 		},
 		// Wails exits on some webview errors; say why before it does.
 		ErrorHandler: func(err error) { log.Println("magpie:", err) },
@@ -464,31 +455,15 @@ func Run(version string, showMain bool, link string) error {
 		}
 		return false
 	}
-	updates.start()
-	news.start()
-	// the library written into the agents again, once: one installed or
-	// updated since (or an edit by hand) gets it without a visit to the page
-	go func() {
-		if res, err := library.Sync(); err != nil {
-			log.Println("library sync:", err)
-		} else {
-			for _, p := range res.Problems {
-				log.Println("library sync:", p.Agent, p.What, p.Error)
-			}
-		}
-		// a set kept in a file of the user's (~/.agents/AGENTS.md) is
-		// edited outside magpie: the agents get each change
-		library.KeepLinked(30 * time.Second)
-	}()
 
 	h.tray = h.app.SystemTray.New()
 	if runtime.GOOS == "linux" {
 		// set before the tray starts, it is the item's id too, which
 		// Omarchy's bar pins it by (Wails calls it "Wails" otherwise)
-		h.tray.SetLabel("magpie")
+		h.tray.SetLabel("tiny-magpie")
 		go dropTrayName()
 	}
-	h.tray.SetTooltip("magpie")
+	h.tray.SetTooltip("tiny-magpie")
 	if icon, template := trayIconFor(runtime.GOOS, traySchemeLight()); template {
 		h.tray.SetTemplateIcon(icon)
 	} else {
@@ -596,7 +571,7 @@ func singleInstance(h *host) *application.SingleInstanceOptions {
 	}
 	sum := sha256.Sum256([]byte(settings.Dir()))
 	return &application.SingleInstanceOptions{
-		UniqueID: "ai.usemagpie.app.i" + hex.EncodeToString(sum[:6]),
+		UniqueID: "dev.caelis.tiny-magpie.i" + hex.EncodeToString(sum[:6]),
 		OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 			args := d.Args
 			if len(args) > 0 {
@@ -665,7 +640,7 @@ func (h *host) setBird(b []byte) {
 func panelOptions(goos, theme string) application.WebviewWindowOptions {
 	o := application.WebviewWindowOptions{
 		Name:            "panel",
-		Title:           "magpie",
+		Title:           "tiny-magpie",
 		URL:             "/?mode=panel" + theme,
 		Width:           panelWidth,
 		Height:          520,

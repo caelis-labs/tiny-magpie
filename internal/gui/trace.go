@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/usage"
 )
 
@@ -93,7 +92,7 @@ func pricedRoutes(routes []gateway.Route) []routeJSON {
 			ids = append(ids, id)
 		}
 	}
-	titles := sessions.CodexTitles(ids)
+	titles := map[string]string{}
 	for _, r := range routes {
 		recs := make([]usage.Record, len(r.Usage))
 		for i, u := range r.Usage {
@@ -187,63 +186,7 @@ func quotaView(id string) string {
 func traceRoutes(mux *http.ServeMux) {
 	// Names can arrive or change after a route finishes, independently of the
 	// trace sequence. Read only the IDs the page currently lists.
-	mux.HandleFunc("POST /api/gateway/session-titles", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			IDs      []string `json:"ids"`
-			Groups   bool     `json:"groups"`
-			RouteIDs []int64  `json:"routeIds"`
-			Day      string   `json:"day"`
-			// Sessions are other agents' sessions as agent:id, named
-			// from their own files (sessions.Titles) rather than Codex's
-			// index (#1293)
-			Sessions []string `json:"sessions"`
-		}
-		r.Body = http.MaxBytesReader(rw, r.Body, 256<<10)
-		if json.NewDecoder(r.Body).Decode(&in) != nil || len(in.IDs) > 2000 || len(in.RouteIDs) > 2000 || len(in.Sessions) > 2000 {
-			http.Error(rw, "invalid session IDs", http.StatusBadRequest)
-			return
-		}
-		if len(in.Sessions) > 0 && len(in.IDs) == 0 {
-			writeJSON(rw, map[string]any{"titles": sessions.Titles(in.Sessions)})
-			return
-		}
-		if !in.Groups {
-			writeJSON(rw, sessions.CodexTitles(in.IDs))
-			return
-		}
-		var rows []gateway.Route
-		gw := served.Load()
-		if in.Day != "" {
-			if _, err := time.Parse("2006-01-02", in.Day); err != nil {
-				http.Error(rw, "invalid route day", http.StatusBadRequest)
-				return
-			}
-			rows = recalledTitleHistory(in.Day)
-		} else if gw != nil {
-			rows = gw.Trace(r.Context(), 0, 0).Routes
-		}
-		if gw == nil {
-			gw = &gateway.Server{}
-		}
-		rows = gw.ResolveTitleParents(rows)
-		wanted := make(map[int64]bool, len(in.RouteIDs))
-		for _, id := range in.RouteIDs {
-			wanted[id] = true
-		}
-		parents := map[int64]string{}
-		matched := map[int64]bool{}
-		for _, row := range rows {
-			if !wanted[row.ID] || row.Agent != "codex" {
-				continue
-			}
-			parents[row.ID], matched[row.ID] = row.ParentSession, row.ParentMatched
-			if row.ParentSession != "" {
-				in.IDs = append(in.IDs, row.ParentSession)
-			}
-		}
-		writeJSON(rw, map[string]any{"names": sessions.CodexTitles(in.IDs), "parents": parents, "matched": matched,
-			"resetInferred": in.Day != "" && rows == nil})
-	})
+
 	mux.HandleFunc("GET /api/gateway/route", func(rw http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
 		if err != nil || id <= 0 {

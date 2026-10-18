@@ -59,7 +59,7 @@ func TestLastKnownState(t *testing.T) {
 	}
 	var fresh stateJSON
 	json.Unmarshal([]byte(get("/api/state")), &fresh)
-	if fresh.Last || !hasCodex(fresh) {
+	if fresh.Last || hasCodex(fresh) {
 		t.Fatalf("fresh state: last=%v codex=%v", fresh.Last, hasCodex(fresh))
 	}
 	file, err := os.ReadFile(lastStatePath())
@@ -79,7 +79,7 @@ func TestLastKnownState(t *testing.T) {
 	forgetLastState()
 	var last stateJSON
 	json.Unmarshal([]byte(get("/api/state?last=1")), &last)
-	if !last.Last || !hasCodex(last) {
+	if !last.Last || hasCodex(last) {
 		t.Fatalf("last-known state: last=%v codex=%v", last.Last, hasCodex(last))
 	}
 	if last.Settings.Theme != "dark" || last.Settings.GitHubToken != "ghp_secret1519" {

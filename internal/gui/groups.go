@@ -218,7 +218,7 @@ func keyPools(p provider.Provider) []poolJSON {
 }
 
 func groupsState() groupsJSON {
-	out := groupsJSON{Groups: []groupJSON{}, Models: []modelRef{}, Pools: []poolJSON{}, Deciders: []modelRef{}, Found: provider.AutoGroupsOn(), Templates: provider.Templates()}
+	out := groupsJSON{Groups: []groupJSON{}, Models: []modelRef{}, Pools: []poolJSON{}, Deciders: []modelRef{}, Found: provider.AutoGroupsOn(), Templates: []provider.Template{}}
 	for i := range out.Templates {
 		if out.Templates[i].Group.Members == nil {
 			out.Templates[i].Group.Members = []string{} // one that can't be made has none
@@ -234,9 +234,7 @@ func groupsState() groupsJSON {
 		}
 		named[g.Classifier] = true
 	}
-	for _, e := range provider.OfferedDeciders(func(id string) bool { return named[id] }) {
-		out.Deciders = append(out.Deciders, modelRef{ID: e.ID, Name: e.Name, Provider: e.Provider.ID, PName: e.Provider.Name, Icon: e.Provider.Icon, Sub: e.Provider.Account != nil})
-	}
+
 	served := provider.Served()
 	for _, e := range served {
 		if e.Group == "" {
@@ -386,7 +384,7 @@ func groupRoutes(mux *http.ServeMux) {
 			// off, an agent set to a found group is moved to its model
 			// from one provider; a request still naming one goes there too
 			// (provider.AutoStandIn)
-			moved, err = agent.Reseat(func() error { return provider.SetAutoGroups(body.On) })
+			moved, err = providerChange(func() error { return provider.SetAutoGroups(body.On) })
 		case "save":
 			to := strings.ToLower(strings.TrimSpace(in.ID))
 			if body.From == "" || body.From == to {

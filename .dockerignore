@@ -7,3 +7,8 @@ build
 magpie.app
 /*.md
 .DS_Store
+.tiny
+node_modules
+output
+tiny-magpie.app
+tiny-magpie

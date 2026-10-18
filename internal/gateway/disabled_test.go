@@ -151,7 +151,9 @@ func TestDisabledModelRefusedOnEveryRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	const ask = `{"model":"jev/jev-latest","state":{"message":"hi"},"questions":{"intent":{"type":"choice"}}}`
-	refused("system one", do("POST", "/v1/systemone", ask))
+	if w := do("POST", "/v1/systemone", ask); w.Code != 404 {
+		t.Fatalf("removed System One: %d", w.Code)
+	}
 	// magpie's own decision calls (a group rule's classifier, a decision
 	// group's members, the provider check) all post through postDecide
 	jpp, err := provider.Find("jev")

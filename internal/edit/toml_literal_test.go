@@ -1,12 +1,11 @@
 package edit
 
 import (
+	"github.com/pelletier/go-toml/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 // A value holding a byte TOML has no escape for must still leave a file a

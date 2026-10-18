@@ -1,11 +1,10 @@
 package agent
 
 import (
+	"github.com/pelletier/go-toml/v2"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 // #253: a config.toml with a top-level array over several lines. Picking a

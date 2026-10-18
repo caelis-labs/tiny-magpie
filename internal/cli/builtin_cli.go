@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	yaml "gopkg.in/yaml.v3"
 	"os"
 	"slices"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/yetone/magpie/internal/pluginrt"
 )

@@ -118,7 +118,7 @@ func TestEncodedEmbeddingsBody(t *testing.T) {
 // body that inflates past it is refused, on every route.
 func TestEncodedBodyInflatedPastLimit(t *testing.T) {
 	big := []byte(`{"model":"fake/m1","input":"` + strings.Repeat("x", 4096) + `"}`)
-	for _, path := range []string{"/v1/responses", "/v1/chat/completions", "/v1/messages", "/v1/messages/count_tokens", "/v1beta/models/fake/m1:generateContent", "/v1/embeddings", "/v1/images/generations", "/v1/videos", CodexPath + "/responses"} {
+	for _, path := range []string{"/v1/responses", "/v1/chat/completions", "/v1/messages", "/v1/messages/count_tokens", "/v1beta/models/fake/m1:generateContent", "/v1/embeddings", CodexPath + "/responses"} {
 		for _, enc := range []string{"gzip", "zstd"} {
 			t.Run(path+"/"+enc, func(t *testing.T) {
 				f := &fake{t: t}

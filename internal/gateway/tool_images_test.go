@@ -284,28 +284,3 @@ func TestToolResultImageReachesResponsesModel(t *testing.T) {
 	}
 	t.Fatalf("no function_call_output: %s", sent())
 }
-
-// A model that can't see is given the image's description in the tool
-// message, as before: nothing follows it.
-func TestTextOnlyModelGetsToolImageDescribed(t *testing.T) {
-	s, u := eyed(t)
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"probe/text","max_tokens":64,"messages":[
-		{"role":"user","content":"look"},
-		{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Read","input":{}}]},
-		{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":[{"type":"text","text":"shot"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"`+pngA+`"}}]}]}]}`)))
-	if rec.Code != 200 {
-		t.Fatalf("%d %s", rec.Code, rec.Body.String())
-	}
-	got := u.sent("text")
-	if len(got) != 1 {
-		t.Fatalf("text model sent %d requests", len(got))
-	}
-	msgs := chatMsgs(t, got[0])
-	if roles(msgs) != "user,assistant,tool" {
-		t.Fatalf("roles %s: %s", roles(msgs), got[0])
-	}
-	if tool := msgs[2].text(); !strings.Contains(tool, "HELLO") || !strings.Contains(tool, "shot") || strings.Contains(tool, "follows in the next message") || strings.Contains(got[0], pngA) {
-		t.Fatalf("tool message: %s", got[0])
-	}
-}

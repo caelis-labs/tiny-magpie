@@ -234,15 +234,13 @@ func TestForeignPagesRefused(t *testing.T) {
 		{"POST", "/v1/messages", msg},
 		{"POST", "/messages", msg},
 		{"POST", "/v1/messages/count_tokens", msg},
-		{"POST", "/v1/systemone", msg},
+
 		{"POST", "/v1beta/models/plan/m1:generateContent", `{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`},
 		{"POST", "/v1/embeddings", `{"model":"plan/m1","input":"hi"}`},
 		{"POST", "/v1/rerank", `{"model":"plan/m1","query":"hi","documents":["a"]}`},
-		{"POST", "/v1/audio/transcriptions", "--b\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nplan/m1\r\n--b--\r\n"},
-		{"POST", "/v1/images/generations", `{"model":"plan/m1","prompt":"hi"}`},
-		{"POST", "/v1/videos", `{"model":"plan/m1","prompt":"hi"}`},
+
 		{"POST", CodexPath + "/responses", `{"model":"plan/m1","input":"hi"}`},
-		{"POST", "/mcp/notes", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`},
+
 		{"POST", "/_magpie/claude-mcp/tok", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`},
 		{"POST", provider.RemoteRefreshPath, ""},
 		{"GET", "/v1/magpie/quotas", ""},
@@ -351,7 +349,7 @@ func TestOpaqueOriginNeedsAKey(t *testing.T) {
 	for _, p := range []struct{ method, path string }{
 		{"POST", "/v1/chat/completions"},
 		{"POST", "/v1/messages"},
-		{"POST", "/v1/images/generations"},
+
 		{"POST", "/v1/embeddings"},
 		{"GET", "/v1/models"},
 	} {

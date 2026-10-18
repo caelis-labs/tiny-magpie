@@ -1,3 +1,7 @@
+# tiny-magpie implementation boundary
+
+Read `docs/tiny-scope.md`, `UPSTREAM.md` and `UPSTREAM.json` first. Preserve retained model and plugin protocols. Do not reintroduce removed products during upstream merges, use upstream app update channels, or test against live Agent/Magpie state. Follow the inherited engineering guidance below; upstream release destinations are historical, not this fork's release instructions.
+
 # Notes for coding agents
 
 ## Subsystem design and review

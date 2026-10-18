@@ -12,8 +12,8 @@ import (
 // login, and again when it stops with a failure.
 type launchd struct{}
 
-// Label is the launch agent's; the tray's at login is com.yetone.magpie.
-const Label = "com.yetone.magpie.serve"
+// Label is the launch agent's; the tray's at login is dev.caelis.tiny-magpie.
+const Label = "dev.caelis.tiny-magpie.serve"
 
 func home() string {
 	h, _ := os.UserHomeDir()

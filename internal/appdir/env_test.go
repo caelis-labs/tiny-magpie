@@ -34,10 +34,10 @@ func TestConfigNeverRelative(t *testing.T) {
 	t.Setenv(homeVar(), home)
 	t.Setenv("XDG_CONFIG_HOME", "relative/cfg")
 	t.Setenv("XDG_CACHE_HOME", "relative/cache")
-	if got, want := Config(), filepath.Join(home, ".config", "magpie"); got != want {
+	if got, want := Config(), filepath.Join(home, ".config", "tiny-magpie"); got != want {
 		t.Errorf("Config() = %q, want %q", got, want)
 	}
-	if got, want := Cache(), filepath.Join(home, ".cache", "magpie"); got != want {
+	if got, want := Cache(), filepath.Join(home, ".cache", "tiny-magpie"); got != want {
 		t.Errorf("Cache() = %q, want %q", got, want)
 	}
 	t.Setenv(homeVar(), "")
@@ -56,7 +56,7 @@ func TestRelativeFolderVariablesIgnoredNotUnset(t *testing.T) {
 	t.Setenv(homeVar(), t.TempDir())
 	abs := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", abs)
-	t.Setenv("XDG_DATA_HOME", "data")
+	t.Setenv("XDG_DATA_HOME", "tiny-data")
 	t.Setenv("CODEX_HOME", "./codex")
 	t.Setenv("HANA_HOME", "~/.hanako")
 	t.Setenv("PI_PROFILE", "work")
@@ -80,7 +80,7 @@ func TestRelativeFolderVariablesIgnoredNotUnset(t *testing.T) {
 	if _, ok := LookupEnv("CODEX_HOME"); ok {
 		t.Error("LookupEnv(CODEX_HOME) says set")
 	}
-	for v, want := range map[string]string{"XDG_DATA_HOME": "data", "CODEX_HOME": "./codex"} {
+	for v, want := range map[string]string{"XDG_DATA_HOME": "tiny-data", "CODEX_HOME": "./codex"} {
 		if got := os.Getenv(v); got != want {
 			t.Errorf("the environment's %s = %q, want %q kept for children", v, got, want)
 		}

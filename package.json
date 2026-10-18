@@ -1,0 +1,10 @@
+{
+  "name": "tiny-magpie-checks",
+  "private": true,
+  "scripts": {
+    "test:ui": "node --test --test-concurrency=2 internal/gui/tests/tiny-gateway.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.57.0"
+  }
+}

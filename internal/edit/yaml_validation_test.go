@@ -1,12 +1,11 @@
 package edit
 
 import (
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestYAMLNestedRejectsInvalidInput(t *testing.T) {

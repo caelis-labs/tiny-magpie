@@ -27,7 +27,6 @@ func TestCachePartialUpdateMatrix(t *testing.T) {
 			delta := `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{` + tc.fields + `}}`
 			t.Run("bridge", func(t *testing.T) { checkCacheBridge(t, delta, tc.hour) })
 			t.Run("continuation", func(t *testing.T) { checkCacheContinuation(t, delta, tc.hour) })
-			t.Run("search", func(t *testing.T) { checkCacheSearch(t, delta, tc.hour) })
 		})
 	}
 }

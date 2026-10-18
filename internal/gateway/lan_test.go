@@ -338,12 +338,10 @@ func TestNetworkGatewayGuardsEveryRoute(t *testing.T) {
 		{"POST", "/v1/chat/completions"}, {"POST", "/chat/completions"},
 		{"POST", "/v1/responses"}, {"POST", "/responses"}, {"GET", "/v1/responses"}, {"GET", "/responses"},
 		{"POST", "/v1/messages"}, {"POST", "/messages"}, {"POST", "/v1/messages/count_tokens"},
-		{"POST", "/v1/systemone"},
-		{"POST", "/v1/images/generations"}, {"POST", "/v1/images/edits"},
+
 		{"POST", "/v1/embeddings"}, {"POST", "/v1/rerank"},
-		{"POST", "/v1/audio/transcriptions"}, {"POST", "/v1/audio/translations"},
-		{"POST", "/v1/videos"}, {"GET", "/v1/videos/v1"}, {"GET", "/v1/videos/v1/content"},
-		{"POST", "/_magpie/claude-mcp/tok"}, {"POST", "/mcp/neon"},
+
+		{"POST", "/_magpie/claude-mcp/tok"},
 		{"POST", CodexPath + "/responses"}, {"GET", CodexCatalogPath},
 		{"GET", "/v1beta/models"}, {"POST", "/v1beta/models/m:generateContent"},
 		{"GET", "/nowhere"},

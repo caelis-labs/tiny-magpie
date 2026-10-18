@@ -26,7 +26,7 @@ magpie.plugin("usage", (ctx) => {
       <button class="icon" id="usageReload" type="button" aria-label="Refresh now" data-tt><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button>
       <button class="sess-pick" id="usageEvery" type="button"></button>
     </span>
-    <span class="usage-cost" id="usageCost"></span>
+    <span class="usage-cost" id="usageCost" data-feature="tiny-removed"></span>
   </div>
   <div class="usage-pane" id="usagePane">
     <div class="row-head quota-head" id="quotaHead" hidden>
@@ -38,17 +38,17 @@ magpie.plugin("usage", (ctx) => {
     </div>
     <section class="subscription-usage" id="subscriptionUsage"></section>
     <p class="usage-note" id="usageScope" data-t>Gateway calls only; session-log calls are in Requests. Local rejections are excluded from totals.</p>
-    <section class="stats" id="stats"></section>
-    <section class="chart" id="chart"></section>
-    <div class="row-head"><button class="fold" type="button" data-fold="agents" aria-expanded="true" aria-controls="usageAgents"><span class="label" data-t>Agents</span></button></div>
-    <div class="list" id="usageAgents"></div>
-    <div class="us-hid" id="usageAgentsHid" hidden><button class="text us-hidline" type="button" aria-expanded="false"></button><div class="list" hidden></div></div>
-    <div class="row-head"><button class="fold" type="button" data-fold="models" aria-expanded="true" aria-controls="usageModels"><span class="label" data-t>Models</span></button></div>
-    <div class="list" id="usageModels"></div>
-    <div class="row-head" id="usageAccountsHead" hidden><button class="fold" type="button" data-fold="accounts" aria-expanded="true" aria-controls="usageAccounts"><span class="label" data-t>Accounts</span></button></div>
-    <div class="list" id="usageAccounts" hidden></div>
-    <div class="row-head" id="usageKeysHead" hidden><button class="fold" type="button" data-fold="keys" aria-expanded="true" aria-controls="usageKeys"><span class="label" data-t>Gateway keys</span></button></div>
-    <div class="list" id="usageKeys" hidden></div>
+    <section class="stats" id="stats" data-feature="tiny-removed"></section>
+    <section class="chart" id="chart" data-feature="tiny-removed"></section>
+    <div class="row-head" data-feature="tiny-removed"><button class="fold" type="button" data-fold="agents" aria-expanded="true" aria-controls="usageAgents"><span class="label" data-t>Agents</span></button></div>
+    <div class="list" id="usageAgents" data-feature="tiny-removed"></div>
+    <div class="us-hid" id="usageAgentsHid" data-feature="tiny-removed" hidden><button class="text us-hidline" type="button" aria-expanded="false"></button><div class="list" hidden></div></div>
+    <div class="row-head" data-feature="tiny-removed"><button class="fold" type="button" data-fold="models" aria-expanded="true" aria-controls="usageModels"><span class="label" data-t>Models</span></button></div>
+    <div class="list" id="usageModels" data-feature="tiny-removed"></div>
+    <div class="row-head" id="usageAccountsHead" data-feature="tiny-removed" hidden><button class="fold" type="button" data-fold="accounts" aria-expanded="true" aria-controls="usageAccounts"><span class="label" data-t>Accounts</span></button></div>
+    <div class="list" id="usageAccounts" data-feature="tiny-removed" hidden></div>
+    <div class="row-head" id="usageKeysHead" data-feature="tiny-removed" hidden><button class="fold" type="button" data-fold="keys" aria-expanded="true" aria-controls="usageKeys"><span class="label" data-t>Gateway keys</span></button></div>
+    <div class="list" id="usageKeys" data-feature="tiny-removed" hidden></div>
     <p class="usage-note" id="usageNote"></p>
     <div class="plugin-slot" data-slot="usage" hidden></div>
   </div>
@@ -64,10 +64,10 @@ magpie.plugin("usage", (ctx) => {
       <span id="ledRoute" hidden><span id="ledRouteLabel"></span><button class="text" id="ledRouteClear" type="button" data-tt="Clear filter" aria-label="Clear filter">×</button></span>
       <span class="grow"></span>
       <input class="sess-filter" id="ledQ" type="search" spellcheck="false" autocomplete="off" placeholder="Search models, providers, sessions" data-tp>
-      <button class="text" id="ledExport" type="button" title="Save every request listed, all pages, as a CSV file in Downloads" data-tt><span data-t>Export CSV</span></button>
+      <button class="text" id="ledExport" data-feature="tiny-removed" type="button" title="Save every request listed, all pages, as a CSV file in Downloads" data-tt><span data-t>Export CSV</span></button>
     </div>
     <p class="usage-note" id="ledScope" data-t>Gateway and session-log calls; local rejections excluded from totals.</p>
-    <div class="led-dash" id="ledDash" hidden>
+    <div class="led-dash" id="ledDash" data-feature="tiny-removed" hidden>
       <div class="led-strip" id="ledKpi"></div>
       <section class="led-trend">
         <div class="led-bar">
@@ -82,7 +82,7 @@ magpie.plugin("usage", (ctx) => {
         </div>
       </section>
     </div>
-    <section class="led-heat" id="ledHeat" hidden>
+    <section class="led-heat" id="ledHeat" data-feature="tiny-removed" hidden>
       <div class="led-bar">
         <div class="heat-title"><b data-t>Usage heatmap</b><span data-t>Daily usage over the last 53 weeks</span></div>
         <span class="grow"></span>
@@ -92,8 +92,8 @@ magpie.plugin("usage", (ctx) => {
       <div class="heat-foot"></div>
       <div class="heat-tip" id="ledHeatTip" hidden></div>
     </section>
-    <div class="led-head"><p class="led-sum" id="ledSum"></p><span class="grow"></span><span class="led-arch" id="ledArchive"></span></div>
-    <div class="led-strip led-vias" id="ledVia" hidden></div>
+    <div class="led-head"><p class="led-sum" id="ledSum"></p><span class="grow"></span><span class="led-arch" id="ledArchive" data-feature="tiny-removed"></span></div>
+    <div class="led-strip led-vias" id="ledVia" data-feature="tiny-removed" hidden></div>
     <div class="led-wrap" id="ledWrap"></div>
             <div class="led-hscroll" id="ledHScroll" hidden><div></div></div>
     <div class="led-pager" id="ledPager" hidden></div>

@@ -4,11 +4,10 @@ package gui
 
 import (
 	"bytes"
+	"github.com/godbus/dbus/v5"
 	"image"
 	"image/color"
 	"image/png"
-
-	"github.com/godbus/dbus/v5"
 )
 
 // A Linux bar's tray icon is the menu bar's bird alone, in one colour on

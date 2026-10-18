@@ -4857,7 +4857,6 @@ function routingPage(part) {
     // agents and folders only: the others are about a request, and a pause
     // keeps the model out of every one.
     const COND_KINDS = [
-      ["intent", "asks for", false],
       ["tokens", "Conversation length", false],
       ["images", "has an image", false],
       ["effort", "Reasoning level", false],
@@ -5202,7 +5201,7 @@ function routingPage(part) {
     const addIntentRule = () => {
       const r = newRule();
       d.rules.push(r);
-      addCond(r, "intent");
+      addCond(r, "tokens");
     };
     rAdd.onclick = addIntentRule;
     // the classifier, once a rule has an intent or the effort is picked
@@ -5229,56 +5228,7 @@ function routingPage(part) {
       return m?.sub ? `${m.name || m.id} · ${m.providerName}` : "";
     };
     const drawClassifier = () => {
-      const auto = d.effort === "auto";
-      const intents = d.rules.some((r) => r.intent?.trim() || (!r.pause && opened.get(r)?.has("intent")));
-      const on = auto || intents;
-      cls.hidden = cw.hidden = clabel.hidden = !on;
-      if (!on) return;
-      clabel.textContent = t(auto && !intents ? "Decided by" : "Intent told by");
-      // a model, or another group: its models are asked in turn, failing
-      // over as any request to it does (never this group: it would ask
-      // itself)
-      const m = [...deciders, ...groups.models].find((x) => x.id === d.classifier), sg = subOf(d.classifier);
-      const cb = el("button", "rt-cond" + (d.classifier ? " on" : ""));
-      if (sg) cb.append(stackIcon(groupIcons(sg)), el("span", "", `${sg.name} · ${t("routing group")}`));
-      else if (d.classifier) cb.append(icon(m?.icon || "generic"), el("span", "", m ? `${m.name || m.id} · ${m.providerName}` : d.classifier));
-      else cb.append(el("span", "", t("choose a model")));
-      const opt = (x) => ({ value: x.id, label: x.name || x.id, note: x.providerName, icon: x.icon, group: x.providerName, ref: x.id, context: x.context });
-      const subs = groups.groups.filter((x) => !x.hidden && x.id !== g?.id)
-        .map((x) => ({ value: "group/" + x.id, label: x.name, note: "group/" + x.id, icons: groupIcons(x), group: ROUTING_GROUPS, ref: "group/" + x.id }));
-      cb.onclick = (ev) => openPicker({ id: "", name: "", fields: [] }, { key: "classifier", label: "model", value: d.classifier, options: [...deciders.map(opt), ...subs, ...groups.models.map(opt)],
-        onPick: (id) => { if (id) d.classifier = id; drawClassifier(); } }, cb, ev);
-      // how it is asked goes under the ⓘ beside it: a paragraph under the
-      // pick was most of the editor's words
-      const how = [...(sg ? [t("A routing group classifies as any request to it goes: if its first model fails, the next is asked.")] : []),
-        t(isJev(d.classifier) && !intents
-          ? "Jev is asked once as each turn begins, with the message and what it said of the turn before. Its calls show in the usage as magpie’s own."
-          : isJev(d.classifier)
-          ? "As a turn begins, Jev is asked once which of the intents the message is, and how hard the turn is when it picks the effort. An intent it isn't sure of matches no rule. Its calls show in the usage as magpie’s own."
-          : auto && !intents
-          ? "As a turn begins, this model is asked how hard the turn is — once; a small, fast one without reasoning is best. If it fails or can't say, the turn reasons as the agent asked. Its calls show in the usage as magpie’s own."
-          : auto
-          ? "As a turn begins, this model is asked which of the intents the message is and how hard the turn is, each once; a small, fast one without reasoning is best. If it can't say, no intent matches and the turn reasons as the agent asked. Its calls show in the usage as magpie’s own."
-          : "As a turn begins, this model is asked which of the intents the message is — once; a small, fast one without reasoning is best. If it fails or can't say, no intent matches. Its calls show in the usage as magpie’s own.")];
-      const pickRow = el("div", "rt-pickrow");
-      pickRow.append(cb, infoTip(how.join(" ")));
-      cls.replaceChildren(pickRow);
-      // a subscription asked as every turn begins spends its allowance
-      // on it, beside the agent's own requests (#1839): said beside the
-      // pick, once for a model, for a group when the one it asks first is
-      const subWarn = classifierSub(m, sg);
-      if (subWarn) {
-        const two = auto && intents && !isJev(d.classifier);
-        cls.append(el("div", "hint rt-cls-sub", t(two
-          ? "Every turn starts with two requests to {name}, a subscription: they count against its allowance as the agent's own do. A free model or one on an API key leaves the subscription to the agents."
-          : "Every turn starts with a request to {name}, a subscription: it counts against its allowance as the agent's own do. A free model or one on an API key leaves the subscription to the agents.", { name: subWarn })));
-      }
-      // picking the effort alone, the classifier can pick the model too
-      if (!intents && d.members.length > 1) {
-        const more = el("button", "text rt-cls-more", t("It can pick the model too: add a rule with an intent"));
-        more.onclick = addIntentRule;
-        cls.append(more);
-      }
+      clabel.hidden = cw.hidden = true;
     };
     rbox.append(rlist, rAdds);
     const rw2 = el("div");
@@ -5292,7 +5242,7 @@ function routingPage(part) {
         ? "As a turn begins, the classifier rates how hard it is and the turn's requests ask their model for low, medium, high or xhigh reasoning — the level each model has nearest. Only where the agent asked for reasoning: a request without any (a session title) stays without."
         : "Each request reasons as much as the agent asked."));
     };
-    ew.append(segs([["", t("Agent's")], ["auto", t("Picked per turn")]], d.effort, (v) => {
+    ew.append(segs([["", t("Agent's")]], d.effort, (v) => {
       d.effort = v;
       if (v === "auto" && !d.classifier && deciders.length) d.classifier = deciders[0].id;
       drawEffort(); drawClassifier();

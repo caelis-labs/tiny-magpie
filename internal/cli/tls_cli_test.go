@@ -10,7 +10,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"runtime"
+
 	"strings"
 	"testing"
 	"time"
@@ -105,56 +105,5 @@ func TestCommandsRefuseHalfAPair(t *testing.T) {
 		if err := f(); err == nil || !strings.Contains(err.Error(), "--tls-key") {
 			t.Errorf("half a pair: %v", err)
 		}
-	}
-}
-
-// The service installed again from a shell that names no certificate
-// (magpie daemon web on, a new PATH) keeps the one it was installed with;
-// --no-tls takes it away.
-func TestDaemonReinstallKeepsTLS(t *testing.T) {
-	var file string
-	switch runtime.GOOS {
-	case "darwin":
-		file = filepath.Join(os.Getenv("HOME"), "Library", "LaunchAgents", "com.yetone.magpie.serve.plist")
-	case "linux":
-		t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "config"))
-		file = filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", "magpie.service")
-	default:
-		t.Skip("no service on " + runtime.GOOS)
-	}
-	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	prev, had := os.ReadFile(file)
-	t.Cleanup(func() {
-		if had == nil {
-			os.WriteFile(file, prev, 0o600)
-		} else {
-			os.Remove(file)
-		}
-	})
-	text := `<key>MAGPIE_TLS_CERT</key><string>/etc/le/full&amp;chain.pem</string>
-		<key>MAGPIE_TLS_KEY</key><string>/etc/le/privkey.pem</string>`
-	if runtime.GOOS == "linux" {
-		text = "Environment=\"MAGPIE_TLS_CERT=/etc/le/full&chain.pem\"\nEnvironment=\"MAGPIE_TLS_KEY=/etc/le/privkey.pem\"\n"
-	}
-	if err := os.WriteFile(file, []byte(text), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv(gateway.TLSCertEnv, "")
-	t.Setenv(gateway.TLSKeyEnv, "")
-	keepTLS(false)
-	if c, k := gateway.TLSFiles(); c != "/etc/le/full&chain.pem" || k != "/etc/le/privkey.pem" {
-		t.Errorf("reinstalled with no certificate named: %q %q, want the service's", c, k)
-	}
-	t.Setenv(gateway.TLSCertEnv, "/new/cert.pem")
-	t.Setenv(gateway.TLSKeyEnv, "/new/key.pem")
-	keepTLS(false)
-	if c, _ := gateway.TLSFiles(); c != "/new/cert.pem" {
-		t.Errorf("the shell's certificate gave way to the service's: %q", c)
-	}
-	keepTLS(true)
-	if gateway.TLSOn() {
-		t.Error("--no-tls kept a certificate")
 	}
 }

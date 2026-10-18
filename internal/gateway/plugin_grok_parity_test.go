@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"context"
-	"encoding/base64"
+
 	"encoding/json"
 	"io"
 	"net/http"
@@ -50,47 +50,6 @@ func besideFake(t *testing.T, id string, up http.Handler) string {
 		t.Fatalf("Find(%s) = %+v, %v", pid, p, err)
 	}
 	return pid
-}
-
-// The Grok plugin draws at Grok's Imagine API as the built-in does
-// (TestGrokAccountDraws): the same models, the same request, sent through
-// the plugin, which signs it.
-func TestGrokPluginDraws(t *testing.T) {
-	var mu sync.Mutex
-	var paths, bodies []string
-	pid := besideFake(t, "grok", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, _ := io.ReadAll(r.Body)
-		mu.Lock()
-		paths, bodies = append(paths, r.URL.Path), append(bodies, string(b))
-		mu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"data":[{"b64_json":"`+base64.StdEncoding.EncodeToString(pngBytes)+`"}]}`)
-	}))
-	p, err := provider.Find(pid)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ds := Drawers(*p); len(ds) != 2 || ds[0].ID != "grok-imagine-image" || ds[0].Provider != pid {
-		t.Fatalf("drawers %v", ds)
-	}
-	if vs := Videomakers(*p); len(vs) == 0 {
-		t.Fatal("the Grok plugin makes no videos")
-	}
-	code, a, raw := postImages(t, New(), "/v1/images/generations", "application/json", `{"model":"`+pid+`/grok-imagine-image","prompt":"a magpie","size":"1792x1024"}`)
-	if code != 200 || len(a.Data) != 1 {
-		t.Fatalf("%d %s", code, raw)
-	}
-	// a newer image model by its bare name, as with the built-in (#1857,
-	// TestGrokDrawsANewerModelByItsBareName)
-	code, a, raw = postImages(t, New(), "/v1/images/generations", "application/json", `{"model":"grok-imagine-image-2.0","prompt":"a magpie"}`)
-	if code != 200 || len(a.Data) != 1 {
-		t.Fatalf("bare grok-imagine-image-2.0: %d %s", code, raw)
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(paths) != 2 || paths[0] != "/v1/images/generations" || !strings.Contains(bodies[0], `"model":"grok-imagine-image"`) || !strings.Contains(bodies[0], `"aspect_ratio":"16:9"`) || !strings.Contains(bodies[1], `"model":"grok-imagine-image-2.0"`) {
-		t.Fatalf("asked %v %v", paths, bodies)
-	}
 }
 
 // Codex's namespaced tools reach the Grok plugin flat, and its call comes

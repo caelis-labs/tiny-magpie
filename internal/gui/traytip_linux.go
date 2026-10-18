@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/prop"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

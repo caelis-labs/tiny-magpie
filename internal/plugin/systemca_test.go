@@ -59,7 +59,7 @@ func TestBunIsGivenAnASCIIWayToTheRoots(t *testing.T) {
 		{"an ASCII path as it is", `C:\Users\bob\.cache\magpie\bun\system-ca-abc.pem`, `C:\Users\bob\x`, "windows", `C:\Users\bob\.cache\magpie\bun\system-ca-abc.pem`},
 		{"another drive, no way there", ca, `D:\plugins`, "windows", ca},
 		{"no way there in ASCII", ca, `C:\其他\plugins`, "windows", ca},
-		{"Bun elsewhere reads it whole", "/home/张三/.cache/magpie/bun/system-ca-abc.pem", "/home/张三/.config/magpie/plugins", "linux", "/home/张三/.cache/magpie/bun/system-ca-abc.pem"},
+		{"Bun elsewhere reads it whole", "/home/张三/.cache/tiny-magpie/bun/system-ca-abc.pem", "/home/张三/.config/tiny-magpie/plugins", "linux", "/home/张三/.cache/tiny-magpie/bun/system-ca-abc.pem"},
 	} {
 		if c.goos == "windows" && runtime.GOOS != "windows" {
 			// filepath.Rel works on this OS's paths; Windows' are tried there

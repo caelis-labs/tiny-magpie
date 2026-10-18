@@ -1360,8 +1360,7 @@ const signsIn = (spec) => [...new Set(hooks.filter((h) => h.spec === spec && h.h
 // on the plugin's row rather than leave its provider missing. And the
 // tools it gives (toolList).
 function withProviders(l) {
-  const tools = l.error ? [] : toolList(l.spec)
-  if (tools.length) l = { ...l, tools }
+  if (!l.error && !signsIn(l.spec).length && !hooks.some(h => h.spec === l.spec && (h.hooks.provider || h.hooks.config)) && toolList(l.spec).length) return { ...l, error: "tool-only plugins are not supported by tiny-magpie" }
   const ids = l.error ? [] : signsIn(l.spec)
   if (!ids.length) return l
   const a = auths()

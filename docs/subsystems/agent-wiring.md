@@ -1,5 +1,7 @@
 # Agent wiring
 
+> tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
+
 magpie connects a coding agent to its gateway by editing the agent's own
 config. That covers the endpoint, the key `magpie-<agent>` and the model,
 in the agent's own format. When the agent is disconnected, magpie puts back

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml/v2"
-
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
 )

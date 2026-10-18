@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/color"
 	pngenc "image/png"
-	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/settings"
+	"math/rand/v2"
 )
 
 // fourK is a real 3840x2160 PNG of about the size #1576's relay sent

@@ -30,7 +30,6 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/yetone/magpie/internal/access"
-	"github.com/yetone/magpie/internal/awake"
 	"github.com/yetone/magpie/internal/gwbudget"
 	"github.com/yetone/magpie/internal/gwmw"
 	"github.com/yetone/magpie/internal/gwtool"
@@ -537,24 +536,6 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// the magpie serving the gateway, and only it, keeps the saved accounts
 	// signed in, so two never refresh one sign-in at once
 	go provider.KeepLoginsAlive(ctx)
-	// and signs Codex and Claude Code in to their next account when the
-	// one they are on is spent
-	go provider.KeepOnAnAccountWithRoom(ctx)
-	// and, when settings say to, starts its accounts' next windows as the last reset
-	go provider.KeepCodexWindowsWarm(ctx)
-	go provider.KeepClaudeWindowsWarm(ctx, warmClaude)
-	// and spends a Codex reset about to run out unused, for the accounts
-	// that let it
-	go provider.KeepResetsFromRunningOut(ctx)
-	// and checks the WorkBuddy accounts in for the day's credits
-	go provider.KeepWorkBuddyCheckedIn(ctx)
-	// and the Trae CN accounts (#694), and the MiniMax Code ones (#811)
-	go provider.KeepTraeCheckedIn(ctx)
-	go provider.KeepMiniMaxCheckedIn(ctx)
-	// and the Qoder ones' daily credits
-	go provider.KeepQoderCheckedIn(ctx)
-	// and the accounts of the plugins that check in themselves
-	go provider.KeepPluginsCheckedIn(ctx)
 	// and moves the built-in subscriptions being retired onto their plugins
 	go provider.KeepRetiringMoved(ctx)
 	go provider.KeepPluginsListed(ctx) // models a plugin's vendor drops or adds, while magpie runs
@@ -563,19 +544,6 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// and keeps the community's plugins up to date, noting others' updates, and the Bun they run on
 	go plugin.KeepUpdated(ctx)
 	go plugin.KeepBunUpdated(ctx)
-	// and, when settings say to, keeps the computer awake while agents work
-	go awake.Keep(ctx, func() awake.Level {
-		switch set := settings.Load(); {
-		case !set.KeepAwake:
-			return awake.Off
-		case set.KeepAwakeDisplay:
-			return awake.Display
-		}
-		return awake.System
-	}, func() awake.State {
-		b := s.Busy()
-		return awake.State{Busy: b.Any(), Last: b.Last}
-	})
 	for _, f := range WhileServing {
 		go f(ctx)
 	}
@@ -651,41 +619,24 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /responses", responsesOverHTTP)
 	mux.HandleFunc("POST /v1/messages", keepsSignIn(s.handle(provider.Anthropic)))
 	mux.HandleFunc("POST /messages", keepsSignIn(s.handle(provider.Anthropic)))
-	mux.HandleFunc("POST /v1/systemone", s.serveSystemOne)
+
 	// Codex's web.run tool (anton on Discord)
-	mux.HandleFunc("POST /v1"+AlphaSearchPath, s.alphaSearch)
-	mux.HandleFunc("POST "+AlphaSearchPath, s.alphaSearch)
 	mux.HandleFunc("POST /v1/messages/count_tokens", keepsSignIn(s.countTokens))
-	mux.HandleFunc("POST /v1/images/generations", s.images(false))
-	mux.HandleFunc("POST /images/generations", s.images(false))
-	mux.HandleFunc("POST /v1/images/edits", s.images(true))
-	mux.HandleFunc("POST /images/edits", s.images(true))
+
 	mux.HandleFunc("POST /v1/embeddings", s.retrieve("/embeddings", "embeddings"))
 	mux.HandleFunc("POST /embeddings", s.retrieve("/embeddings", "embeddings"))
 	mux.HandleFunc("POST /v1/rerank", s.retrieve("/rerank", "rerank"))
 	mux.HandleFunc("POST /rerank", s.retrieve("/rerank", "rerank"))
 	// speech to text, for a client's voice input (#2053)
-	mux.HandleFunc("POST /v1/audio/transcriptions", s.transcribe("/audio/transcriptions", "transcriptions"))
-	mux.HandleFunc("POST /audio/transcriptions", s.transcribe("/audio/transcriptions", "transcriptions"))
-	mux.HandleFunc("POST /v1/audio/translations", s.transcribe("/audio/translations", "translations"))
-	mux.HandleFunc("POST /audio/translations", s.transcribe("/audio/translations", "translations"))
-	mux.HandleFunc("POST /v1/videos", s.videosCreate)
-	mux.HandleFunc("POST /videos", s.videosCreate)
-	mux.HandleFunc("GET /v1/videos/{id}", s.videosGet)
-	mux.HandleFunc("GET /videos/{id}", s.videosGet)
-	mux.HandleFunc("GET /v1/videos/{id}/content", s.videosContent)
-	mux.HandleFunc("GET /videos/{id}/content", s.videosContent)
+
 	mux.HandleFunc("POST "+claudeMCPPath+"{token}", s.subscription.mcpCall)
-	mux.HandleFunc("/mcp/{name}", s.mcpProxy)
-	mux.HandleFunc(SearchMCPPath, s.searchMCP)
-	mux.HandleFunc(VisionMCPPath, s.visionMCP)
-	mux.HandleFunc(ToolsMCPPath, s.toolsMCP)
+
 	mux.HandleFunc(CodexPath+"/", s.codexBackend)
 	mux.HandleFunc("GET "+CodexCatalogPath, s.codexCatalog)
 	mux.HandleFunc("GET /v1beta/models", s.geminiModels)
 	mux.HandleFunc("POST /v1beta/models/{call...}", s.gemini)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, provider.Chat, http.StatusNotFound, "magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/systemone, /v1/images/generations, /v1/images/edits, /v1/videos, /v1/embeddings, /v1/rerank, /v1/audio/transcriptions, /v1/audio/translations and /v1beta/models/*")
+		writeError(w, provider.Chat, http.StatusNotFound, "tiny-magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/embeddings, /v1/rerank and /v1beta/models/*")
 	})
 	return s.counted(holdCatalog(corsGuard(callerGuard(withCaller(keyLimited(mux))))))
 }
@@ -707,7 +658,7 @@ func responsesOverHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"name": "magpie", "version": Version, "models": len(provider.Catalog()), "window": Window,
-		"apis": []string{"/v1/chat/completions", "/v1/responses", "/v1/messages", "/v1/systemone", "/v1beta/models/{model}:generateContent", "/v1/images/generations", "/v1/images/edits", "/v1/videos", "/v1/embeddings", "/v1/rerank", "/v1/audio/transcriptions", "/v1/audio/translations", "/v1/magpie/quotas", "/v1/magpie/quotas/history", "/v1/magpie/usage", "/v1/magpie/usage/requests", "/v1/magpie/route", SearchMCPPath, VisionMCPPath, ToolsMCPPath}})
+		"apis": []string{"/v1/chat/completions", "/v1/responses", "/v1/messages", "/v1beta/models/{model}:generateContent", "/v1/embeddings", "/v1/rerank", "/v1/magpie/quotas", "/v1/magpie/usage", "/v1/magpie/usage/requests", "/v1/magpie/route"}})
 }
 
 // quotas is what is left of every subscription, plan and key magpie has,
@@ -1016,7 +967,7 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 		labels := provider.Labels(shown)
 		// for another magpie: how it searches the web for each model
 		magpie := r.Header.Get(provider.DrawersHeader) != ""
-		searches := magpie && canSearch()
+		searches := false
 		// for another magpie, what each model costs here, so its usage
 		// there is counted at the same price: told only to this computer
 		// and to one this magpie is shared with by a gateway key, as the
@@ -1075,25 +1026,7 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 			data = append(data, m)
 		}
 	}
-	if r.Header.Get(provider.DrawersHeader) != "" {
-		data = append(data, drawerObjects(r)...)
-	}
-	if r.Header.Get(provider.VideomakersHeader) != "" {
-		data = append(data, videomakerObjects(r)...)
-	}
-	if r.Header.Get(provider.DecidersHeader) != "" {
-		deciders := keyAllowed(r, provider.Deciders())
-		for i := range deciders {
-			deciders[i].Name = cmp.Or(deciders[i].Name, deciders[i].Model)
-		}
-		labels := provider.Labels(deciders)
-		for i, e := range deciders {
-			m := modelObject(e)
-			m["kind"], m["magpie_label"] = "decision", labels[i]
-			m["native_endpoints"] = []string{"/v1/systemone"}
-			data = append(data, m)
-		}
-	}
+
 	// ?format=text: the ids one a line, to paste into a client that takes
 	// its models typed by hand, one a line, and asks no list of its own
 	// (ZCode's custom provider), from a browser on another computer with
@@ -1741,6 +1674,14 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 	// a routing group's rules pick the member that goes first, looked at
 	// before any image is taken out of the request: one may be for images
 	g, ms, isGroup := provider.FindGroup(asked)
+	hasIntent := func(group provider.Group) bool {
+		return group.Classifier != "" || group.Effort == provider.EffortAuto || slices.ContainsFunc(group.Rules, func(rule provider.Rule) bool { return rule.Intent != "" })
+	}
+	if isGroup && (hasIntent(g) || slices.ContainsFunc(ms, func(m provider.Member) bool { return slices.ContainsFunc(m.Via, hasIntent) })) {
+		writeError(w, from, 400, "intent routing is not available in tiny-magpie; remove the classifier and intent rules from this group")
+		turnedAway()
+		return
+	}
 	g = g.Live() // a manual group's rules wait
 	// a model on this machine or the local network that the user set to
 	// go unmasked gets the request as written (lc on Discord); the log
@@ -5605,15 +5546,7 @@ func (s *Server) translate(w http.ResponseWriter, r *http.Request, p provider.Pr
 				break
 			}
 		}
-		if !searching(r.Context()) && canSearchFor(p) && !searchesFor(p, to, model, request) {
-			ask := s.askTranslated(p, to, model, r.Header, w.Header())
-			if zen != nil {
-				ask = zenRound(zen.z, ask)
-			}
-			// a Kimi Code plan's own searches stay on it
-			r = r.WithContext(searchingOn(r.Context(), p))
-			return s.searchReply(w, r, from, p.Name, request, u, ask)
-		}
+
 	}
 	stream := request.Stream
 	request.Stream = true

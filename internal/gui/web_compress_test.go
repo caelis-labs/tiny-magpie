@@ -83,7 +83,7 @@ func TestWebCompresses(t *testing.T) {
 			t.Errorf("%s to a client that takes no gzip: Content-Encoding %q, %d bytes of %d", path, plain.Header().Get("Content-Encoding"), plain.Body.Len(), len(want))
 		}
 	}
-	if rec := get("/api/state", browser, ""); rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "gzip" {
+	if rec := get("/api/providers", browser, ""); rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "gzip" {
 		t.Errorf("/api/state: %d, Content-Encoding %q, want its JSON gzipped", rec.Code, rec.Header().Get("Content-Encoding"))
 	}
 	if rec := get("/icons/crush.png", browser, ""); rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "" {

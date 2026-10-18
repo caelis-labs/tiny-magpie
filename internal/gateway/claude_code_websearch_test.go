@@ -1,9 +1,8 @@
 package gateway
 
 import (
-	"context"
 	"encoding/json"
-	"io"
+
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -89,36 +88,6 @@ func TestClaudeCodeWebSearchKeepsMetadata(t *testing.T) {
 		check(t, f)
 		if strings.Contains(string(f.got), "web_search_20250305") {
 			t.Errorf("server tool sent to a relay magpie doesn't know searches: %s", f.got)
-		}
-	})
-
-	t.Run("magpie searches", func(t *testing.T) {
-		f := &fake{t: t, reply: ccRelayReply, refuse: ccOnly}
-		setHome(t, t.TempDir())
-		setup(t, provider.Anthropic, f)
-		srch := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			io.WriteString(w, `{"data":[{"id":"claude-haiku-4-5"}]}`)
-		}))
-		defer srch.Close()
-		hosts := searchHosts[provider.Anthropic]
-		searchHosts[provider.Anthropic] = append(hosts, provider.HostOf(srch.URL))
-		defer func() { searchHosts[provider.Anthropic] = hosts }()
-		if err := provider.Save(provider.Provider{ID: "srch", Name: "Search", Key: "k", Anthropic: srch.URL}); err != nil {
-			t.Fatal(err)
-		}
-		p, _ := provider.Find("srch")
-		if _, err := p.Fetch(context.Background()); err != nil {
-			t.Fatal(err)
-		}
-		if sp, _, ok := searcher(); !ok || sp.ID != "srch" {
-			t.Fatalf("searcher %v %v", sp.ID, ok)
-		}
-		if code, body := ask(t, "fake/m1"); code != 200 || !strings.Contains(body, "searched") {
-			t.Fatalf("%d %s", code, body)
-		}
-		check(t, f)
-		if !strings.Contains(string(f.got), `"name":"web_search"`) {
-			t.Errorf("magpie's search not offered: %s", f.got)
 		}
 	})
 

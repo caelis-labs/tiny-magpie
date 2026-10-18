@@ -1,12 +1,11 @@
 package edit
 
 import (
+	"github.com/pelletier/go-toml/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 // An Inline value given to SetTOMLTable goes into the spelling the file

@@ -460,7 +460,7 @@ var indexFiles = []string{"index.ts", "index.tsx", "index.js", "index.mjs", "ind
 // never loads (#1327).
 func notPlugin(target string) error {
 	st, err := os.Stat(target)
-	if err != nil || !st.IsDir() || IsPi(target) {
+	if err != nil {
 		return nil
 	}
 	if Gateway(target) != "" {
@@ -469,10 +469,13 @@ func notPlugin(target string) error {
 	if f, _ := Middleware(target); f != "" {
 		return nil
 	}
-	if f, _ := Agent(target); f != "" {
-		return nil
+	if f, only := Agent(target); f != "" && only {
+		return fmt.Errorf("agent plugins are not supported by tiny-magpie")
 	}
-	if w, _ := Window(target); w != nil {
+	if w, only := Window(target); w != nil && only {
+		return fmt.Errorf("page plugins are not supported by tiny-magpie")
+	}
+	if !st.IsDir() || IsPi(target) {
 		return nil
 	}
 	var pkg struct {

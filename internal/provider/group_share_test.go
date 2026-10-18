@@ -38,10 +38,10 @@ func TestSharedGroupRoundTrip(t *testing.T) {
 		Provider{ID: "b", Name: "B", Key: secret + "-b", Chat: "http://127.0.0.1:1/v1", Models: []string{"x"}},
 	)
 	g := Group{Name: "Smart", Members: []string{"a/x:high", "b/x", "a/small"}, Routing: Ordered, Affinity: "session",
-		Patience: 90, Off: []string{"b/x"}, Classifier: "a/small", Levels: []string{"low", "high"},
+		Patience: 90, Off: []string{"b/x"}, Levels: []string{"low", "high"},
 		Rules: []Rule{
 			{Use: "a/small", Compact: true},
-			{Use: "a/small", Intent: "a quick question"},
+			{Use: "a/small", Tokens: 20000},
 			{Use: "a/x:high", Tokens: 50000, Agents: []string{"codex"}},
 			{Use: "b/x", Time: &TimeWindow{From: "22:00", To: "08:00", Days: []string{"fri"}}},
 			{Use: "a/small", Folders: []string{"~/work/acme-secret"}},

@@ -91,7 +91,7 @@ func TestGroupLevelsNamed(t *testing.T) {
 // high — what the member takes nearest within them — never more. A
 // member the user fixed at an effort keeps it.
 func TestGroupLevelsCapEffort(t *testing.T) {
-	s, a, _, j := jevved(t, provider.EffortAuto)
+	s, a, _ := ruled(t)
 	all := []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"}
 	if err := provider.SetModelEfforts("a/small", all); err != nil {
 		t.Fatal(err)
@@ -101,21 +101,6 @@ func TestGroupLevelsCapEffort(t *testing.T) {
 	if err := provider.SaveGroup(g); err != nil {
 		t.Fatal(err)
 	}
-	// the turn's pick
-	j.score = 3 // xhigh
-	_, r := postOK(t, s, "s1", chat("design a lock-free queue", nil, 0, `,"reasoning_effort":"medium"`))
-	if r.Rule == nil || r.Rule.Pick != "xhigh" {
-		t.Fatalf("picked %+v", r.Rule)
-	}
-	if sent := sentBody(t, a); sent["reasoning_effort"] != "high" || r.Tries[0].Effort != "high" {
-		t.Fatalf("auto xhigh: sent %v, traced %+v", sent["reasoning_effort"], r.Tries)
-	}
-	// and its tool rounds
-	postOK(t, s, "s1", chat("design a lock-free queue", nil, 2, `,"reasoning_effort":"medium"`))
-	if sent := sentBody(t, a); sent["reasoning_effort"] != "high" {
-		t.Fatalf("auto xhigh within the turn: sent %v", sent["reasoning_effort"])
-	}
-
 	// the agent's own level, with nothing picked
 	g, _, _ = provider.FindGroup("group/r")
 	g.Effort = ""

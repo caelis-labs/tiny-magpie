@@ -109,7 +109,7 @@ func ValidComputer(id string) bool { return validID(id) }
 func OwnDays(since time.Time) map[string][]SharedCall {
 	reader := LogCalls
 	if reader == nil {
-		reader = sessions.Calls
+		reader = func(time.Time) []sessions.Call { return nil }
 	}
 	rows, _, _, _ := ledgerWith(since, Filter{}, gatewayRecords(since.Add(-24*time.Hour)), reader(since))
 	out := map[string][]SharedCall{}

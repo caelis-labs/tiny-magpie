@@ -79,26 +79,15 @@ func TestRemoteMagpieModels(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// the image models are listed as such, never as models to chat with
-	var draws []string
-	for _, m := range Drawers(*office) {
-		draws = append(draws, m.ID)
-	}
-	for _, want := range []string{"relay-a/seedream-4", "relay-a/nano-banana-pro"} {
-		if !slices.Contains(draws, want) {
-			t.Errorf("%s isn't one of the remote's image models here: %v", want, draws)
-		}
+	if m := Drawers(*office); len(m) != 0 {
+		t.Fatalf("removed image catalog: %+v", m)
 	}
 	live, _, _ := catalog.Live("office")
 	names := map[string]string{}
 	for _, m := range live {
 		names[m.ID] = m.Name
 	}
-	for _, id := range []string{"relay-a/seedream-4", "relay-a/nano-banana-pro"} {
-		if _, ok := names[id]; ok {
-			t.Errorf("%s is listed to chat with", id)
-		}
-	}
+
 	// what the remote's agents aren't shown isn't here either
 	for _, id := range []string{"relay-a/unpicked-1", "routed/secret-1"} {
 		if _, ok := names[id]; ok {
@@ -116,27 +105,6 @@ func TestRemoteMagpieModels(t *testing.T) {
 		t.Errorf("the relays' models read %q and %q", a.Label(), b.Label())
 	}
 
-	// an image model of the remote's draws there, at its images API, which
-	// asks the vendor the way the model draws: on its images API, or in
-	// chat (nano-banana-pro)
-	for _, c := range []struct{ model, vendor string }{
-		{"relay-a/seedream-4", "/v1/images/generations seedream-4"},
-		{"relay-a/nano-banana-pro", "/v1/chat/completions nano-banana-pro"},
-	} {
-		mu.Lock()
-		vendor, hops = nil, nil
-		mu.Unlock()
-		code, body := post(t, "/v1/images/generations", `{"model":"office/`+c.model+`","prompt":"a magpie"}`)
-		mu.Lock()
-		gotHops, gotVendor := slices.Clone(hops), slices.Clone(vendor)
-		mu.Unlock()
-		if code != 200 || !strings.Contains(body, "aGVsbG8=") {
-			t.Errorf("%s: %d %s", c.model, code, body)
-		}
-		if !slices.Equal(gotHops, []string{"/v1/images/generations application/json"}) || !slices.Equal(gotVendor, []string{c.vendor}) {
-			t.Errorf("%s: remote asked on %v, vendor on %v", c.model, gotHops, gotVendor)
-		}
-	}
 }
 
 // A magpie from before the list said more takes the list as it was: the

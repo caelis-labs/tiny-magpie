@@ -59,8 +59,8 @@ function fixture(lang, theme, events, options = {}) {
     if (url.pathname === "/wails/runtime.js") return route.fulfill({ contentType: "text/javascript", body: "export const Window = {};" });
     if (url.pathname === "/favicon.ico") return route.fulfill({ status: 204 });
     if (url.pathname === "/api/state") return json({ agents: [], profiles: [], settings: { lang, theme } });
-    if (url.pathname === "/api/providers") return json({
-      providers: [{ id: "relay", name: "Relay", icon: "generic", models: [{ id: "m", name: "Model", on: true }], agents: [] }],
+    if (url.pathname === "/api/providers") return json({ presets: [], excluded: [], plugins: [],
+      providers: [{ id: "relay", name: "Relay", icon: "generic", key: {set:true, masked:"sk-fixture"}, ready:true, chat:"http://fixture/v1", models: [{ id: "m", name: "Model", on: true }], agents: [] }],
       gateway: { running: true, window: true, mine: true, url: "http://127.0.0.1:3999", lan, lanURLs: lan ? lanURLs : [], ...publicURL(), calls: [], groups: [] },
     });
     if (url.pathname === "/api/groups") return json({ groups: [], models: [] });

@@ -354,15 +354,15 @@ type requestState struct {
 }
 
 func readRequestState(now time.Time) requestState {
-	sources := sessions.CallSources()
-	codexIdentities := sessions.CodexIdentities()
+	var sources []sessions.CallSource
+	codexIdentities := map[string]sessions.CodexIdentity{}
 	slices.SortFunc(sources, func(a, b sessions.CallSource) int {
 		if n := a.Modified.Compare(b.Modified); n != 0 {
 			return n
 		}
 		return strings.Compare(a.Path, b.Path)
 	})
-	ids, _ := json.Marshal(provider.SessionIdentities(sessions.CodexDir()))
+	ids, _ := json.Marshal([]provider.SessionIdentity{})
 	codexIdentityKey, _ := json.Marshal(codexIdentities)
 	renamed, _ := json.Marshal(provider.Renamed())
 	cfg := settings.Load()
@@ -899,7 +899,7 @@ func buildRequestPage(p Period, f Filter, offset, limit int, gateway *rowChunk, 
 // now is the moment the page is asked at: its period and its chart's hours or
 // days are read from it.
 func buildRequestBlocks(p Period, f Filter, offset, limit int, now time.Time, gateways, chunks, others []*rowChunk, names map[string]string) RequestPage {
-	return buildRequestBlocksWithCodex(p, f, offset, limit, now, gateways, chunks, others, names, sessions.CodexIdentities())
+	return buildRequestBlocksWithCodex(p, f, offset, limit, now, gateways, chunks, others, names, map[string]sessions.CodexIdentity{})
 }
 
 func buildRequestBlocksWithCodex(p Period, f Filter, offset, limit int, now time.Time, gateways, chunks, others []*rowChunk, names map[string]string, identities map[string]sessions.CodexIdentity) RequestPage {

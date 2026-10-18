@@ -266,13 +266,6 @@ func pluginsState(ctx context.Context, w Windows) pluginsJSON {
 	known := plugin.InfoCached(npmNames(l.Plugins))
 	mws := middleware.States()
 	gws := plugin.GatewayStates(ctx)
-	var agentErrs map[string]string
-	for _, e := range l.Plugins {
-		if f, _ := plugin.Agent(plugin.Target(e.Spec)); f != "" && !e.Off {
-			agentErrs = agent.PluginErrors()
-			break
-		}
-	}
 	for _, e := range l.Plugins {
 		j := pluginEntryJSON{Entry: e, Error: errs[e.Spec], Providers: names[e.Spec], Version: plugin.Installed(e.Spec), Named: answered}
 		if plugin.Gateway(plugin.Target(e.Spec)) != "" {
@@ -308,32 +301,7 @@ func pluginsState(ctx context.Context, w Windows) pluginsJSON {
 		if j.IsMiddleware || j.IsGateway {
 			j.OptionsExample = plugin.OptionsExample(plugin.Target(e.Spec))
 		}
-		if file, _ := plugin.Agent(plugin.Target(e.Spec)); file != "" {
-			j.IsAgent = true
-			j.InMagpieOnly = plugin.InMagpieOnly(plugin.Target(e.Spec))
-			if !e.Off {
-				j.Agent = pluginAgentOf(e.Spec, agentErrs)
-			}
-		}
-		if w, _ := plugin.Window(plugin.Target(e.Spec)); w != nil {
-			reads := w.Reads
-			if reads == nil {
-				reads = []string{}
-			}
-			if w.Page != nil {
-				j.Page = &pluginPageInfoJSON{Title: w.Page.Title, Replaces: w.Page.Replaces, Reads: reads}
-			}
-			for _, p := range w.Panels {
-				j.Panels = append(j.Panels, pluginPanelInfoJSON{Slot: p.Slot, Title: p.Title})
-			}
-			if len(w.Panels) > 0 {
-				j.PanelReads = reads
-			}
-			for _, a := range w.Actions {
-				j.Actions = append(j.Actions, pluginActionInfoJSON{Menu: a.Menu, Title: a.Title})
-			}
-			j.InMagpieOnly = plugin.InMagpieOnly(plugin.Target(e.Spec))
-		}
+
 		for _, c := range clashes[e.Spec] {
 			n := idName[c.ID]
 			if n == "" {

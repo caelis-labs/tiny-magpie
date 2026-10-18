@@ -614,20 +614,6 @@ func TestImageRuleDoesNotLeakImageToTextOnlyFallback(t *testing.T) {
 	}
 }
 
-// With the vision member down, nothing is left to describe the image: the
-// text-only fallback isn't sent it, or a turn without it.
-func TestImageRuleFallbackCantHaveTheImageDescribedByTheFailedMember(t *testing.T) {
-	s, a, b := ruled(t, provider.Rule{Use: "b/big", Images: true})
-	b.mu.Lock()
-	b.fail = 503
-	b.mu.Unlock()
-	img := `{"model":"group/r","messages":[{"role":"user","content":[{"type":"text","text":"look"},{"type":"image_url","image_url":{"url":"data:image/png;base64,aGVsbG8="}}]}]}`
-	code, out := postAs(t, s, "image-fallback", img)
-	if code != 502 || !strings.Contains(out, "couldn't describe the image") || a.n() != 0 {
-		t.Fatalf("%d %s, a %d", code, out, a.n())
-	}
-}
-
 // When the vision member of a rule for images fails, a text-only member
 // answers a turn whose image is in an earlier message, without the image.
 func TestImageRuleFallbackOmitsOlderImages(t *testing.T) {

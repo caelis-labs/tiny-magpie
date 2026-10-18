@@ -291,7 +291,7 @@ func TestHeldGroupsAreTheCallers(t *testing.T) {
 
 	// the caller's group, cleaned for saving: as it gave it, saved or not
 	in := Group{Name: "R", Members: []string{"a/m", "b/big"}, Rules: []Rule{{Use: " b/big ", Intent: "tests"}}}
-	if err := SaveGroup(in); err == nil || !strings.Contains(err.Error(), "classifier") {
+	if err := SaveGroup(in); err == nil || !strings.Contains(err.Error(), "intent routing") {
 		t.Fatalf("saved: %v", err)
 	}
 	if in.Rules[0].Use != " b/big " {

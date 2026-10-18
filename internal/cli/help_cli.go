@@ -32,57 +32,24 @@ func helpAsked(args []string) bool {
 // agent's forms and fields for an agent, and the whole usage for
 // anything else.
 func helpFor(args []string) string {
-	cmd := args[0]
-	switch cmd {
-	case "-h", "--help", "help":
+	if len(args) == 0 {
 		return usage
+	}
+	switch args[0] {
 	case "model":
 		return modelUsage
 	case "group", "groups":
-		if len(args) > 1 && (args[1] == "rule" || args[1] == "rules") {
-			return ruleUsage
-		}
 		return groupUsage
-	case "library", "lib":
-		return "  " + libraryUsage
 	case "plugin", "plugins":
 		return pluginUsage
 	case "quota", "quotas":
 		return quotaUsage
-	case "statusline":
-		return statuslineUsage
 	case "heap":
 		return heapUsage
 	case "cpu":
 		return cpuUsage
-	case "sessions":
-		return sessionsUsage
-	case "search":
-		return searchUsage
-	case "visible":
-		return visibleUsage
-	case "webdav", "dav":
-		return webdavUsage
-	case "s3":
-		return s3Usage
-	case "github":
-		return githubUsage
 	case "claude-code":
 		return claudeCodeUsage
-	case "list":
-		cmd = "ls"
-	case "account":
-		cmd = "accounts"
-	case "app", "gui":
-		cmd = ""
-	}
-	if cmd != "" && !strings.HasPrefix(cmd, "-") {
-		if lines := usageLines(cmd); lines != "" {
-			return lines
-		}
-	}
-	if a, err := agent.Find(cmd); err == nil && cmd != "" {
-		return agentHelp(a)
 	}
 	return usage
 }

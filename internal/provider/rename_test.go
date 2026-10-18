@@ -21,7 +21,7 @@ func TestRename(t *testing.T) {
 		}
 	}
 	if err := SaveGroup(Group{ID: "top", Name: "Top", Members: []string{"relay/m1", "other/m1"},
-		Rules: []Rule{{Use: "relay/m1", Intent: "code"}}, Classifier: "relay/m2"}); err != nil {
+		Rules: []Rule{{Use: "relay/m1", Tokens: 20000}}}); err != nil {
 		t.Fatal(err)
 	}
 	s := settings.Load()
@@ -56,7 +56,7 @@ func TestRename(t *testing.T) {
 		t.Fatalf("fallback %v", q.Fallback)
 	}
 	g, _, _ := FindGroup("group/top")
-	if !slices.Equal(g.Members, []string{"fast/m1", "other/m1"}) || g.Rules[0].Use != "fast/m1" || g.Classifier != "fast/m2" {
+	if !slices.Equal(g.Members, []string{"fast/m1", "other/m1"}) || g.Rules[0].Use != "fast/m1" || g.Classifier != "" {
 		t.Fatalf("%+v", g)
 	}
 	if v := settings.Load().Visible["codex"]; !slices.Equal(v, []string{"fast", "top"}) {

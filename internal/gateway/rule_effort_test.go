@@ -38,25 +38,6 @@ func TestRuleSetsItsModelsEffort(t *testing.T) {
 	}
 }
 
-// The reporter's case: an intent picks the model, and the effort with it;
-// the turn's tool rounds keep both.
-func TestIntentRuleSetsEffort(t *testing.T) {
-	s, _, b, c := intented(t, provider.Rule{Use: "b/big", Intent: "simple questions", UseEffort: "low"})
-	if err := provider.SetModelEfforts("b/big", []string{"low", "medium", "high", "xhigh"}); err != nil {
-		t.Fatal(err)
-	}
-	c.set("1", 0)
-	for tools := range 2 {
-		out, r := postOK(t, s, "s1", chat("what is 2+2?", nil, tools, `,"reasoning_effort":"xhigh"`))
-		if sent := sentBody(t, b); !strings.Contains(out, "from kb") || sent["reasoning_effort"] != "low" {
-			t.Fatalf("round %d: sent %v (%s)", tools, sent, out)
-		}
-		if r.Rule == nil || r.Rule.UseEffort != "low" || r.Tries[0].RuleEffort != "low" {
-			t.Fatalf("round %d: traced %+v %+v", tools, r.Rule, r.Tries)
-		}
-	}
-}
-
 // Unset, the agent's effort goes as it asked; and a model whose levels
 // aren't known is asked as the agent asked, with nothing traced.
 func TestRuleEffortUnsetOrUnknownLevels(t *testing.T) {

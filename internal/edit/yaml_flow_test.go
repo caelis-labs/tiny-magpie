@@ -1,12 +1,11 @@
 package edit
 
 import (
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 // A top-level list written in flow style, as dsh's own writers keep a

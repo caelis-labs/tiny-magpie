@@ -1,10 +1,9 @@
 package edit
 
 import (
+	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestYAMLTopQuotedKeys(t *testing.T) {

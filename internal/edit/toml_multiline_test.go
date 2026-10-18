@@ -2,13 +2,12 @@ package edit
 
 import (
 	"errors"
+	"github.com/pelletier/go-toml/v2"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 // The config.toml of #253: a top-level array over several lines. A new

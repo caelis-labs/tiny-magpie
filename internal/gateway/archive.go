@@ -20,8 +20,6 @@ package gateway
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
@@ -80,20 +78,8 @@ type wire struct {
 // otherwise: nothing is kept, and nothing sent. body is the request's, as
 // Recent calls has it before the first 256 KB is cut from it.
 func archiving(r *http.Request, res *captureResponseWriter, start time.Time, body []byte) *wire {
-	if ArchiveBucket == nil || !settings.Load().RequestArchive {
-		return nil
-	}
-	to, ok := ArchiveBucket()
-	if !ok || to == nil {
-		return nil
-	}
-	b := make([]byte, 8)
-	rand.Read(b)
-	id := start.UTC().Format("150405") + "-" + hex.EncodeToString(b)
-	res.Header().Set(ArchiveHeader, id)
-	res.full = &spool{limit: archiveLimit()}
-	return &wire{name: start.UTC().Format("2006-01-02") + "/" + id, method: r.Method, path: r.URL.Path,
-		query: r.URL.RawQuery, req: r.Header.Clone(), body: body, res: res, to: to}
+	// tiny never captures or uploads full requests, including legacy consent.
+	return nil
 }
 
 // archiveName is where the archive keeps c, "<date>/<id>", or "" when it

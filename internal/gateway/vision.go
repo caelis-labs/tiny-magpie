@@ -104,17 +104,7 @@ func blindTo(pid, model string, in *bool) bool {
 // names it, the description's row in Routing and Settings › Models say it
 // is missing, and a request turned away for want of a describer says so.
 func seer() (string, bool) {
-	switch v := provider.HeldSettings().Vision; v {
-	case "off":
-		return "", false
-	case "":
-	default:
-		if pickedMissing(v) == "" {
-			return v, true
-		}
-	}
-	m := AutoVision()
-	return m, m != ""
+	return "", false
 }
 
 // VisionMissing is the model Settings › Models › Image recognition names

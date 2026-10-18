@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/yetone/magpie/internal/agent"
 )
 
 // helpHome points the home and every config, cache and data folder into
@@ -149,9 +147,6 @@ func types(ix *ast.IndexExpr) string {
 func TestHelpOnEveryCommandDoesNothing(t *testing.T) {
 	root := helpHome(t)
 	cmds := runCommands(t)
-	for _, a := range agent.All() {
-		cmds = append(cmds, a.ID)
-	}
 	before := tree(t, root)
 	for _, c := range cmds {
 		t.Run(c, func(t *testing.T) {
@@ -177,64 +172,3 @@ func TestHelpOnEveryCommandDoesNothing(t *testing.T) {
 // The reporter's case (#1457, blackrion): Snow on magpie's profile, then
 // `magpie snow --help` and its other forms. Each prints Snow's usage, a
 // flag no agent form takes is refused, and Snow's files stay as they were.
-func TestAgentHelpLeavesSnowWired(t *testing.T) {
-	groupsHome(t)
-	t.Setenv("SNOW_CONFIG_DIR", "")
-	dir := filepath.Join(os.Getenv("HOME"), ".snow")
-	os.MkdirAll(filepath.Join(dir, "profiles"), 0o755)
-	own := `{
-  "snowcfg": {
-    "baseUrl": "https://idealab.example.com/v1",
-    "apiKey": "team-key",
-    "requestMethod": "chat",
-    "advancedModel": "glm-5",
-    "basicModel": "glm-5"
-  }
-}`
-	for f, s := range map[string]string{
-		"profiles/default.json": own,
-		"config.json":           own,
-		"active-profile.json":   "{\n  \"activeProfile\": \"default\"\n}",
-	} {
-		if err := os.WriteFile(filepath.Join(dir, f), []byte(s), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := runOut(t, "snow", "a/m"); err != nil {
-		t.Fatal(err)
-	}
-	before := tree(t, dir)
-	if _, ok := before[filepath.Join("profiles", "magpie.json")]; !ok {
-		t.Fatalf("not wired: %v", before)
-	}
-	for _, args := range [][]string{
-		{"snow", "--help"}, {"snow", "-h"}, {"snow", "help"}, {"snow", "model", "--help"}, {"snow-cli", "--help"},
-	} {
-		out, err := runOut(t, args...)
-		if err != nil || !strings.Contains(out, "magpie snow <model>") {
-			t.Errorf("magpie %s: %v %q", strings.Join(args, " "), err, out)
-		}
-		if got := tree(t, dir); !reflect.DeepEqual(got, before) {
-			t.Fatalf("magpie %s changed Snow's files:\nbefore %v\nafter  %v", strings.Join(args, " "), before, got)
-		}
-	}
-	for _, args := range [][]string{
-		{"snow", "--verbose"}, {"snow", "model", "--x"}, {"snow", "-"}, {"snow", "effort", "--high"},
-	} {
-		_, err := runOut(t, args...)
-		if err == nil || !strings.Contains(err.Error(), "nothing was changed") {
-			t.Errorf("magpie %s: %v", strings.Join(args, " "), err)
-		}
-		if got := tree(t, dir); !reflect.DeepEqual(got, before) {
-			t.Fatalf("magpie %s changed Snow's files:\nbefore %v\nafter  %v", strings.Join(args, " "), before, got)
-		}
-	}
-	// a model no profile of the user's is on, typed without a flag, is
-	// refused by Snow itself the same way
-	if _, err := runOut(t, "snow", "nonsense"); err == nil {
-		t.Error("magpie snow nonsense taken")
-	}
-	if got := tree(t, dir); !reflect.DeepEqual(got, before) {
-		t.Fatalf("magpie snow nonsense changed Snow's files:\nbefore %v\nafter  %v", before, got)
-	}
-}

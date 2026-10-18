@@ -2,11 +2,10 @@ package gui
 
 import (
 	"fmt"
+	"github.com/godbus/dbus/v5"
 	"log"
 	"os"
 	"time"
-
-	"github.com/godbus/dbus/v5"
 )
 
 // sessionBus reports whether a D-Bus session bus is reachable; Wails'

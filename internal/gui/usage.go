@@ -1,20 +1,13 @@
 package gui
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/yetone/magpie/internal/agent"
-	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/usage"
@@ -109,29 +102,23 @@ func usageRoutes(mux *http.ServeMux, w Windows) {
 	})
 	// the heatmap (#1369): the last 53 weeks a day each, of the requests the
 	// page's filters keep, read from the same index as the page
-	mux.HandleFunc("GET /api/usage/heatmap", func(rw http.ResponseWriter, r *http.Request) {
-		writeJSON(rw, usage.HeatmapOf(ledgerFilter(r.URL.Query())))
-	})
+
 	// what was said in one request, read from the agent's session file when the
 	// row is opened, between two times (the call's own, or a gateway request's
 	// span): magpie keeps no copy
-	mux.HandleFunc("GET /api/usage/requests/content", func(rw http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		from, err1 := time.Parse(time.RFC3339Nano, q.Get("from"))
-		to, err2 := time.Parse(time.RFC3339Nano, q.Get("to"))
-		if err1 != nil || err2 != nil {
-			http.Error(rw, "from and to are times", http.StatusBadRequest)
-			return
-		}
-		// at: when the call should have ended (a gateway request's start and
-		// its time); none is the window's end
-		at, err := time.Parse(time.RFC3339Nano, q.Get("at"))
-		if err != nil {
-			at = to
-		}
-		writeJSON(rw, requestContent(q.Get("agent"), q.Get("session"), from, to, at))
-	})
+
 	// the same CSV to a browser (magpie web), which saves it itself
+
+	// the rows the ledger shows, all its pages, as a CSV in Downloads
+
+	// The subscriptions' quotas, the plans' bought with a key, and the
+	// keys' balances come from the
+	// vendors, which can be slow or unreachable, so the page asks for them
+	// apart from the local log.
+	// ?asked=1 is the user opening or refreshing the page: Claude Code's
+	// own /usage is run at once (provider.AskClaudeUsage).
+	// Only then are they read while the user has allowances read only
+	// when asked (#1518).
 	mux.HandleFunc("GET /api/usage/requests.csv", func(rw http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		p := periodOf(q.Get("period"))
@@ -142,41 +129,6 @@ func usageRoutes(mux *http.ServeMux, w Windows) {
 		rw.Header().Set("Content-Disposition", `attachment; filename="`+csvStamp(p, q.Get("day"), now)+`.csv"`)
 		usage.WriteCSV(rw, rows)
 	})
-	// the rows the ledger shows, all its pages, as a CSV in Downloads
-	mux.HandleFunc("POST /api/usage/requests/export", func(rw http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		p := periodOf(q.Get("period"))
-		now := usage.Clock()
-		rows := usage.LedgerOfAt(p, ledgerFilter(q), now).Rows
-		var b bytes.Buffer
-		if err := usage.WriteCSV(&b, rows); err != nil {
-			fail(rw, err)
-			return
-		}
-		dir := downloads()
-		stamp := csvStamp(p, q.Get("day"), now)
-		name := filepath.Join(dir, stamp+".csv")
-		for i := 2; ; i++ { // never over an earlier one
-			if _, err := os.Stat(name); err != nil {
-				break
-			}
-			name = filepath.Join(dir, fmt.Sprintf("%s-%d.csv", stamp, i))
-		}
-		if err := edit.WriteAtomic(name, b.Bytes()); err != nil {
-			fail(rw, err)
-			return
-		}
-		_ = w.OpenFolder(dir) // saved either way; the path is in the answer
-		writeJSON(rw, map[string]any{"path": tilde(name), "rows": len(rows)})
-	})
-	// The subscriptions' quotas, the plans' bought with a key, and the
-	// keys' balances come from the
-	// vendors, which can be slow or unreachable, so the page asks for them
-	// apart from the local log.
-	// ?asked=1 is the user opening or refreshing the page: Claude Code's
-	// own /usage is run at once (provider.AskClaudeUsage).
-	// Only then are they read while the user has allowances read only
-	// when asked (#1518).
 	mux.HandleFunc("GET /api/usage/quotas", func(rw http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.URL.Query().Get("asked") != "" {
@@ -216,60 +168,15 @@ func usageRoutes(mux *http.ServeMux, w Windows) {
 	// WorkBuddy's daily check-in pressed now, from the Usage card, for
 	// each account not in yet today, as `magpie accounts checkin` does; the
 	// card is read again after
-	mux.HandleFunc("POST /api/usage/workbuddy-checkin", func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
-		rs := provider.CheckInWorkBuddy(ctx)
-		if rs == nil {
-			rs = []provider.WorkBuddyCheckin{}
-		}
-		writeJSON(rw, rs)
-	})
+
 	// and Trae CN's, for each Trae CN account (#694)
-	mux.HandleFunc("POST /api/usage/trae-checkin", func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
-		rs := provider.CheckInTrae(ctx)
-		if rs == nil {
-			rs = []provider.WorkBuddyCheckin{}
-		}
-		writeJSON(rw, rs)
-	})
+
 	// and MiniMax Code's, for each MiniMax Code (China) account (#811)
-	mux.HandleFunc("POST /api/usage/minimax-checkin", func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
-		rs := provider.CheckInMiniMax(ctx)
-		if rs == nil {
-			rs = []provider.WorkBuddyCheckin{}
-		}
-		writeJSON(rw, rs)
-	})
+
 	// and Qoder's daily credits, for each Qoder and Qoder CN account
-	mux.HandleFunc("POST /api/usage/qoder-checkin", func(rw http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
-		rs := provider.CheckInQoder(ctx)
-		if rs == nil {
-			rs = []provider.WorkBuddyCheckin{}
-		}
-		writeJSON(rw, rs)
-	})
+
 	// and a plugin's own, for each account of the provider it names
-	mux.HandleFunc("POST /api/usage/plugin-checkin", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Provider string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Provider == "" {
-			fail(rw, errors.New("no provider"))
-			return
-		}
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
-		rs := provider.CheckInPlugins(ctx, in.Provider)
-		if rs == nil {
-			rs = []provider.WorkBuddyCheckin{}
-		}
-		writeJSON(rw, rs)
-	})
+
 	// what was left of each window over time, for the quota cards' curves
 	// (#651); ?days= back
 	mux.HandleFunc("GET /api/usage/quotas/history", func(rw http.ResponseWriter, r *http.Request) {
@@ -296,31 +203,5 @@ func usageRoutes(mux *http.ServeMux, w Windows) {
 	})
 	// spends one of a Codex account's rate-limit resets, which the page
 	// has asked the user about first; what it did comes back
-	mux.HandleFunc("POST /api/usage/codex-reset", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ User string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		defer cancel()
-		out, err := provider.UseCodexReset(ctx, in.User)
-		if err != nil {
-			fail(rw, err)
-			return
-		}
-		if out.Code == "reset" {
-			// routing and the Providers page know the windows started
-			// again by the time the page hears so, not at a later
-			// request's reading (#1491)
-			who := in.User
-			if who == "" {
-				who, _ = provider.CodexSignedIn()
-			}
-			wait, done := context.WithTimeout(ctx, 10*time.Second)
-			provider.AwaitAllowance(wait, "codex", who)
-			done()
-		}
-		writeJSON(rw, out)
-	})
+
 }

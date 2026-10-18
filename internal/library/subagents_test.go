@@ -1,12 +1,11 @@
 package library
 
 import (
+	"github.com/pelletier/go-toml/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/pelletier/go-toml/v2"
 )
 
 // subagentAgents puts every agent that takes subagents in the sandbox.

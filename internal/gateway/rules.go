@@ -269,56 +269,8 @@ func ruleFor(key string, g provider.Group, ms []provider.Member, req *Request, a
 	// turn the agent asked to reason in. Reasoning turned off ("none",
 	// which Effort reads as low) is not asked to reason: the pick would
 	// never be sent (withEffort leaves "none" as it is), only shown (#2247)
-	intents := provider.Intents(g.Rules, q)
-	effort := g.Effort == provider.EffortAuto && hit.Effort != "" && !req.ThinkOff
-	if len(intents) > 0 || effort {
-		c := &Classified{By: g.Classifier, Intents: intents}
-		if had && slices.Contains(intents, tr.intent) {
-			c.After = tr.intent // a message that only carries on is of its kind
-		}
-		prev := before{Intent: c.After}
-		if had && effort {
-			prev.Effort = tr.effort // and needs the reasoning it had
-			c.AfterEffort = tr.effort
-		}
-		text := userText(req)
-		// what was said before it, for a follow-up that says little of
-		// its own (@HirotaNagai on X): from the same parsed, masked request
-		prev.User, prev.Reply = turnBefore(req)
-		switch {
-		case g.Classifier == "":
-			c.Error = "the group has no classifier"
-		case ask == nil:
-			c.Error = "nothing to ask the classifier with: this is a classifier's own call"
-		case text == "":
-			c.Error = "the message has no words to classify"
-		default:
-			t0 := time.Now()
-			v, cached, err := classify(ask, g.Classifier, intents, prev, effort, text)
-			c.Intent, c.Cached, c.Ms = v.Intent, cached, int(time.Since(t0).Milliseconds())
-			if effort {
-				c.Effort, c.Score = v.Effort, v.Score
-			}
-			if len(intents) > 0 {
-				c.Sure = v.Sure
-			}
-			if err != nil {
-				c.Error = err.Error()
-				if c.After != "" {
-					// timed out, failed or resting: the intent the turn
-					// before had, still one of this turn's, is a better
-					// guess than none, which sends the turn to the
-					// group's first member whatever it is (#1826)
-					c.Intent, c.Fallback = c.After, "previous"
-				}
-			}
-		}
-		q.Intent = c.Intent
-		hit.Classified, hit.Pick = c, c.Effort
-		if effort && had && keepsEffort(tr, c.Effort, size, now) {
-			hit.Pick, hit.Wanted = tr.effort, c.Effort
-		}
-	}
+	// tiny-magpie evaluates deterministic rules only; no model is asked to route a turn.
+
 	if i := provider.MatchRule(g.Rules, q); i >= 0 {
 		hit.N, hit.Use, hit.When = i+1, g.Rules[i].Use, g.Rules[i].Conditions()
 	}

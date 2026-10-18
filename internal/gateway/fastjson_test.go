@@ -2,13 +2,13 @@ package gateway
 
 import (
 	"encoding/json"
-	"math/rand/v2"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/yetone/magpie/internal/provider"
+	"math/rand/v2"
 )
 
 // The types a request body is decoded into, in the shapes they take.

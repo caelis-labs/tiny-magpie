@@ -2,12 +2,12 @@ package backup
 
 import (
 	"bytes"
-	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/yetone/magpie/internal/library"
+	"math/rand/v2"
 )
 
 // Crispin on Discord: a skill's PowerPoint template didn't come with a
