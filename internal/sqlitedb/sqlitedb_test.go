@@ -3,15 +3,18 @@ package sqlitedb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -33,6 +36,16 @@ func TestSQLiteSurvivesMalformedEnv(t *testing.T) {
 	child.Env = append([]string{"hains/MacSec/libesafenet.dylib"}, os.Environ()...)
 	child.Env = append(child.Env, childDB+"="+db)
 	out, err := child.CombinedOutput()
+	if runtime.GOOS == "windows" {
+		// CreateProcess rejects the malformed block before SQLite can
+		// see it. Check that boundary, then open with the cleaned block.
+		if !errors.Is(err, syscall.Errno(87)) { // ERROR_INVALID_PARAMETER
+			t.Fatalf("Windows accepted a malformed environment or failed differently: %v\n%s", err, out)
+		}
+		clean := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestOpenInChild$", "-test.count=1", "-test.v")
+		clean.Env = wellFormed(child.Env)
+		out, err = clean.CombinedOutput()
+	}
 	if err != nil || strings.Contains(string(out), "TODOTODO") || !strings.Contains(string(out), "opened 1") {
 		t.Fatalf("a magpie started with an entry with no \"=\" couldn't open SQLite: %v\n%s", err, out)
 	}
@@ -45,8 +58,8 @@ func TestOpenInChild(t *testing.T) {
 	if path == "" {
 		t.Skip("run by TestSQLiteSurvivesMalformedEnv")
 	}
-	if !slices.Contains(os.Environ(), "hains/MacSec/libesafenet.dylib") {
-		t.Fatal("the child wasn't handed the entry with no \"=\"")
+	if malformed := slices.Contains(os.Environ(), "hains/MacSec/libesafenet.dylib"); malformed != (runtime.GOOS != "windows") {
+		t.Fatalf("malformed entry present: %v, platform: %s", malformed, runtime.GOOS)
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {

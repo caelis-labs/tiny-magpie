@@ -40,6 +40,13 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - name: Pin Go caches before test homes change
+        shell: bash
+        run: |
+          for tiny_cache_name in GOPATH GOMODCACHE GOCACHE; do
+            tiny_cache_path=$(go env "$tiny_cache_name")
+            printf '%s=%s\n' "$tiny_cache_name" "$tiny_cache_path" >> "$GITHUB_ENV"
+          done
       - name: Linux GUI dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
@@ -48,11 +55,22 @@ jobs:
       - name: Go vet
         shell: bash
         run: go vet -tags nogui ./...
+      - name: Windows fixture regressions
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          tiny_test_status=0
+          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata)$' ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
+          exit "$tiny_test_status"
       - name: Go suite
         shell: bash
         run: |
           tiny_test_status=0
-          go test -json -tags nogui -timeout 20m ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
+          tiny_test_timeout=20m
+          # File-heavy helper suites are still progressing after 20m on
+          # Windows. Keep the complete suite and allow platform headroom.
+          if [ "$RUNNER_OS" = Windows ]; then tiny_test_timeout=45m; fi
+          go test -json -count=1 -tags nogui -timeout "$tiny_test_timeout" ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
           exit "$tiny_test_status"
       - uses: actions/upload-artifact@v4
         if: always()

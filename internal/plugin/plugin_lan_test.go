@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"bufio"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -40,7 +41,8 @@ func lanAddr(t *testing.T) net.IP {
 
 // askedProxy is an HTTP proxy that keeps the target of every request it
 // is asked: an absolute-form one (http://) is answered "proxy <target>",
-// a CONNECT (https://, HTTP/2) is turned away with 502.
+// a CONNECT is turned away with 502, except a plain HTTP tunnel to the
+// fixture's vendor, for proxy agents that tunnel HTTP too.
 func askedProxy(t *testing.T) (string, func() []string) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -74,8 +76,18 @@ func askedProxy(t *testing.T) (string, func() []string) {
 				asked = append(asked, f[1])
 				mu.Unlock()
 				if f[0] == "CONNECT" {
-					fmt.Fprint(c, "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
-					return
+					if f[1] != "203.0.113.5:9" {
+						fmt.Fprint(c, "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+						return
+					}
+					fmt.Fprint(c, "HTTP/1.1 200 Connection Established\r\n\r\n")
+					r, err := http.ReadRequest(bufio.NewReader(c))
+					if err != nil {
+						return
+					}
+					io.Copy(io.Discard, r.Body)
+					r.Body.Close()
+					f[1] = "http://" + f[1] + r.URL.RequestURI()
 				}
 				body := "proxy " + f[1]
 				fmt.Fprintf(c, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", len(body), body)

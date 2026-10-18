@@ -26,6 +26,15 @@ The complete local baseline had three sandbox-dependent failures: `TestCallbackG
 
 The initial local Go run used Bun 1.3.6, so tests requiring upstream's minimum Bun 1.4.2 were skipped. Release CI pins 1.4.2 and runs those host tests, including mixed-Provider tools and standalone tool/page rejection. An older-Bun local pass alone is not plugin-host acceptance.
 
+CI pins Go's compiler/module cache paths before test homes change and runs
+`go test -count=1`: every gate executes the tests instead of replaying or saving
+test-result caches. Windows has a 45-minute package budget for its file-heavy
+helper suites; other platforms use 20 minutes. Focused Windows fixture checks
+run before the complete suite. Mock keychains explicitly disable Codex's
+Windows encrypted-store default, while encrypted-store rejection remains
+tested. Desktop/shortcut fixtures use native paths, and the proxy fixture
+answers both absolute-form HTTP and a plain-HTTP CONNECT tunnel.
+
 ## Scope of removed tests
 
 Tests exclusively accepting removed Agent management, cloud sync/archive, media/System One, intent classification, automatic image description, search execution and session pages leave the product suite with those features. Mixed tests retain their model/counting/routing/usage portions. Fixture config/cache/portable and OS identity expectations use tiny's independent paths. Negative tests replace the old acceptance where an imported setting or plugin could resurrect a removed operation. Removing an obsolete positive test is not evidence of runtime removal; the assembly guard and reachable API tests provide that evidence.
