@@ -227,10 +227,12 @@ and `TestHistoricalWindowHoldsUsesEachWindowsOwnReading`.
 - A usage cap is kept per account (`AccountCaps`, 1–99) and, beside it, per window (`AccountWindowCaps`, by the account and the window's `capId`, its name in lower case: `WindowCapID`). A window's own share wins over the account's; 100 is no cap on that window. `CapsOf` gives both (`WindowCaps`), `CapHeld` and `capReached` judge each window by its own, and `SetWindowCap` (GUI `provider/windowcap`, `magpie provider account-cap <id> <account> --window <name>`) sets one. A config without window caps reads as before.
 - A window whose reset time has passed has started again, whatever share it was read at (`resetPassed`). That holds for a reading kept from before (`AsOf`) and for a fresh one: Claude Code's `/usage` gives a reset to the minute and can lag it, so a run just after a reset can still say 100% with that reset. `claudeWindows` hands such a window back empty on every path, and `usedPast`, `usedUp`, `BackAt` and `capReached` leave it out when they judge an account spent, for Codex, Claude Code and `magpie quota wait` alike. A card can still show a kept reading as it was read (`reported`, for a Claude card while `/usage` is unavailable); that changes what it shows, never which account is used. A reset `/usage` gives as a time alone ("resets 3pm") can be read as its next one, a day on (`claudeResetTime`), and is then not seen as passed here.
 
-`filememo.Forget` after a write and `filememo.Look` after taking a file lock
-invalidate remembered absence as well as parsed data. Otherwise a newly created
-`logins.json` can still be treated as previously missing and skip the existing
-Windows replacement retry. Keep the short probe for never-created files. If
+`filememo.Look` after taking a file lock invalidates remembered absence for
+that path as well as parsed data. `Forget` after a write retains the missing-file
+fast path for unrelated files: it still calls `os.Stat` and finds a newly created
+file, without adding a replacement wait to every never-created path.
+`TestUnrelatedWriteKeepsMissingProbeFast` covers this bound. Keep the short probe
+for never-created files. If
 `logins.json` previously held accounts at this same configuration path, a missing
 read instead uses `steady.ReadThere` and its existing half-second
 sharing-violation budget: native replacements exhausted 15ms and 50ms windows.

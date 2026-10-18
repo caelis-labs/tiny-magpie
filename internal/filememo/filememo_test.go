@@ -5,11 +5,41 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
-// A newly written file must not keep the old "not there" fast path:
-// Windows may momentarily hide it while another process replaces it.
+// A write elsewhere must not make every previously absent file wait out a
+// replacement. The fast path still stats the file and finds real creations.
+func TestUnrelatedWriteKeepsMissingProbeFast(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "absent")
+	parse := func(b []byte) (string, error) { return string(b), nil }
+	if _, err := Read("unrelated", p, parse); !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	before := statAfterChange
+	defer func() { statAfterChange = before }()
+	statAfterChange = func(path string) (os.FileInfo, error) {
+		time.Sleep(time.Second) // an unnecessarily repeated replacement wait
+		return os.Stat(path)
+	}
+	if err := os.WriteFile(p+"-other", []byte("changed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	synctest.Test(t, func(t *testing.T) {
+		Forget()
+		started := time.Now()
+		if _, err := Read("unrelated", p, parse); !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		if elapsed := time.Since(started); elapsed >= 100*time.Millisecond {
+			t.Fatalf("unrelated write delayed an absent file by %v", elapsed)
+		}
+	})
+}
+
+// Completed writes are found by a fresh stat even on the missing-file fast
+// path. Taking a file lock revalidates that path through replacement retries.
 func TestChangedFileAfterMissing(t *testing.T) {
 	for _, change := range []string{"write", "locked read"} {
 		t.Run(change, func(t *testing.T) {
@@ -24,16 +54,19 @@ func TestChangedFileAfterMissing(t *testing.T) {
 			}
 			before := statAfterChange
 			t.Cleanup(func() { statAfterChange = before })
-			statAfterChange = func(path string) (os.FileInfo, error) {
-				// The file becomes visible during the normal retry path.
-				if err := os.Rename(staged, path); err != nil {
-					return nil, err
-				}
-				return before(path)
-			}
 			if change == "write" {
+				if err := os.Rename(staged, p); err != nil {
+					t.Fatal(err)
+				}
 				Forget()
 			} else {
+				statAfterChange = func(path string) (os.FileInfo, error) {
+					// A locked read waits for the file to become visible.
+					if err := os.Rename(staged, path); err != nil {
+						return nil, err
+					}
+					return before(path)
+				}
 				Look(p)
 			}
 			if got, err := Read("changed", p, parse); err != nil || got != "accounts" {

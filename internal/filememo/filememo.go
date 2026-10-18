@@ -73,7 +73,6 @@ func Hold() (release func()) {
 func Forget() {
 	mu.Lock()
 	gen++
-	clear(gone)
 	mu.Unlock()
 }
 
