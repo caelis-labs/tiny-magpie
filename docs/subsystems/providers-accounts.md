@@ -230,13 +230,17 @@ and `TestHistoricalWindowHoldsUsesEachWindowsOwnReading`.
 `filememo.Forget` after a write and `filememo.Look` after taking a file lock
 invalidate remembered absence as well as parsed data. Otherwise a newly created
 `logins.json` can still be treated as previously missing and skip the existing
-Windows replacement retry. Missing-file reads use the same bounded half-second
-retry budget as sharing violations: native concurrent replacements exhausted
-both 15ms and 50ms windows. A real deletion is still reported after that bound;
-accounts are not restored from memory when the file is genuinely gone.
-`TestChangedFileAfterMissing` covers both invalidation paths and real deletion;
-`TestStatWaitsOutAReplace` covers replacement beyond the old probe count, and
-`TestLoginsKeptWhileAnotherMagpieWrites` exercises native replacements.
+Windows replacement retry. Keep the short probe for never-created files. If
+`logins.json` previously held accounts at this same configuration path, a missing
+read instead uses `steady.ReadThere` and its existing half-second
+sharing-violation budget: native replacements exhausted 15ms and 50ms windows.
+Real deletion still clears the accounts after this bounded wait. Last-good
+accounts belong to their path, so a different unreadable profile cannot acquire
+them. `TestChangedFileAfterMissing` covers invalidation;
+`TestMissingProbeStaysShort`, `TestStatWaitsOutAReplace`,
+`TestDeletedKnownLoginsStayDeleted`, `TestLoginsFallbackStaysInItsProfile` and
+`TestLoginsKeptWhileAnotherMagpieWrites` cover the probe, bounded recovery,
+deletion, path isolation and native replacements.
 
 ## Verification
 

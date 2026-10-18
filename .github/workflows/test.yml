@@ -67,7 +67,7 @@ jobs:
         shell: bash
         run: |
           tiny_test_status=0
-          go test -json -count=20 -tags nogui -timeout 10m ./internal/provider ./internal/plugin -run '^(TestLoginsKeptWhileAnotherMagpieWrites|TestPluginLeavesTheUserNetworkDirect)$' 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
+          go test -json -count=20 -tags nogui -timeout 10m ./internal/provider ./internal/plugin ./internal/steady -run '^(TestLoginsKeptWhileAnotherMagpieWrites|TestPluginLeavesTheUserNetworkDirect|TestLoginsFallbackStaysInItsProfile|TestDeletedKnownLoginsStayDeleted|TestMissingProbeStaysShort)$' 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
           exit "$tiny_test_status"
       - name: Go suite
         shell: bash

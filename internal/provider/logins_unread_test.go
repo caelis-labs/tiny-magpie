@@ -12,6 +12,44 @@ import (
 	"time"
 )
 
+// A last-good account list belongs to its configuration path. An unreadable
+// file in a different profile must not acquire the previous profile's logins.
+func TestLoginsFallbackStaysInItsProfile(t *testing.T) {
+	azureHome(t)
+	if err := writeLogins([]savedLogin{{Agent: "antigravity", User: "a@x.com", Auth: json.RawMessage(`{"refresh_token":"fake"}`)}}); err != nil {
+		t.Fatal(err)
+	}
+	if ls := readLogins(); len(ls) != 1 {
+		t.Fatalf("first profile: %v", ls)
+	}
+	azureHome(t)
+	p := loginsPath()
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("broken credentials"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if ls := readLogins(); len(ls) != 0 {
+		t.Fatalf("another profile's credentials returned: %v", ls)
+	}
+}
+
+func TestDeletedKnownLoginsStayDeleted(t *testing.T) {
+	azureHome(t)
+	if err := writeLogins([]savedLogin{{Agent: "antigravity", User: "a@x.com", Auth: json.RawMessage(`{"refresh_token":"fake"}`)}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(loginsPath()); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if ls := readLogins(); len(ls) != 0 {
+			t.Fatalf("deleted credentials returned: %v", ls)
+		}
+	}
+}
+
 // A read or backup that fails must stop a new sign-in from replacing the
 // original credentials, even when no accounts have been read before.
 func TestUnreadLoginsWriteErrorsKeepCredentials(t *testing.T) {
