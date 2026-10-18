@@ -208,6 +208,9 @@ func readLogins() []savedLogin {
 	case err == nil:
 		lastLogins, loginsKnown = ls, true
 	case errors.Is(err, fs.ErrNotExist):
+		if loginsKnown && len(lastLogins) > 0 {
+			log.Printf("logins.json: the account file is no longer available: %v", err)
+		}
 		lastLogins, loginsKnown = nil, true
 	case loginsKnown:
 		log.Printf("logins.json: %v; the accounts read before are kept", err)
