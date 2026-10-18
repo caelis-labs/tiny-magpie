@@ -1,5 +1,7 @@
 # Plugin tools
 
+> tiny-magpie: the public plugin-tools MCP server, advertised tool metadata and standalone tool/page/Agent extensions are removed. `TestMixedProviderToolsStayPrivate` checks that mixed packages retain their Provider facet without advertising tools, and `TestTinyRejectsPureToolExtension` checks standalone rejection. The original architecture below is upstream reference; [Tiny's scope](../tiny-scope.md) takes precedence.
+
 A community plugin (an OpenCode plugin, an npm package in the plugin host) can give tools: OpenCode's `tool` hook, `{tool: {name: tool({description, args, execute})}}`. In OpenCode only OpenCode's own model can call them. magpie offers them to every agent instead, as an MCP server of its own at `/mcp/magpie/tools` (Streamable HTTP), which any agent that takes an MCP server can be given. It is the gateway's tool point (P4 of [Plugin runtime](plugin-runtime.md)) opened to community plugins. The built-in plugin `tools` serves it. The provider plugins in the same host are [Provider and plugin ownership](provider-plugins.md); the gateway middleware is [Gateway middleware](gateway-middleware.md).
 
 ## Responsibilities and sources of truth

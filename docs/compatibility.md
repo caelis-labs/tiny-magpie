@@ -24,6 +24,8 @@ The differential fixture returns text. Its second corpus exercises client instru
 
 The complete local baseline had three sandbox-dependent failures: `TestCallbackGoesPastTheAgentsProxy`, `TestClaudeToolCallbackOnANonLoopbackAddress`, and `TestLANModelListNotThroughProxy`. All three passed with local-network access and the same isolated fixtures. Run fixture tests with local listening/network access; do not use live credentials to bypass a test environment failure.
 
+The initial local Go run used Bun 1.3.6, so tests requiring upstream's minimum Bun 1.4.2 were skipped. Release CI pins 1.4.2 and runs those host tests, including mixed-Provider tools and standalone tool/page rejection. An older-Bun local pass alone is not plugin-host acceptance.
+
 ## Scope of removed tests
 
 Tests exclusively accepting removed Agent management, cloud sync/archive, media/System One, intent classification, automatic image description, search execution and session pages leave the product suite with those features. Mixed tests retain their model/counting/routing/usage portions. Fixture config/cache/portable and OS identity expectations use tiny's independent paths. Negative tests replace the old acceptance where an imported setting or plugin could resurrect a removed operation. Removing an obsolete positive test is not evidence of runtime removal; the assembly guard and reachable API tests provide that evidence.
