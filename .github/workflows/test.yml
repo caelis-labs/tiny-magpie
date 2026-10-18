@@ -38,11 +38,32 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
       - name: Scope
         run: python3 scripts/check-scope.py
-      - name: Headless checks
+      - name: Go vet
+        shell: bash
+        run: go vet -tags nogui ./...
+      - name: Go suite
         shell: bash
         run: |
-          go vet -tags nogui ./...
-          go test -tags nogui -timeout 20m ./...
+          mkdir -p output
+          tiny_test_status=0
+          go test -tags nogui -timeout 20m ./... > output/go-test.log 2>&1 || tiny_test_status=$?
+          python3 -X utf8 - <<'PY'
+          from pathlib import Path
+          for line in Path('output/go-test.log').read_text(encoding='utf-8', errors='replace').splitlines():
+              print(line[:2000] + (' [long line; see complete log artifact]' if len(line) > 2000 else ''))
+          PY
+          exit "$tiny_test_status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-test-${{ matrix.os }}
+          path: output/go-test.log
+      - name: Linux legacy Tiny data migration
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          go test -c -tags nogui -o "$RUNNER_TEMP/tiny-magpie-legacy.test" ./internal/gui
+          "$RUNNER_TEMP/tiny-magpie-legacy.test" -test.run '^TestKeepWebData$' -test.count=1 -test.v
       - name: Native build
         shell: bash
         run: |
