@@ -15,7 +15,7 @@ def run(*args):
 
 
 def main():
-    base = json.loads((ROOT / 'UPSTREAM.json').read_text())['base']
+    base = json.loads((ROOT / 'UPSTREAM.json').read_text(encoding='utf-8'))['base']
     head = run('git', 'rev-parse', 'upstream/main')
     subprocess.run(['git', 'merge-base', '--is-ancestor', base, head], cwd=ROOT, check=True)
     interval = f'{base}..{head}'

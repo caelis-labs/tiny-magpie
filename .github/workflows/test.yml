@@ -1,7 +1,7 @@
 name: Test tiny-magpie
 on:
   push:
-    branches: [main, 'tiny/**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:

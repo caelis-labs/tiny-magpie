@@ -50,13 +50,13 @@ def package(version, platform):
     cli = ROOT / f'dist/tiny-magpie-cli-{platform}{ext}'
     desktop = ROOT / ('tiny-magpie.app/Contents/MacOS/tiny-magpie' if os == 'darwin' else f'dist/tiny-magpie-{platform}{ext}')
     metadata = {'version': version, 'source': sha, 'platform': platform,
-                'upstream': json.loads((ROOT / 'UPSTREAM.json').read_text()),
+                'upstream': json.loads((ROOT / 'UPSTREAM.json').read_text(encoding='utf-8')),
                 'signing': 'Developer ID + notarization' if os == 'darwin' else 'unsigned',
                 'binaries': {'desktop': binary(desktop, sha, version), 'cli': binary(cli, sha, version)},
                 'archives': {}}
     OUT.mkdir(parents=True, exist_ok=True)
     if os == 'darwin':
-        evidence = json.loads((OUT / f'NOTARIZATION-{platform}.json').read_text())
+        evidence = json.loads((OUT / f'NOTARIZATION-{platform}.json').read_text(encoding='utf-8'))
         if evidence.get('status') != 'Accepted':
             raise SystemExit('Missing accepted notarization')
     for kind in ('desktop', 'cli'):
@@ -89,7 +89,7 @@ def finalize(version):
     expected = set()
     for platform in PLATFORMS:
         name = f'BUILD-{platform}.json'
-        metadata = json.loads((OUT / name).read_text())
+        metadata = json.loads((OUT / name).read_text(encoding='utf-8'))
         if (metadata['version'], metadata['source'], metadata['platform']) != (version, sha, platform):
             raise SystemExit(f'Wrong build source: {name}')
         expected.add(name)
@@ -102,7 +102,7 @@ def finalize(version):
             expected.add(archive)
         if os == 'darwin':
             name = f'NOTARIZATION-{platform}.json'
-            evidence = json.loads((OUT / name).read_text())
+            evidence = json.loads((OUT / name).read_text(encoding='utf-8'))
             if evidence.get('status') != 'Accepted' or not evidence.get('submission_id'):
                 raise SystemExit(f'Notarization missing: {name}')
             expected.add(name)
