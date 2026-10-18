@@ -1,49 +1,145 @@
-name: Package tiny-magpie
+name: Release tiny-magpie
 on:
+  push:
+    tags: ['tiny-v*']
   workflow_dispatch:
     inputs:
-      version:
-        description: Artifact version (no publishing or upstream release dispatch)
+      tag:
+        description: Existing tiny-vX.Y.Z tag on main (experimental release)
         required: true
-        default: 0.1.0-dev
+        type: string
 permissions:
   contents: read
+concurrency:
+  group: tiny-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 jobs:
+  source:
+    if: github.repository == 'caelis-labs/tiny-magpie'
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      version: ${{ steps.source.outputs.version }}
+      tag: ${{ steps.source.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: source
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^tiny-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#tiny-v}" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+  checks:
+    needs: source
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ needs.source.outputs.sha }}
+  containers:
+    needs: source
+    uses: ./.github/workflows/docker.yml
+    with:
+      ref: ${{ needs.source.outputs.sha }}
   package:
+    needs: [source, checks, containers]
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-15
+            platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-amd64
+          - os: ubuntu-24.04
+            platform: linux-amd64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+          - os: windows-latest
+            platform: windows
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      GOWORK: off
+      VERSION: ${{ needs.source.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Linux WebView dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-      - name: Package
+      - name: Build native desktop and CLI
         shell: bash
-        env:
-          GOWORK: off
-          VERSION: ${{ inputs.version }}
         run: |
-          [[ "$VERSION" =~ ^[0-9][0-9A-Za-z.+-]*$ ]]
-          mkdir -p dist
+          set -euo pipefail
           case "$RUNNER_OS" in
-            macOS) make app VERSION="$VERSION"; ditto -c -k --sequesterRsrc --keepParent tiny-magpie.app dist/tiny-magpie-macos.zip ;;
-            Windows) make release-windows VERSION="$VERSION" ;;
-            Linux) make release-linux VERSION="$VERSION" ;;
+            macOS) make app VERSION="$VERSION"; targets="darwin/$(go env GOARCH)" ;;
+            Windows) make release-windows VERSION="$VERSION"; targets='windows/amd64 windows/arm64' ;;
+            Linux) make release-linux VERSION="$VERSION"; targets="linux/$(go env GOARCH)" ;;
           esac
-          make release-cli VERSION="$VERSION" TARGETS='darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64'
-          cp UPSTREAM.json dist/
-          python3 - <<'PY'
-          import hashlib, pathlib
-          out=pathlib.Path('dist')
-          (out/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name!='SHA256SUMS'))
-          PY
+          make release-cli VERSION="$VERSION" TARGETS="$targets"
+      - name: Developer ID signing, notarization and Gatekeeper
+        if: runner.os == 'macOS'
+        env:
+          APPLE_DEVELOPER_ID_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_P12_BASE64 }}
+          APPLE_DEVELOPER_ID_P12_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_P12_PASSWORD }}
+          APPLE_NOTARY_APPLE_ID: ${{ secrets.APPLE_NOTARY_APPLE_ID }}
+          APPLE_NOTARY_PASSWORD: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: bash scripts/sign-notarize-macos.sh '${{ matrix.platform }}'
+      - name: Package with license and source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = Windows ]; then
+            for arch in amd64 arm64; do
+              python scripts/release-artifacts.py package --version "$VERSION" --platform "windows-$arch"
+            done
+          else
+            python3 scripts/release-artifacts.py package --version "$VERSION" --platform '${{ matrix.platform }}'
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: tiny-magpie-${{ runner.os }}
-          path: dist/
+          name: release-${{ matrix.platform }}
+          path: output/release/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'macOS'
+        with:
+          name: notary-receipt-${{ matrix.platform }}
+          path: output/notary/
+  publish:
+    needs: [source, package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: output/release
+          merge-multiple: true
+      - name: Verify inventory and publish experimental release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.source.outputs.tag }}
+          VERSION: ${{ needs.source.outputs.version }}
+        run: |
+          python3 scripts/release-artifacts.py finalize --version "$VERSION"
+          python3 scripts/publish-release.py "$RELEASE_TAG"

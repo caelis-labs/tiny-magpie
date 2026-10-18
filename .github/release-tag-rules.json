@@ -1,0 +1,8 @@
+{
+  "name": "Immutable tiny release tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["refs/tags/tiny-v*"], "exclude": []}},
+  "rules": [{"type": "deletion"}, {"type": "update"}],
+  "bypass_actors": []
+}

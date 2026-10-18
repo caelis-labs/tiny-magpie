@@ -4,6 +4,8 @@ A smaller Magpie: a multi-provider model gateway with its original protocol adap
 
 Tiny keeps upstream model routing and removes Agent management, content libraries, session browsing, sync, intent routing and extra media/search/MCP services. See [the scope](docs/tiny-scope.md) and [upstream maintenance](UPSTREAM.md). It is an experimental fork; validation and remaining acceptance work are recorded in [compatibility](docs/compatibility.md).
 
+Download desktop or CLI packages from [Releases](https://github.com/caelis-labs/tiny-magpie/releases). macOS packages are Developer ID signed and notarized; Windows/Linux packages are unsigned. Both amd64 and arm64 are provided. Verify `SHA256SUMS` before use. See [release and platform details](docs/releasing.md).
+
 ## Build and run
 
 Use the Go version in `go.mod`. From this checkout:

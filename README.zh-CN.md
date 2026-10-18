@@ -6,4 +6,6 @@
 
 当前为实验性版本。构建使用 `GOWORK=off make cli`，随后运行 `./tiny-magpie serve` 或 `./tiny-magpie web --no-open`。macOS 可用 `make app`；Windows/Linux 沿用原生构建流程。
 
+桌面与 CLI 下载见 [Releases](https://github.com/caelis-labs/tiny-magpie/releases)，三平台均提供 amd64/arm64。macOS 使用组织 Developer ID 签名并经 Apple 公证，Windows/Linux 为 unsigned。使用前校验 `SHA256SUMS`。发布与平台要求见 [发布说明](docs/releasing.md)。
+
 完整范围见 [裁剪契约](docs/tiny-scope.md)，上游同步流程见 [UPSTREAM.md](UPSTREAM.md)，验证结果和未完成验收见 [兼容证据](docs/compatibility.md)。主 [README](README.md) 提供命令及测试方法。

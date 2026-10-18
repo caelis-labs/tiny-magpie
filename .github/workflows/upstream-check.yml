@@ -5,6 +5,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
+concurrency:
+  group: tiny-upstream-inventory
+  cancel-in-progress: false
 jobs:
   inventory:
     runs-on: ubuntu-latest
@@ -14,15 +18,14 @@ jobs:
           fetch-depth: 0
       - name: Compare integrated base with upstream main
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git remote add upstream https://github.com/yetone/magpie.git
-          git fetch upstream main
-          base=$(python3 -c 'import json;print(json.load(open("UPSTREAM.json"))["base"])')
-          mkdir -p output
-          git log --oneline "$base..upstream/main" > output/upstream-commits.txt
-          git diff --stat "$base..upstream/main" > output/upstream-files.txt
-          cat output/upstream-commits.txt >> "$GITHUB_STEP_SUMMARY"
+          git fetch --no-tags upstream main:refs/remotes/upstream/main
           python3 scripts/check-scope.py
+          python3 scripts/upstream-inventory.py
       - uses: actions/upload-artifact@v4
         with:
           name: upstream-inventory
