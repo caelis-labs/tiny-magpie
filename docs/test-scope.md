@@ -20,6 +20,12 @@ the original measurements and the reduction.
   browser tests leave the tree too. Shared GUI sandbox fixtures are kept
   unchanged in `internal/gui/sandbox_test.go`.
 
+Session management/delete/restore/relocation, search and Markdown-export positive
+tests are removed as well; mixed files keep their parsing/accounting tests and
+shared fixtures. Upstream application self-update download, feed, installer,
+relaunch and release-note tests leave the suite. Version comparison and
+executable/CLI identity helpers used by plugins, Bun and Tiny startup remain.
+
 ## Retained guarantees
 
 Gateway, all Provider families, subscription/plugin migrations and host,
@@ -64,3 +70,12 @@ on the actual tagged commit. No new CI proof-reuse service is introduced.
 
 Native Windows/Linux GUI, clean-machine installation and real-account
 acceptance remain distinct [stable-release gates](compatibility.md#before-a-stable-release).
+
+## Reduction measurement
+
+Compared with released 0.1.1, Go test source changes from 2,121 files,
+339,744 lines and 6,450 `Test*` functions to 1,654 files, 254,915 lines and
+4,934 functions (including `TestMain`). 558 obsolete test files are deleted:
+468 Go files and 90 browser cases. Shared fixture code is preserved. These
+are source-size measurements, not a coverage percentage or a live-vendor
+compatibility claim.
