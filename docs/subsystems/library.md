@@ -1,5 +1,7 @@
 # Library: instructions, MCP servers, skills, hooks, subagents and RTK
 
+> Tiny test coverage follows [the retained test scope](../test-scope.md); verification commands below describe the upstream product.
+
 > tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
 
 The library keeps what every agent should know in one place: the

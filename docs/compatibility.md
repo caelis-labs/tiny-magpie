@@ -26,20 +26,24 @@ The complete local baseline had three sandbox-dependent failures: `TestCallbackG
 
 The initial local Go run used Bun 1.3.6, so tests requiring upstream's minimum Bun 1.4.2 were skipped. Release CI pins 1.4.2 and runs those host tests, including mixed-Provider tools and standalone tool/page rejection. An older-Bun local pass alone is not plugin-host acceptance.
 
-CI pins Go's compiler/module cache paths before test homes change and runs
-`go test -count=1`: every gate executes the tests instead of replaying or saving
-test-result caches. Windows has a 45-minute package budget for its file-heavy
-helper suites; other platforms use 20 minutes. Focused Windows fixture checks
-run before the complete suite. Mock keychains explicitly disable Codex's
-Windows encrypted-store default, while encrypted-store rejection remains
-tested. Desktop/shortcut fixtures use native paths, and the proxy fixture
-answers both absolute-form HTTP and a plain-HTTP CONNECT tunnel.
+CI pins compiler/module cache paths before test homes change and executes
+uncached tests. The [test scope and CI matrix](test-scope.md) describe the
+retained suites, removed positive tests, native Windows regression gate and
+weekly full Windows run. PR, main and tag no longer repeat the same full
+matrix three times. Native CI evidence belongs to its exact commit/tree;
+the table above records the original local acceptance, not a current CI count.
 
 ## Scope of removed tests
 
-Tests exclusively accepting removed Agent management, cloud sync/archive, media/System One, intent classification, automatic image description, search execution and session pages leave the product suite with those features. Mixed tests retain their model/counting/routing/usage portions. Fixture config/cache/portable and OS identity expectations use tiny's independent paths. Negative tests replace the old acceptance where an imported setting or plugin could resurrect a removed operation. Removing an obsolete positive test is not evidence of runtime removal; the assembly guard and reachable API tests provide that evidence.
+Removed-product positive suites are physically deleted. Shared credential,
+accounting, session data and storage helpers retain their coverage. Tiny
+negative tests and assembly guards verify removed operations stay unreachable;
+a deleted positive test alone does not prove runtime removal. See
+[test-scope.md](test-scope.md) for the explicit boundary and CI execution.
 
-Coupled accounting and credential helpers retain upstream tests even where their former product UI is absent. The source tree still contains shared Agent/session/library types and helpers; this release does not claim their entire packages or the Wails, SQLite or Bun dependencies have disappeared. The CLI `sync` refreshes model catalogs; it is not cloud backup/sync.
+The tree still contains coupled Agent/session/library helpers and Wails,
+SQLite and Bun dependencies. CLI `sync` refreshes model catalogs; it is not
+cloud backup/sync.
 
 ## Before a stable release
 
