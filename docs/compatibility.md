@@ -106,6 +106,16 @@ profile was intentionally edited or used for acceptance. No real vendor account
 or current third-party release was exercised; native Windows/Linux GUI and
 installer acceptance remain outstanding.
 
+The first release review exposed a Dev-only menu-bar hosting failure in that
+exec launcher (macOS MenuBarAgent rejected its scene). A standard native bundle
+entry displayed the icon and was confirmed by the maintainer. The final local
+Dev uses a native Go entry with task-local isolation applied before CLI startup;
+the overlay and fixed test paths are not release source. Formal packages already
+use the native Go entry. No production tray implementation or system permission
+was changed. Final browser checks cover 70 cases, including available allowance
+cards and the corrected subscription-card/tray-value bounds. Container smoke now
+requires retained System One validation/auth instead of the obsolete 404.
+
 The [macOS permission investigation](macos-permissions.md) verifies client tool
 handoff and removed management endpoints with fixtures; it does not reproduce
 the original TCC dialog. Tiny's own administrator update prompt now names Tiny.

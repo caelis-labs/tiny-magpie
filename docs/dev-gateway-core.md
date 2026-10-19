@@ -6,7 +6,7 @@
 ## 打开与隔离
 
 本工作区的 `.tiny/core-dev/tiny-magpie Dev.app` 是临时的 ad-hoc 签名版本，
-不是正式分发包。其专用启动器在进入应用前设置固定环境；从 Finder 打开同样
+不是正式分发包。其本地构建的原生入口在进入 CLI 前设置固定环境；从 Finder 打开同样
 使用 `.tiny/core-dev/profile/`，不读取已安装 Tiny/Magpie 的账号或 Agent 配置。
 订阅账号读取通过 `MAGPIE_NO_ACCOUNTS=1` 硬禁用，自动更新关闭；该验收包不会因误点开关而读取系统钥匙串。
 
