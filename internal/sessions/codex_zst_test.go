@@ -189,36 +189,3 @@ func TestCodexPackedCalls(t *testing.T) {
 		t.Fatalf("source calls %d", len(cs))
 	}
 }
-
-// Deleting a session found in both forms moves both to the trash, so the
-// packed one doesn't come back in its place; a restore puts both back.
-func TestCodexPackedDelete(t *testing.T) {
-	_, codex := manageSetup(t)
-	files := rollouts(t, codex)
-	for _, p := range files {
-		z := pack(t, p, true)
-		old := time.Now().Add(-24 * time.Hour)
-		os.Chtimes(z, old, old)
-	}
-	if n := len(ListAgent("codex")); n != 1 {
-		t.Fatalf("%d sessions", n)
-	}
-	tr, err := Delete("codex", mgCX)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tr.Items) != 2*len(files) {
-		t.Fatalf("moved %+v, want both forms of each", tr.Items)
-	}
-	if n := len(ListAgent("codex")); n != 0 {
-		t.Fatalf("%d sessions left", n)
-	}
-	if _, err := Restore(tr.Key); err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range files {
-		if _, err := os.Stat(p + ".zst"); err != nil {
-			t.Fatal(err)
-		}
-	}
-}

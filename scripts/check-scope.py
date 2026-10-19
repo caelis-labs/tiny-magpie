@@ -18,4 +18,17 @@ for path in ('POST /v1/systemone','POST /v1/images/generations','POST /v1/videos
 for workflow in (root/'.github/workflows').glob('*'):
     assert 'yetone/magpie-releases' not in workflow.read_text(encoding='utf-8'),f'upstream release target in {workflow}'
 assert 'go install ' not in (root/'Makefile').read_text(encoding='utf-8'), 'upstream-named installer resurrected'
+for package in ('backup', 'davsync', 'library', 'profile', 'awake', 'imagemcp', 'otlp', 'tune'):
+    assert not list((root/'internal'/package).glob('*_test.go')), f'removed product tests resurrected: {package}'
+assert {p.name for p in (root/'internal/agent').glob('*_test.go')} <= {'main_test.go', 'agentenv_test.go'}, 'Agent management tests resurrected'
+assert {p.name for p in (root/'internal/update').glob('*_test.go')} <= {'main_test.go', 'cli_path_test.go', 'cli_path_first_test.go', 'cli_shim_test.go', 'relink_test.go', 'replaced_test.go', 'aside_test.go', 'update_test.go'}, 'upstream app updater tests resurrected'
+session_tests = re.findall(r'^func (Test\w+)\(', '\n'.join(p.read_text(encoding='utf-8') for p in (root/'internal/sessions').glob('*_test.go')), re.M)
+for name in session_tests:
+    assert not name.startswith(('TestDeleteRestore', 'TestDeleteActive', 'TestDeleteOnlyKnown', 'TestPurge', 'TestMarkdown', 'TestClaudeRelocation', 'TestSearchSession', 'TestSearchOpenCode', 'TestSearchCursor', 'TestWindowsSession', 'TestDshDelete', 'TestGatewayDelete', 'TestGatewayPurge', 'TestGatewayRestore')), f'removed session management test resurrected: {name}'
+for path in (root/'internal/gui').glob('*_test.go'):
+    if path.name == 'sessions_stats_cap_test.go':
+        continue  # shared usage statistics cache, not the removed session page
+    assert not path.name.startswith(('agent_model', 'archive', 'backup', 'davsync_', 'library_', 'sessions_')), f'removed GUI test resurrected: {path.name}'
+for path in (root/'internal/gui/tests').glob('*.test.cjs'):
+    assert not path.name.startswith(('agents-', 'agent-connect', 'agent-disconnect', 'agent-model', 'library', 'sessions', 'session-', 'backup', 'archive', 'sync-', 'intent', 'systemone', 'warmup', 'searcher-')), f'removed page test resurrected: {path.name}'
 print('PASS: tiny assembly/lifecycle scope')

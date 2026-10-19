@@ -1,8 +1,8 @@
 name: Test tiny-magpie
 on:
-  push:
-    branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 3 * * 1'
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -21,6 +21,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ github.event_name == 'schedule' && 60 || 20 }}
     env:
       GOWORK: off
     steps:
@@ -60,22 +61,32 @@ jobs:
         shell: bash
         run: |
           tiny_test_status=0
-          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata)$' ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
+          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestTiny.*|TestWindows.*|TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestLoadConcurrentWithSavesAndEdits|TestSaveConcurrent.*|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata|TestCachePartialUpdateMatrix|TestClaudeAsRootEnv|TestStatWaitsOutAReplace|TestMissingProbeStaysShort)$' ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage ./internal/settings ./internal/steady ./internal/gateway ./internal/gui 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-fixtures.log || tiny_test_status=$?
           exit "$tiny_test_status"
       - name: Windows state and proxy stress
         if: runner.os == 'Windows'
         shell: bash
         run: |
           tiny_test_status=0
-          go test -json -count=20 -tags nogui -timeout 10m ./internal/provider ./internal/plugin ./internal/steady -run '^(TestLoginsKeptWhileAnotherMagpieWrites|TestPluginLeavesTheUserNetworkDirect|TestLoginsFallbackStaysInItsProfile|TestDeletedKnownLoginsStayDeleted|TestMissingProbeStaysShort)$' 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
+          tiny_stress_count=5
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then tiny_stress_count=20; fi
+          go test -json -count="$tiny_stress_count" -tags nogui -timeout 10m ./internal/provider ./internal/plugin ./internal/steady -run '^(TestLoginsKeptWhileAnotherMagpieWrites|TestPluginLeavesTheUserNetworkDirect|TestLoginsFallbackStaysInItsProfile|TestDeletedKnownLoginsStayDeleted|TestMissingProbeStaysShort)$' 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-stress.log || tiny_test_status=$?
+          exit "$tiny_test_status"
+      - name: Compile every Windows test
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          tiny_test_status=0
+          go test -json -count=1 -tags nogui -run '^$' ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-compile.log || tiny_test_status=$?
           exit "$tiny_test_status"
       - name: Go suite
+        if: runner.os != 'Windows' || github.event_name == 'schedule'
         shell: bash
         run: |
           tiny_test_status=0
           tiny_test_timeout=20m
-          # File-heavy helper suites are still progressing after 20m on
-          # Windows. Keep the complete suite and allow platform headroom.
+          # Native Windows paths/state run on every PR above; its full
+          # retained suite runs weekly, outside the PR/release critical path.
           if [ "$RUNNER_OS" = Windows ]; then tiny_test_timeout=45m; fi
           go test -json -count=1 -tags nogui -timeout "$tiny_test_timeout" ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
           exit "$tiny_test_status"
@@ -83,7 +94,9 @@ jobs:
         if: always()
         with:
           name: go-test-${{ matrix.os }}
-          path: output/go-test.*
+          path: |
+            output/go-test.*
+            output/windows-*
       - name: Linux legacy Tiny data migration
         if: runner.os == 'Linux'
         shell: bash

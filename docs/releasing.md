@@ -15,3 +15,25 @@ Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags.
 Main protection requires a PR, current successful checks, resolved review conversations, and applies to administrators. Force pushes and branch deletion are disabled. Approvals follow the organization's single-maintainer setup (no mandatory second reviewer). Merge commits remain available for complete upstream intervals. Release-tag rules prevent moving or deleting `tiny-v*` tags.
 
 The first releases remain experimental until the remaining [stable acceptance](compatibility.md#before-a-stable-release) is complete. There is no Tiny automatic application updater or registry/container publication in this workflow.
+
+PR validation runs once per reviewed branch; release tags run the [retained matrix](test-scope.md#ci-execution) again on the actual source. Main pushes do not repeat it. Routine Windows validation compiles every test and executes the native regression gate; the complete Windows corpus runs weekly.
+
+## Current artifact formats
+
+The 0.1.1 Preview covers the same six desktop OS/architecture pairs as
+upstream, but its artifact formats are not identical:
+
+| Product | Tiny 0.1.1 | Upstream v0.1.1290 |
+| --- | --- | --- |
+| macOS amd64/arm64 desktop | ZIP containing signed, notarized `.app` | DMG and ZIP |
+| Windows amd64/arm64 desktop | ZIP containing unsigned `.exe` | standalone `.exe` |
+| Linux amd64/arm64 desktop | tar.gz containing unsigned executable | standalone executable |
+| CLI, the same six pairs | tar.gz or ZIP with license/provenance | standalone executable |
+| Android arm64 CLI | outside Tiny's current desktop matrix | standalone executable |
+
+The first Tiny workflow used uniform archive packaging and omitted DMG
+creation; this is not a signing/notarization limitation. A macOS ZIP contains
+an actual application bundle: extract it and move `tiny-magpie.app` to
+Applications. CI/test-only changes do not repack or replace an existing
+release. See [the upstream release](https://github.com/yetone/magpie/releases/tag/v0.1.1290)
+for the compared assets. Stable installer acceptance remains a separate gate.
