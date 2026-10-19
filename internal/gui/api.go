@@ -737,6 +737,7 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", devPage(revalidated(http.FileServer(http.FS(staticFS())))))
 	devRoutes(mux)
+	updateRoutes(mux, w)
 
 	// boot.js hands the page the saved language and theme before it paints:
 	// they came only with the settings, so the tabs showed English first
@@ -887,6 +888,9 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		if _, sent := fields["refusalRetries"]; !sent {
 			in.RefusalRetries = cur.RefusalRetries
 		}
+		if _, sent := fields["updateChannel"]; !sent {
+			in.UpdateChannel = cur.UpdateChannel
+		}
 		// nor whether updates download by themselves (#2296)
 		if _, sent := fields["noAutoDownload"]; !sent {
 			in.NoAutoDownload = cur.NoAutoDownload
@@ -1030,6 +1034,14 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		// before this answers: the page stops asking on the old error
 		if strings.TrimSpace(in.Proxy) != strings.TrimSpace(cur.Proxy) && updates.json().State == "error" && updates.begin() {
 			go updates.run()
+		}
+		if in.UpdateChannel != cur.UpdateChannel || (cur.NoAutoUpdate && !in.NoAutoUpdate) {
+			updates.mu.Lock()
+			updates.asked = time.Time{} // next clock tick picks the new preference
+			updates.mu.Unlock()
+			if updates.begin() {
+				go updates.run()
+			}
 		}
 		writeJSON(rw, settingsState())
 	})

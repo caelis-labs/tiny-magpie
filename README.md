@@ -6,6 +6,8 @@ Tiny keeps upstream model routing and removes Agent management, content librarie
 
 Download from [Releases](https://github.com/caelis-labs/tiny-magpie/releases): macOS Apple Silicon DMG, Windows `.exe` and Linux executables (amd64/arm64). Standalone headless CLI binaries cover those same five platform pairs. macOS artifacts are Developer ID signed and notarized; Windows/Linux are unsigned. Intel macOS and Android downloads are outside this fork's release matrix. Verify `SHA256SUMS` before use. See [installation and platform details](docs/releasing.md).
 
+The macOS image shows the app → Applications drag target. Launch the installed copy from Applications. The desktop app checks **Tiny's own releases** every six hours; Settings → General offers preview/stable channels. Download and restart require your confirmation. Version 0.1.2 needs one manual upgrade to gain this updater. See the [graded feature review](docs/feature-review-2026-10-19.md) before the next pruning pass.
+
 ## Build and run
 
 Use the Go version in `go.mod`. From this checkout:

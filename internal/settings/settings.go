@@ -266,8 +266,10 @@ type Settings struct {
 	// so downloading one (#472): only Settings' Check, or magpie update,
 	// asks then. UpdateEvery is how often it asks otherwise, in minutes:
 	// one of UpdateEveries, 0 for every six hours.
-	NoAutoUpdate bool `json:"noAutoUpdate,omitempty"`
-	UpdateEvery  int  `json:"updateEvery,omitempty"`
+	// UpdateChannel is Tiny's own release channel: preview (default) or stable.
+	UpdateChannel string `json:"updateChannel,omitempty"`
+	NoAutoUpdate  bool   `json:"noAutoUpdate,omitempty"`
+	UpdateEvery   int    `json:"updateEvery,omitempty"`
 	// NoAutoDownload has a check, by the clock or Settings' Check, only
 	// say a newer version is out (with its notes and size) rather than
 	// download it (#2296): a metered network or a proxy billed by traffic
@@ -1216,6 +1218,9 @@ func save(s Settings, recording bool) error {
 	}
 	if !slices.Contains(TrayEvery, s.TrayUsageEvery) {
 		return fmt.Errorf("the menu bar's usage is refreshed every %v minutes, not %d", TrayEvery, s.TrayUsageEvery)
+	}
+	if s.UpdateChannel != "" && s.UpdateChannel != "preview" && s.UpdateChannel != "stable" {
+		return fmt.Errorf("unknown tiny-magpie update channel: %q", s.UpdateChannel)
 	}
 	if !slices.Contains(UpdateEveries, s.UpdateEvery) {
 		return fmt.Errorf("magpie checks for updates every %v minutes, not %d", UpdateEveries, s.UpdateEvery)

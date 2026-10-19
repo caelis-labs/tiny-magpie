@@ -7,8 +7,8 @@
   "RT_MANIFEST": {
     "#1": {
       "0409": {
-        "identity": { "name": "ai.usemagpie.magpie", "version": "" },
-        "description": "magpie",
+        "identity": { "name": "dev.caelis.tiny-magpie", "version": "" },
+        "description": "tiny-magpie",
         "minimum-os": "win10",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -34,7 +34,7 @@
           "0409": {
             "CompanyName": "caelis-labs",
             "FileDescription": "tiny-magpie",
-            "LegalCopyright": "© 2026 yetone · MIT",
+            "LegalCopyright": "© 2026 yetone, caelis-labs · MIT",
             "OriginalFilename": "tiny-magpie.exe",
             "ProductName": "tiny-magpie"
           }

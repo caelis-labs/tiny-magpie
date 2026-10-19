@@ -64,6 +64,7 @@ app: build
 	@echo "  tiny-magpie.app"
 
 icons:
+	@for s in 16 32 48 64 128 256; do go run build/icon/gen.go app $$s build/windows/icon-$$s.png; done
 	@go run build/icon/gen.go tray internal/gui/tray.png
 	@go run build/icon/gen.go tray-flap internal/gui/trayflap
 	@go run build/icon/gen.go app 64 internal/gui/icon.png

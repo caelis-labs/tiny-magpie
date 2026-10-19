@@ -23,7 +23,9 @@ the original measurements and the reduction.
 Session management/delete/restore/relocation, search and Markdown-export positive
 tests are removed as well; mixed files keep their parsing/accounting tests and
 shared fixtures. Upstream application self-update download, feed, installer,
-relaunch and release-note tests leave the suite. Version comparison and
+relaunch and release-note tests leave the suite. Tiny now adds its own small
+fixture suite for its GitHub source/channel, trusted DMG staging, automatic
+check lifecycle and user-confirmed UI; it does not restore upstream-feed tests. Version comparison and
 executable/CLI identity helpers used by plugins, Bun and Tiny startup remain.
 
 ## Retained guarantees
@@ -47,7 +49,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 64 upstream differential comparisons, 22 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 64 upstream differential comparisons, 42 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |

@@ -195,9 +195,9 @@ body:not(.window.linux) #winclose { display: none; }
 .logo svg { display: block; overflow: visible; }
 .logo .parts, .logo.wag .whole { display: none; }
 .logo.wag .parts { display: inline; }
-.logo .tail { transform-box: view-box; transform-origin: 14px 22px; }
-.logo .wing { transform-box: view-box; transform-origin: 30px 19.8px; }
-.logo .bird { transform-box: view-box; transform-origin: 26px 38px; }
+.logo .tail { transform-box: view-box; transform-origin: 16px 28px; }
+.logo .wing { transform-box: view-box; transform-origin: 28px 21px; }
+.logo .bird { transform-box: view-box; transform-origin: 24px 35px; }
 .logo.wag .tail { animation: tail-flick .9s cubic-bezier(.3, 0, .3, 1); }
 .logo.wag .wing { animation: wing-flap .9s cubic-bezier(.3, 0, .3, 1); }
 .logo.wag .bird { animation: bird-bob .9s cubic-bezier(.3, 0, .3, 1); }

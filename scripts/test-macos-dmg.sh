@@ -3,6 +3,7 @@
 set -euo pipefail
 dmg=${1:?usage: test-macos-dmg.sh FILE.dmg [--notarized]}
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$script_dir/dmg-tools.sh"
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/tiny-dmg-check.XXXXXXXX")
 mounted=0
 cleanup() {
@@ -16,10 +17,10 @@ hdiutil attach -readonly -nobrowse -mountpoint "$work/mount" "$dmg"
 mounted=1
 test "$(readlink "$work/mount/Applications")" = /Applications
 for file in LICENSE UPSTREAM.json README.md; do
-  cmp "$file" "$work/mount/$file"
+  cmp "$file" "$work/mount/.documentation/$file"
 done
-cmp tiny-magpie.app/Contents/MacOS/tiny-magpie "$work/mount/tiny-magpie.app/Contents/MacOS/tiny-magpie"
-cmp tiny-magpie.app/Contents/Info.plist "$work/mount/tiny-magpie.app/Contents/Info.plist"
+"$tiny_dmg_env/bin/python" "$script_dir/verify-dmg-layout.py" "$work/mount"
+diff -rq tiny-magpie.app "$work/mount/tiny-magpie.app"
 if [ "${2:-}" = --notarized ]; then
   codesign --verify --deep --strict --verbose=2 "$work/mount/tiny-magpie.app"
   python3 "$script_dir/notarization-stapler.py" validate "$work/mount/tiny-magpie.app"

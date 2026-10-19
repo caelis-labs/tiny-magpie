@@ -2,7 +2,7 @@
   "name": "tiny-magpie-checks",
   "private": true,
   "scripts": {
-    "test:ui": "node --test --test-concurrency=2 internal/gui/tests/tiny-gateway.test.cjs"
+    "test:ui": "node --test --test-concurrency=2 internal/gui/tests/tiny-gateway.test.cjs internal/gui/tests/tiny-update.test.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"

@@ -21,7 +21,7 @@ assert 'go install ' not in (root/'Makefile').read_text(encoding='utf-8'), 'upst
 for package in ('backup', 'davsync', 'library', 'profile', 'awake', 'imagemcp', 'otlp', 'tune'):
     assert not list((root/'internal'/package).glob('*_test.go')), f'removed product tests resurrected: {package}'
 assert {p.name for p in (root/'internal/agent').glob('*_test.go')} <= {'main_test.go', 'agentenv_test.go'}, 'Agent management tests resurrected'
-assert {p.name for p in (root/'internal/update').glob('*_test.go')} <= {'main_test.go', 'cli_path_test.go', 'cli_path_first_test.go', 'cli_shim_test.go', 'relink_test.go', 'replaced_test.go', 'aside_test.go', 'update_test.go'}, 'upstream app updater tests resurrected'
+assert {p.name for p in (root/'internal/update').glob('*_test.go')} <= {'main_test.go', 'cli_path_test.go', 'cli_path_first_test.go', 'cli_shim_test.go', 'relink_test.go', 'replaced_test.go', 'aside_test.go', 'update_test.go', 'tiny_update_test.go'}, 'upstream app updater tests resurrected'
 session_tests = re.findall(r'^func (Test\w+)\(', '\n'.join(p.read_text(encoding='utf-8') for p in (root/'internal/sessions').glob('*_test.go')), re.M)
 for name in session_tests:
     assert not name.startswith(('TestDeleteRestore', 'TestDeleteActive', 'TestDeleteOnlyKnown', 'TestPurge', 'TestMarkdown', 'TestClaudeRelocation', 'TestSearchSession', 'TestSearchOpenCode', 'TestSearchCursor', 'TestWindowsSession', 'TestDshDelete', 'TestGatewayDelete', 'TestGatewayPurge', 'TestGatewayRestore')), f'removed session management test resurrected: {name}'
