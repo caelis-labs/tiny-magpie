@@ -14,6 +14,8 @@ Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags.
 
 Main protection requires a PR, current successful checks, resolved review conversations, and applies to administrators. Force pushes and branch deletion are disabled. Approvals follow the organization's single-maintainer setup (no mandatory second reviewer). Merge commits remain available for complete upstream intervals. Release-tag rules prevent moving or deleting `tiny-v*` tags.
 
+The publisher resolves existing drafts with `gh release view` and reads them through their release ID. GitHub's REST tag endpoint returns published releases only; a draft's 404 there must not cause another draft to be created. `scripts/test-publish-release.py` exercises that contract, unknown creation/upload outcomes, published retries and mismatched assets.
+
 The first releases remain experimental until the remaining [stable acceptance](compatibility.md#before-a-stable-release) is complete. There is no Tiny automatic application updater or registry/container publication in this workflow.
 
 PR validation runs once per reviewed branch; release tags run the [retained matrix](test-scope.md#ci-execution) again on the actual source. Main pushes do not repeat it. Routine Windows validation compiles every test and executes the native regression gate; the complete Windows corpus runs weekly.

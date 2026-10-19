@@ -38,14 +38,18 @@ def main(tag):
     expected['SHA256SUMS'] = digest(OUT / 'SHA256SUMS')
     if set(expected) != {p.name for p in OUT.iterdir()}:
         raise SystemExit('Release files differ from checksum manifest')
-    endpoint = f'repos/{REPO}/releases/tags/{tag}'
-    result = subprocess.run(['gh', 'api', endpoint], capture_output=True, text=True)
+    # The REST tag endpoint excludes drafts. The CLI resolves either state;
+    # use its stable ID for every subsequent REST read.
+    lookup = ('release', 'view', tag, '-R', REPO, '--json', 'databaseId')
+    result = subprocess.run(['gh', *lookup], capture_output=True, text=True)
     if result.returncode:
-        if 'HTTP 404' not in result.stderr:
+        if 'HTTP 404' not in result.stderr and result.stderr.strip() != 'release not found':
             raise SystemExit(result.stderr)
         gh('release', 'create', tag, '-R', REPO, '--verify-tag', '--target', sha,
            '--draft', '--prerelease', '--title', f'tiny-magpie {version} (Preview)',
            '--notes-file', str(ROOT / f'docs/releases/{version}.md'))
+    release_id = json.loads(gh(*lookup))['databaseId']
+    endpoint = f'repos/{REPO}/releases/{release_id}'
     release = json.loads(gh('api', endpoint))
     if release['target_commitish'] != sha or release['tag_name'] != tag:
         raise SystemExit('Existing release targets different source')
