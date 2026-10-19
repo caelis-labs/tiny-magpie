@@ -120,6 +120,8 @@ jobs:
           (cd .tiny/upstream && go build -tags nogui -o ../magpie-upstream .)
           go build -tags nogui -o .tiny/tiny-magpie .
           python3 scripts/verify-gateway.py --baseline .tiny/magpie-upstream --tiny .tiny/tiny-magpie
+      - name: Release draft and immutable asset recovery
+        run: python3 scripts/test-publish-release.py
       - run: npm ci
       - run: npx playwright install chromium webkit
       - run: npm run test:ui
