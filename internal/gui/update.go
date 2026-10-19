@@ -314,8 +314,14 @@ func (u *updater) run() {
 		lang = notesLang(trayLang(s.Lang, systemLang))
 	}
 	rel, err := update.LatestInChannel(ctx, lang, channel)
+	currentChannel := tinyUpdateChannel(settings.Load())
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	if currentChannel != channel {
+		u.state = ""
+		go u.check() // the explicit channel choice is rechecked even with the clock off
+		return
+	}
 	// a version downloaded on a click stays the one restarted into while
 	// downloads wait for a click: a newer one out since isn't fetched
 	if u.staged != "" && u.latest != nil && (err != nil || !update.Newer(rel.Version, u.latest.Version) || hold) {
@@ -379,7 +385,16 @@ func (u *updater) run() {
 	} else {
 		staged, err = update.StageBinary(ctx, rel)
 	}
+	currentChannel = tinyUpdateChannel(settings.Load())
+	if currentChannel != channel && staged != "" {
+		os.RemoveAll(staged)
+	}
 	u.mu.Lock()
+	if currentChannel != channel {
+		u.state, u.staged = "", ""
+		go u.check()
+		return
+	}
 	if err != nil {
 		log.Println("update:", err)
 		u.state, u.err, u.retry, u.mirror = "error", err.Error(), true, update.MirrorOf(err)

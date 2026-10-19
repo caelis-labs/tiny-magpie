@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -159,4 +160,61 @@ func TestTinyDefaultChannelSaveRespectsChecksOff(t *testing.T) {
 		}
 		t.Fatalf("ordinary save started an update check while disabled: %s", state)
 	}
+}
+
+func TestTinyChannelChangeDuringCheckRechecksWithClockOff(t *testing.T) {
+	old := Version
+	Version = "1.0.0"
+	t.Cleanup(func() { Version = old })
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	s := settings.Load()
+	s.NoAutoUpdate = true
+	s.UpdateChannel = "preview"
+	if err := settings.Save(s); err != nil {
+		t.Fatal(err)
+	}
+	started, release, second := make(chan struct{}), make(chan struct{}), make(chan struct{}, 1)
+	var count atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if count.Add(1) == 1 {
+			close(started)
+			<-release
+		} else {
+			select {
+			case second <- struct{}{}:
+			default:
+			}
+		}
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"tag_name": "tiny-v2.0.0", "html_url": update.ReleasePage("2.0.0"), "prerelease": true},
+			{"tag_name": "tiny-v1.1.0", "html_url": update.ReleasePage("1.1.0")},
+		})
+	}))
+	defer srv.Close()
+	t.Setenv("TINY_MAGPIE_UPDATE_FEED", srv.URL)
+	u := &updater{exe: "fixture-no-download"}
+	done := make(chan struct{})
+	go func() { u.check(); close(done) }()
+	<-started
+	s.UpdateChannel = "stable"
+	if err := settings.Save(s); err != nil {
+		close(release)
+		t.Fatal(err)
+	}
+	close(release)
+	<-done
+	select {
+	case <-second:
+	case <-time.After(5 * time.Second):
+		t.Fatal("channel change never rechecked with the clock off")
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		j := u.json()
+		if j.State == "found" && j.Latest == "1.1.0" {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("wrong channel after in-flight check: %+v", u.json())
 }
