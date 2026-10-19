@@ -106,9 +106,19 @@ jobs:
       - name: Native build
         shell: bash
         run: |
-          tags=production
-          if [ "$RUNNER_OS" = Linux ]; then tags=production,gtk3; fi
-          go build -tags "$tags" -o tiny-magpie-native .
+          set -euo pipefail
+          case "$RUNNER_OS" in
+            macOS) make app VERSION=0.0.0 ;;
+            Windows) make release-windows VERSION=0.0.0 WINARCHES="$(go env GOARCH)" ;;
+            Linux) make release-linux VERSION=0.0.0 ;;
+          esac
+          platform="$(go env GOOS)-$(go env GOARCH)"
+          make release-cli VERSION=0.0.0 TARGETS="$(go env GOOS)/$(go env GOARCH)"
+          python3 scripts/release-artifacts.py verify-native --version 0.0.0 --platform "$platform"
+          if [ "$RUNNER_OS" = macOS ]; then
+            bash scripts/create-macos-dmg.sh "$RUNNER_TEMP/tiny-test.dmg"
+            bash scripts/test-macos-dmg.sh "$RUNNER_TEMP/tiny-test.dmg"
+          fi
   protocols-and-ui:
     runs-on: macos-latest
     env:
@@ -135,6 +145,8 @@ jobs:
           python3 scripts/verify-gateway.py --baseline .tiny/magpie-upstream --tiny .tiny/tiny-magpie
       - name: Release draft and immutable asset recovery
         run: python3 scripts/test-publish-release.py
+      - name: Native release inventory and provenance
+        run: python3 scripts/test-release-artifacts.py
       - run: npm ci
       - run: npx playwright install chromium webkit
       - run: npm run test:ui
