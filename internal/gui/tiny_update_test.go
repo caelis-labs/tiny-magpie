@@ -119,6 +119,9 @@ func TestTinyChannelChangeRejectsStagedPreview(t *testing.T) {
 func TestTinyDefaultChannelSaveRespectsChecksOff(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode([]any{}) }))
+	defer srv.Close()
+	t.Setenv("TINY_MAGPIE_UPDATE_FEED", srv.URL)
 	s := settings.Load()
 	s.NoAutoUpdate = true
 	s.UpdateChannel = ""
@@ -143,6 +146,17 @@ func TestTinyDefaultChannelSaveRespectsChecksOff(t *testing.T) {
 	state := updates.state
 	updates.mu.Unlock()
 	if state != "" {
+		// A broken implementation starts a check. Keep its failure entirely
+		// on the fixture and let it finish before restoring the environment.
+		for range 100 {
+			updates.mu.Lock()
+			busy := updates.state == "checking" || updates.state == "downloading"
+			updates.mu.Unlock()
+			if !busy {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 		t.Fatalf("ordinary save started an update check while disabled: %s", state)
 	}
 }
