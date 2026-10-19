@@ -162,7 +162,10 @@ function fixture(lang, theme, events, options = {}) {
       return json({ keys, secret });
     }
     if (url.pathname === "/api/copy") { events.push({ action: "clipboard", body: req.postDataJSON() }); return json({}); }
-    if (url.pathname === "/api/usage") return json({ ...sum(rows), ...options.usageTiming, ...groups(), agents: [], models: [], series: [], bucket: "day", path: "~/.config/magpie/usage.jsonl" });
+    if (url.pathname === "/api/usage") {
+      if (options.usageDelay) await new Promise(resolve => setTimeout(resolve, options.usageDelay));
+      return json({ ...sum(rows), ...options.usageTiming, ...groups(), agents: [], models: [], series: [], bucket: "day", path: "~/.config/magpie/usage.jsonl" });
+    }
     if (url.pathname === "/api/usage/requests") { events.push({ action: "ledger", query: url.search }); return json(ledger(url.searchParams)); }
     if (url.pathname === "/api/usage/requests/export") { events.push({ action: "export", query: url.search }); return json({ path: "~/Downloads/keys.csv", rows: ledger(url.searchParams).total }); }
     if (url.pathname === "/api/usage/quotas") return json([]);

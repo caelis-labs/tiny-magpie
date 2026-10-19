@@ -15,7 +15,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       page.setDefaultTimeout(8000);
       const errors = [], mutations = [];
       page.on('pageerror', err => errors.push(err.message));
-      await page.route('**/*', fixture(lang, 'dark', mutations, {web:false,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}}));
+      await page.route('**/*', fixture(lang, 'dark', mutations, {web:false,usageDelay:100,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}}));
       await page.goto('http://magpie.test/');
       await page.locator('#view-providers').waitFor({state:'visible'});
       await page.waitForFunction(() => document.querySelector('#providers')?.textContent.includes('Relay'));
@@ -36,7 +36,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       }
       assert.equal(await page.locator('#usageTab').textContent().then(s => /Sessions|Context|会话|上下文/.test(s)), false);
       await page.locator('#nav [data-view="usage"]').click();
-      await page.locator('#stats .kpi').first().waitFor({state:'visible'});
+      await page.locator('#stats .kpi b').filter({hasText:'592'}).waitFor({state:'visible'});
       assert.equal(await page.locator('#stats .kpi').count(), 6, 'overview retains tokens, cache, reasoning, calls, speed and first-token timing');
       assert.ok(await page.locator('#stats .kpi b').evaluateAll(xs => xs.every(e => e.scrollWidth <= e.clientWidth + 1)), 'summary values and timing units must not be clipped');
       assert.equal(await page.locator('#usageCost').isVisible(), true, 'estimated cost must stay visible');
