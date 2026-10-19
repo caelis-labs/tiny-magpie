@@ -1,5 +1,7 @@
 # Agent wiring
 
+> Tiny test coverage follows [the retained test scope](../test-scope.md); verification commands below describe the upstream product.
+
 > tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
 
 magpie connects a coding agent to its gateway by editing the agent's own

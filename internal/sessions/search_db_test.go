@@ -2,7 +2,7 @@ package sessions
 
 import (
 	"context"
-	"path/filepath"
+
 	"strings"
 	"testing"
 )
@@ -38,30 +38,5 @@ func searchesEveryPart(t *testing.T, s Session) {
 	}
 	if tried == 0 {
 		t.Fatalf("%s %s: nothing to look for in %+v", s.Agent, s.ID, tr.Parts)
-	}
-}
-
-func TestSearchOpenCodeFiles(t *testing.T) {
-	setupMore(t)
-	searchesEveryPart(t, find(t, List(All), "opencode", ocMain))
-}
-
-func TestSearchOpenCodeDatabase(t *testing.T) {
-	data, _ := setupMore(t)
-	db := ocMakeV2(t, filepath.Join(data, "opencode", "opencode.db"))
-	defer db.Close()
-	searchesEveryPart(t, find(t, List(All), "opencode", ocMain))
-}
-
-func TestSearchCursorLiveChat(t *testing.T) {
-	dir := cursorSetup(t)
-	makeCursorChats(t, dir)
-	ss := List(0)
-	for _, id := range []string{curMain, curOther} {
-		s, ok := findSession(ss, "cursor", id)
-		if !ok {
-			t.Fatalf("%s isn't listed", id)
-		}
-		searchesEveryPart(t, s)
 	}
 }

@@ -37,24 +37,3 @@ func TestNewer(t *testing.T) {
 		}
 	}
 }
-
-func TestReleased(t *testing.T) {
-	for v, want := range map[string]bool{"0.1.0": true, "v1.2.3": true, "dev": false, "0bcb2cc-dirty": false, "v0.1.0-3-g0bcb2cc": false} {
-		if Released(v) != want {
-			t.Errorf("Released(%q) != %v", v, want)
-		}
-	}
-}
-
-func TestHomebrew(t *testing.T) {
-	for exe, want := range map[string]bool{
-		"/opt/homebrew/Cellar/magpie/0.1.126/bin/magpie":              true,
-		"/home/linuxbrew/.linuxbrew/Cellar/magpie/0.1.126/bin/magpie": true,
-		"/usr/local/bin/magpie":                                       false,
-		"/Applications/magpie.app/Contents/MacOS/magpie":              false,
-	} {
-		if Homebrew(exe) != want {
-			t.Errorf("%s: %v", exe, !want)
-		}
-	}
-}

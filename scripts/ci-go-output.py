@@ -4,8 +4,8 @@ import json
 import pathlib
 import sys
 
-path = pathlib.Path('output/go-test.log')
-path.parent.mkdir(exist_ok=True)
+path = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'output/go-test.log')
+path.parent.mkdir(parents=True, exist_ok=True)
 pending = {}
 
 
