@@ -33,6 +33,7 @@ func testSaveConcurrent(t *testing.T, linked bool) {
 		}
 	}
 	var saveErrors, lostFields, readErrors, reads atomic.Int64
+	var firstReadError error // the reader owns this until readDone closes
 	check := func(s Settings) {
 		if s.Theme != "dark" || s.Lang != "zh" || s.Proxy != "direct" || s.GitHubToken != token {
 			lostFields.Add(1)
@@ -42,6 +43,8 @@ func testSaveConcurrent(t *testing.T, linked bool) {
 	if !linked {
 		// Read outside Load's synchronization too: a normal file must be
 		// published as a complete snapshot, not merely hidden by a lock.
+		// Save above established that this file exists. On Windows a
+		// replacement can briefly hide it, so use the known-file reader.
 		go func() {
 			defer close(readDone)
 			for {
@@ -50,10 +53,16 @@ func testSaveConcurrent(t *testing.T, linked bool) {
 					return
 				default:
 				}
-				b, err := steady.ReadFile(Path())
+				b, err := steady.ReadThere(Path())
 				var s Settings
-				if err != nil || json.Unmarshal(b, &s) != nil {
+				if err == nil {
+					err = json.Unmarshal(b, &s)
+				}
+				if err != nil {
 					readErrors.Add(1)
+					if firstReadError == nil {
+						firstReadError = err
+					}
 				} else {
 					check(s)
 				}
@@ -89,8 +98,8 @@ func testSaveConcurrent(t *testing.T, linked bool) {
 	<-readDone
 	check(Load())
 	if saveErrors.Load() != 0 || lostFields.Load() != 0 || readErrors.Load() != 0 {
-		t.Errorf("concurrent saves: %d save errors, %d lost-field reads, %d incomplete-file reads",
-			saveErrors.Load(), lostFields.Load(), readErrors.Load())
+		t.Errorf("concurrent saves: %d save errors, %d lost-field reads, %d incomplete-file reads; first read error: %v",
+			saveErrors.Load(), lostFields.Load(), readErrors.Load(), firstReadError)
 	}
 	if !linked && reads.Load() == 0 {
 		t.Fatal("the independent reader did not observe any saves")
