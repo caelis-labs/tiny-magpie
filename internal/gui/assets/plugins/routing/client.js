@@ -22,7 +22,7 @@ magpie.plugin("routing", (ctx) => {
     html: `
     <div class="row-head"><span class="label" data-t>Routing</span><span class="rt-livedot" aria-hidden="true"></span><span class="note" data-t>live, as the gateway decides</span><span class="grow"></span>
       <button class="text rt-newgroup" id="rtNewGroup" type="button" data-feature="groups" data-tt="Make a routing group of any models you like — agents pick it as one model"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg><span data-t>New group</span></button>
-      <button class="text rt-mask" id="rtMask" aria-pressed="false" data-tt="Mask the accounts on this page — email addresses and account names — for a screenshot to share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.5 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/></svg><span data-t>Hide accounts</span></button></div>
+      <button class="text rt-mask" id="rtMask" data-feature="tiny-removed" aria-pressed="false" data-tt="Mask the accounts on this page — email addresses and account names — for a screenshot to share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.5 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/></svg><span data-t>Hide accounts</span></button></div>
     <section class="rt" id="rt"></section>
     <div class="rt-more" id="rtMore"></div>
 `,
@@ -3518,10 +3518,10 @@ function routingPage(part) {
   const gOffBox = el("div", "list rt-goffbox");
   gOffBox.append(el("div", "rt-goffwhy", t("Routing groups are off in Plugins › Built-in: the groups magpie finds, one model several providers serve, still route, but your own can't be made or changed here.")), gOn);
   gOff.append(el("div", "row-head", el("span", "label", t("Routing groups"))), gOffBox);
-  gsec.append(gHead, gFound, gNames, gList, gOff, pHead, pList);
+  gsec.append(gHead, gFound, gList, pHead, pList);
   // after the requests: a request picked in the list plays on the stage,
   // so the list sits right under it
-  more.append(gsec);
+  box.prepend(gsec);
   const ROUTE_OPTS = [["", "Smart"], ["order", "In order"], ["rotate", "In turn"], ["usage", "Least used"], ["pace", "Weekly pace"]];
   // a group may also be routed by hand: every request to the member the
   // user picks on its card (provider.Manual, #317) — a provider's keys can't

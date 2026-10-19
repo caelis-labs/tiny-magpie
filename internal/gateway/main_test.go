@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/yetone/magpie/internal/agentenv"
@@ -210,3 +211,6 @@ func withoutSearch(t *testing.T) {
 		searchOn = gwtool.Serve(gwtool.WebSearch)
 	})
 }
+
+// Shared protocol fixtures format integer fields without locale changes.
+func itoa(i int) string { return strconv.Itoa(i) }

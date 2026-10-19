@@ -1,5 +1,7 @@
 # Gateway routing and fallback
 
+Tiny retains the upstream serveSystemOne handler for explicit client API calls and decision-model discovery. It does not infer intent, choose a classifier, or automatically alter reasoning. Conventional routing and failure recovery remain upstream. Request-content masking is absent; log credential scrubbing remains.
+
 > tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
 
 The gateway is magpie's local LLM endpoint (`127.0.0.1:3425` by default). It

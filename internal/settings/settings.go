@@ -266,7 +266,7 @@ type Settings struct {
 	// so downloading one (#472): only Settings' Check, or magpie update,
 	// asks then. UpdateEvery is how often it asks otherwise, in minutes:
 	// one of UpdateEveries, 0 for every six hours.
-	// UpdateChannel is Tiny's own release channel: preview (default) or stable.
+	// UpdateChannel is Tiny's own release channel: stable (default) or preview.
 	UpdateChannel string `json:"updateChannel,omitempty"`
 	NoAutoUpdate  bool   `json:"noAutoUpdate,omitempty"`
 	UpdateEvery   int    `json:"updateEvery,omitempty"`
@@ -1403,6 +1403,9 @@ func save(s Settings, recording bool) error {
 }
 
 func (s Settings) normal() Settings {
+	// Removed Tiny products stay inert even when older settings are copied.
+	s.UIFont, s.CodeFont = nil, nil
+
 	if s.Theme == "" {
 		s.Theme = "system"
 	}

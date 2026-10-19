@@ -29,7 +29,7 @@ func TestRemoteMagpieRetrieval(t *testing.T) {
 	if _, err := p.Fetch(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	live, _, _ := catalog.Live("office")
+	live, _ := catalog.LiveAll("office")
 	if !slices.ContainsFunc(live, func(m catalog.Model) bool { return m.ID == "lib/embed-1" }) {
 		t.Fatalf("remote embedding model lost: %v", live)
 	}
@@ -37,8 +37,8 @@ func TestRemoteMagpieRetrieval(t *testing.T) {
 	// the local catalog just as they do in the remote's agent list.
 	entries := provider.Catalog()
 	for _, id := range []string{"office/lib/embed-1", "office/lib/rerank-1"} {
-		if !slices.ContainsFunc(entries, func(e provider.Entry) bool { return e.ID == id }) {
-			t.Errorf("remote retrieval entry missing from catalog: %s", id)
+		if slices.ContainsFunc(entries, func(e provider.Entry) bool { return e.ID == id }) {
+			t.Errorf("retrieval model leaked into chat catalog: %s", id)
 		}
 	}
 	for _, tc := range []struct{ path, body, result, model string }{

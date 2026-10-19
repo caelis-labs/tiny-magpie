@@ -1,5 +1,7 @@
 # Providers and accounts
 
+Direct TypeSafe/Jev System One Providers are retained in Tiny. Embedding/Rerank models remain separate from conversation picks and are displayed from existing vendor cache metadata in the GUI; authentication, refreshing and pricing reuse upstream.
+
 > tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
 
 The gateway can send a request to three kinds of upstream:

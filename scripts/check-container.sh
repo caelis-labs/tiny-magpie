@@ -39,7 +39,8 @@ def call(path,body=None,auth=True):
     except urllib.error.HTTPError as e:return e.code,e.read()
 assert call('/v1/models')[0]==200
 assert call('/v1/models',auth=False)[0]==401
-assert call('/v1/systemone',{})[0]==404
+assert call('/v1/systemone',{})[0]==400, 'retained System One must validate the request'
+assert call('/v1/systemone',{},auth=False)[0]==401, 'System One must require the gateway key'
 assert 400<=call('/v1/responses',{'model':'fixture/missing','input':'hi'})[0]<500
 cookies=http.cookiejar.CookieJar()
 browser=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPCookieProcessor(cookies))

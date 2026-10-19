@@ -23,7 +23,7 @@ func TestTinyBrandAssetConsistency(t *testing.T) {
 		return b
 	}
 	source := regexp.MustCompile(`d="([^"]+)"`).FindSubmatch(read("build/icon/magpie-small.svg"))
-	header := regexp.MustCompile(`<path id="bird" fill-rule="evenodd" d="([^"]+)"`).FindSubmatch(read("internal/gui/assets/index.html"))
+	header := regexp.MustCompile(`<path id="bird"[^>]* d="([^"]+)"`).FindSubmatch(read("internal/gui/assets/index.html"))
 	if len(source) != 2 || len(header) != 2 || !bytes.Equal(source[1], header[1]) {
 		t.Fatal("control bar bird diverged from Tiny SVG source")
 	}

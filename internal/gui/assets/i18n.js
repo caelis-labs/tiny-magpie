@@ -4,6 +4,19 @@
 // works. {name} slots are filled by t(str, vars).
 const I18N = {
   zh: {
+    "Disabled models are refused by this gateway, including fallback. Type a model ID or pattern such as *fable*.": "网关会拒绝已停用的模型，备用切换也不例外。可输入模型 ID 或 *fable* 这类匹配规则。",
+
+    "Call its models as {id} through the gateway’s System One API": "通过网关的 System One API，以 {id} 调用模型",
+    "Use these models with /v1/systemone.": "通过 /v1/systemone 调用这些模型。",
+
+    "Gateway calls; local rejections excluded from totals.": "网关调用；本地拒绝不计入合计。",
+    "Every request sent through this gateway is counted here.": "经此网关发送的每次请求都会计入。",
+
+    "Embedding / Rerank": "向量 / 重排",
+    "Copy a model ID to call the gateway's embeddings or rerank API.": "复制模型 ID，通过网关的 Embedding 或 Rerank API 调用。",
+    "Now {url}": "当前地址 {url}",
+    "No model here matches “{q}”.": "没有模型匹配“{q}”。",
+
     "Tiny updates": "Tiny 更新",
     "Check automatically": "自动检查更新",
     "Checks tiny-magpie releases every six hours. Download and restart require your confirmation.": "每六小时检查 tiny-magpie 自身发行的版本。下载和重启均需你确认。",
@@ -2447,7 +2460,7 @@ const I18N = {
     "Messages API. Claude Code reads ANTHROPIC_AUTH_TOKEN instead of the key; the Agents tab sets that for you.": "Messages API。Claude Code 读取 ANTHROPIC_AUTH_TOKEN 而非密钥；Agent 页会替你设置。",
     "Google's generateContent API, v1beta. Gemini CLI and the google-genai SDKs speak this.": "Google 的 generateContent API（v1beta）。Gemini CLI 和 google-genai SDK 使用它。",
     "What {env} takes.": "填入 {env}。",
-    "four model APIs, one URL": "四种模型 API，一个地址",
+    "model APIs, one URL": "多种模型 API，一个地址",
     "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].": "TypeSafe 的决策 API：Jev 或 Clef 模型按类型（choice、noul、score）回答关于 state 的问题，并给出置信度。Clef 还能读图：加上 \"images\": [\"data:image/png;base64,…\"]。",
     "Requests go to POST {url}.": "请求发到 POST {url}。",
     "Choose a gateway key to send as Authorization: Bearer; usage is tracked by key.": "选一个网关密钥作为 Authorization: Bearer 发送；用量按密钥统计。",
@@ -3731,6 +3744,19 @@ const I18N = {
     "Reading the reply": "读取回复",
   },
   "zh-TW": {
+    "Disabled models are refused by this gateway, including fallback. Type a model ID or pattern such as *fable*.": "閘道會拒絕已停用的模型，備援切換也不例外。可輸入模型 ID 或 *fable* 這類比對規則。",
+
+    "Call its models as {id} through the gateway’s System One API": "透過閘道的 System One API，以 {id} 呼叫模型",
+    "Use these models with /v1/systemone.": "透過 /v1/systemone 呼叫這些模型。",
+
+    "Gateway calls; local rejections excluded from totals.": "閘道呼叫；本機拒絕不計入合計。",
+    "Every request sent through this gateway is counted here.": "透過此閘道傳送的每次請求都會計入。",
+
+    "Embedding / Rerank": "向量 / 重排",
+    "Copy a model ID to call the gateway's embeddings or rerank API.": "複製模型 ID，透過閘道的 Embedding 或 Rerank API 呼叫。",
+    "Now {url}": "目前位址 {url}",
+    "No model here matches “{q}”.": "沒有模型符合「{q}」。",
+
     "Tiny updates": "Tiny 更新",
     "Check automatically": "自動檢查更新",
     "Checks tiny-magpie releases every six hours. Download and restart require your confirmation.": "每六小時檢查 tiny-magpie 自身發行的版本。下載與重新啟動均須確認。",
@@ -6163,7 +6189,7 @@ const I18N = {
     "Messages API. Claude Code reads ANTHROPIC_AUTH_TOKEN instead of the key; the Agents tab sets that for you.": "Messages API。Claude Code 讀取 ANTHROPIC_AUTH_TOKEN 而非金鑰；Agent 頁會替你設定。",
     "Google's generateContent API, v1beta. Gemini CLI and the google-genai SDKs speak this.": "Google 的 generateContent API（v1beta）。Gemini CLI 和 google-genai SDK 使用它。",
     "What {env} takes.": "填入 {env}。",
-    "four model APIs, one URL": "四種模型 API，一個位址",
+    "model APIs, one URL": "多種模型 API，一個位址",
     "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].": "TypeSafe 的決策 API：Jev 或 Clef 模型按型別（choice、noul、score）回答關於 state 的問題，並給出置信度。Clef 還能讀圖：加上 \"images\": [\"data:image/png;base64,…\"]。",
     "Requests go to POST {url}.": "請求發到 POST {url}。",
     "Choose a gateway key to send as Authorization: Bearer; usage is tracked by key.": "選一個閘道金鑰作為 Authorization: Bearer 傳送；用量按金鑰統計。",
@@ -7443,6 +7469,19 @@ const I18N = {
     "Reading the reply": "讀取回覆",
   },
   ja: {
+    "Disabled models are refused by this gateway, including fallback. Type a model ID or pattern such as *fable*.": "無効なモデルはフォールバックでも使用しません。モデル ID または *fable* などのパターンを入力します。",
+
+    "Call its models as {id} through the gateway’s System One API": "ゲートウェイの System One API で {id} として呼び出します",
+    "Use these models with /v1/systemone.": "これらのモデルは /v1/systemone で呼び出します。",
+
+    "Gateway calls; local rejections excluded from totals.": "ゲートウェイの呼び出し。ローカルで拒否したリクエストは合計に含みません。",
+    "Every request sent through this gateway is counted here.": "このゲートウェイ経由の各リクエストを集計します。",
+
+    "Embedding / Rerank": "埋め込み / 再ランク",
+    "Copy a model ID to call the gateway's embeddings or rerank API.": "モデル ID をコピーしてゲートウェイの Embedding または Rerank API を呼び出します。",
+    "Now {url}": "現在のアドレス {url}",
+    "No model here matches “{q}”.": "「{q}」に一致するモデルはありません。",
+
     "Tiny updates": "Tiny のアップデート",
     "Check automatically": "自動で確認",
     "Checks tiny-magpie releases every six hours. Download and restart require your confirmation.": "6 時間ごとに tiny-magpie のリリースを確認します。ダウンロードと再起動には確認が必要です。",
@@ -9877,7 +9916,7 @@ const I18N = {
     "Messages API. Claude Code reads ANTHROPIC_AUTH_TOKEN instead of the key; the Agents tab sets that for you.": "Messages API。Claude Code はキーの代わりに ANTHROPIC_AUTH_TOKEN を読みます。「エージェント」タブが設定します。",
     "Google's generateContent API, v1beta. Gemini CLI and the google-genai SDKs speak this.": "Google の generateContent API（v1beta）。Gemini CLI と google-genai SDK はこれを使います。",
     "What {env} takes.": "{env} に設定する値。",
-    "four model APIs, one URL": "4つのモデル API、1つの URL",
+    "model APIs, one URL": "モデル API、1つの URL",
     "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].": "TypeSafe の判定 API：Jev や Clef のモデルが state についての型付きの質問（choice、noul、score）に、確信度つきで答えます。Clef は画像も読めます：\"images\": [\"data:image/png;base64,…\"] を加えてください。",
     "Requests go to POST {url}.": "リクエストは POST {url} に送られます。",
     "Choose a gateway key to send as Authorization: Bearer; usage is tracked by key.": "Authorization: Bearer として送るゲートウェイキーを選びます。使用量はキーごとに記録されます。",
@@ -11157,6 +11196,19 @@ const I18N = {
     "Reading the reply": "応答の読み取り",
   },
   de: {
+    "Disabled models are refused by this gateway, including fallback. Type a model ID or pattern such as *fable*.": "Deaktivierte Modelle werden auch beim Fallback abgelehnt. Modell-ID oder Muster wie *fable* eingeben.",
+
+    "Call its models as {id} through the gateway’s System One API": "Modelle als {id} über die System-One-API des Gateways aufrufen",
+    "Use these models with /v1/systemone.": "Diese Modelle über /v1/systemone aufrufen.",
+
+    "Gateway calls; local rejections excluded from totals.": "Gateway-Aufrufe; lokale Ablehnungen zählen nicht zur Summe.",
+    "Every request sent through this gateway is counted here.": "Jede Anfrage über dieses Gateway wird gezählt.",
+
+    "Embedding / Rerank": "Embedding / Rerank",
+    "Copy a model ID to call the gateway's embeddings or rerank API.": "Modell-ID kopieren und über die Embedding- oder Rerank-API des Gateways aufrufen.",
+    "Now {url}": "Aktuelle Adresse {url}",
+    "No model here matches “{q}”.": "Kein Modell entspricht „{q}“.",
+
     "Tiny updates": "Tiny-Updates",
     "Check automatically": "Automatisch prüfen",
     "Checks tiny-magpie releases every six hours. Download and restart require your confirmation.": "Prüft alle sechs Stunden die Releases von tiny-magpie. Download und Neustart erfordern Ihre Bestätigung.",
@@ -13601,7 +13653,7 @@ const I18N = {
     "Messages API. Claude Code reads ANTHROPIC_AUTH_TOKEN instead of the key; the Agents tab sets that for you.": "Messages API. Claude Code liest ANTHROPIC_AUTH_TOKEN statt des Schlüssels; der Tab „Agenten“ setzt das für Sie.",
     "Google's generateContent API, v1beta. Gemini CLI and the google-genai SDKs speak this.": "Die generateContent API von Google, v1beta. Gemini CLI und die google-genai-SDKs sprechen diese.",
     "What {env} takes.": "Wert für {env}.",
-    "four model APIs, one URL": "vier Modell-APIs, eine URL",
+    "model APIs, one URL": "Modell-APIs, eine URL",
     "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].": "Die Entscheidungs-API von TypeSafe: Ein Jev- oder Clef-Modell beantwortet typisierte Fragen (choice, noul, score) zu einem Zustand und sagt, wie sicher es ist. Clef liest auch Bilder: \"images\": [\"data:image/png;base64,…\"] hinzufügen.",
     "Requests go to POST {url}.": "Anfragen gehen an POST {url}.",
     "Choose a gateway key to send as Authorization: Bearer; usage is tracked by key.": "Wählen Sie einen Zugangsschlüssel, der als Authorization: Bearer gesendet wird; die Nutzung wird je Schlüssel erfasst.",

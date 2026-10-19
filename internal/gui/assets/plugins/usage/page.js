@@ -422,6 +422,9 @@ function renderUsage() {
   tile(fmtN(u.reasoning), t("reasoning"), t("inside output"));
   tile(String(u.calls), t(u.calls === 1 ? "call" : "calls"), [u.errors ? t("{n} failed", { n: u.errors }) : "", u.retried ? t("{n} answered on a retry", { n: u.retried }) : "", u.unpriced ? t("{n} unpriced", { n: u.unpriced }) : ""].filter(Boolean).join(" · "), u.unpriced ? unpricedCallsWhy(u.unpriced) : "");
 
+  tile(ledSpeed(u) ? t("{n} tok/s", {n:ledNum(Math.round(ledSpeed(u)))}) : "—", t("Speed"));
+  tile(ledTTFT(u) ? ledTook(ledTTFT(u)) : "—", t("First token"));
+
   // the timeline: one bar per hour, day or week; output sits on top of input
   const chart = $("#chart");
   chart.replaceChildren();
@@ -1746,7 +1749,7 @@ function renderLedger() {
     next.onclick = () => { ledOffset = l.offset + LED_PAGE; loadLedger().catch((e) => status(e.message, "err")); };
     pager.append(prev, el("span", "", t("{a}–{b} of {n}", { a: ledNum(l.offset + 1), b: ledNum(l.offset + l.rows.length), n: ledNum(l.total) })), next);
   }
-  $("#ledNote").textContent = t("Each request's tokens as its provider reported them; the cost estimated using effective model prices, including custom prices. Export CSV saves every page.");
+  $("#ledNote").textContent = t("Tokens are reported by providers; costs use effective model prices, including custom prices.");
 }
 
 {
@@ -1787,7 +1790,7 @@ function renderLedger() {
 // The agents' own sessions, read from their session files: what each cost,
 // and the command that picks it up again. A segment of the Usage page.
 
-const USAGE_TABS = [["usage", "Allowances"], ["requests", "Requests"]];
+const USAGE_TABS = [["usage", "Overview"], ["requests", "Requests"]];
 let usageTab = "usage";
 try { const k = localStorage.getItem("magpie.usageTab"); if (USAGE_TABS.some(([id]) => id === k)) usageTab = k; } catch {}
 let sessAgent = "all";

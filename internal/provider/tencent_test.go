@@ -315,7 +315,7 @@ func TestTencentTokenHubList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ms) != 2 || ms[0].ID != "hy3" || ms[1].ID != "deepseek-v4-pro" {
+	if len(catalog.Chat(ms)) != 2 || ms[0].ID != "hy3" || ms[1].ID != "deepseek-v4-pro" {
 		t.Fatalf("%+v", ms)
 	}
 }

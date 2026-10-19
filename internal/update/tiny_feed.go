@@ -80,11 +80,11 @@ func tinyVersion(r githubRelease) string {
 }
 
 func LatestIn(ctx context.Context, lang string) (*Release, error) {
-	return LatestInChannel(ctx, lang, "preview")
+	return LatestInChannel(ctx, lang, "stable")
 }
 
-// Preview includes stable releases too. Until Tiny graduates, preview is
-// the default channel; stable is an explicit choice and never takes a preview.
+// Preview includes stable releases too. The default stable channel never
+// takes a preview; only an explicit preview choice includes one.
 func LatestInChannel(ctx context.Context, lang, channel string) (*Release, error) {
 	list, err := releaseList(ctx)
 	if err != nil {
@@ -95,7 +95,7 @@ func LatestInChannel(ctx context.Context, lang, channel string) (*Release, error
 	for i := range list {
 		r := &list[i]
 		v := tinyVersion(*r)
-		if v == "" || (channel == "stable" && (r.Preview || parse(v).pre != "")) {
+		if v == "" || (channel != "preview" && (r.Preview || parse(v).pre != "")) {
 			continue
 		}
 		if best == nil || Newer(v, version) {

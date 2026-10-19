@@ -105,6 +105,8 @@ type Model struct {
 	// Decides marks a decision model another magpie explicitly lists,
 	// including models whose ids don't name Jev.
 	Decides bool `json:",omitempty"`
+	// Retrieval is embedding or rerank, kept apart from conversation models.
+	Retrieval string `json:",omitempty"`
 	// Free is set on a model a subscription serves at no cost to its
 	// allowance: WorkBuddy's "credits": "x0.00".
 	Free bool `json:",omitempty"`

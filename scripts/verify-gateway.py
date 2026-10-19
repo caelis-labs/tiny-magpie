@@ -26,6 +26,15 @@ class Vendor(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
         self.server.received.append((self.path, body))
+        if self.path.endswith('/systemone') or self.path.endswith('/embeddings') or self.path.endswith('/rerank'):
+            self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+            if self.path.endswith('/systemone'):
+                reply={'model':body['model'],'answers':{'kind':{'type':'choice','choice':'code','confidence':0.9}}}
+            elif self.path.endswith('/embeddings'):
+                reply={'object':'list','data':[{'object':'embedding','index':0,'embedding':[0.1,-0.2]}],'usage':{'prompt_tokens':5,'total_tokens':5}}
+            else:
+                reply={'results':[{'index':0,'relevance_score':0.9}],'usage':{'total_tokens':5}}
+            self.wfile.write(json.dumps(reply).encode()); return
         if self.path.endswith('/chat/completions'):
             events = [('', {'id':'fixture-chat','object':'chat.completion.chunk','created':1,'model':'fixture-model','choices':[{'index':0,'delta':{'role':'assistant','content':'fixture hello'}}]}),
                       ('', {'id':'fixture-chat','choices':[{'index':0,'delta':{},'finish_reason':'stop'}],'usage':{'prompt_tokens':7,'completion_tokens':3,'total_tokens':10}})]
@@ -80,6 +89,7 @@ def gateway(binary, name, upstream):
         for protocol in PROTOCOLS:
             address=upstream+('/v1beta' if protocol=='gemini' else '' if protocol=='anthropic' else '/v1')
             providers.append({'id':'fixture-'+protocol,'name':protocol,'key':'fixture-key','models':['fixture-model'],protocol:address})
+        providers.append({'id':'fixture-decision','name':'Decision','key':'fixture-key','decide':upstream+'/v1','models':['jev-latest']})
         (cfg/'providers.json').write_text(json.dumps({'providers':providers,'noAutoGroups':True}))
         (cfg/'settings.json').write_text(json.dumps({'noAccountDiscovery':True,'vision':'off','lang':'en'}))
         env={k:v for k,v in os.environ.items() if not k.startswith(('MAGPIE_','CODEX_','CLAUDE_','XDG_')) and 'proxy' not in k.lower()}
@@ -177,7 +187,15 @@ def main():
                         assert 'fixture hello' in a[1] and 'fixture hello' in b[1],(label,'empty reply')
                         assert semantic(*a)==semantic(*b),(label,'response differs',a,b)
                         checked+=1
-        for path in ('/v1/systemone','/v1/images/generations','/v1/audio/transcriptions','/v1/videos','/mcp/magpie/tools','/alpha/search'):
+        for path,body in [('/v1/systemone',{'model':'fixture-decision/jev-latest','state':{'text':'hello'},'questions':{'kind':{'type':'choice','criteria':{'code':None,'other':None}}}}),
+                          ('/v1/embeddings',{'model':'fixture-chat/fixture-model','input':['hello'],'dimensions':2}),
+                          ('/v1/rerank',{'model':'fixture-chat/fixture-model','query':'hello','documents':['hello world']})]:
+            fixture.received.clear(); a=request(original,path,body); sent_a=list(fixture.received)
+            fixture.received.clear(); b=request(tiny,path,body); sent_b=list(fixture.received)
+            assert a[0]==b[0]==200 and semantic(*a)==semantic(*b),(path,a,b)
+            assert sent_a and sent_a==sent_b,(path,sent_a,sent_b)
+            checked+=1
+        for path in ('/v1/images/generations' ,'/v1/audio/transcriptions','/v1/videos','/mcp/magpie/tools','/alpha/search'):
             assert request(tiny,path,{})[0]==404,path
     print(f'PASS: discovery + {checked} bidirectional protocol/stream comparisons (text + tools/screenshots) + removed endpoint and config-write checks')
 if __name__=='__main__': main()

@@ -15,7 +15,7 @@ func TestTinyRemovedSurface(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
 	h := New().Handler()
-	for _, path := range []string{"/v1/systemone", "/v1/images/generations", "/images/edits", "/v1/videos", "/v1/audio/transcriptions", "/mcp/any", "/mcp/magpie/tools", "/alpha/search"} {
+	for _, path := range []string{"/v1/images/generations", "/images/edits", "/v1/videos", "/v1/audio/transcriptions", "/mcp/any", "/mcp/magpie/tools", "/alpha/search"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, strings.NewReader(`{}`)))
 		if w.Code != http.StatusNotFound {
@@ -24,7 +24,7 @@ func TestTinyRemovedSurface(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
-	for _, removed := range []string{"systemone", "images/", "audio/", "/mcp/"} {
+	for _, removed := range []string{"images/", "audio/", "/mcp/"} {
 		if strings.Contains(w.Body.String(), removed) {
 			t.Errorf("advertised removed API %s", removed)
 		}

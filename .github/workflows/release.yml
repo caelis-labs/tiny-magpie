@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing tiny-vX.Y.Z tag on main (experimental release)
+        description: Existing tiny-vX.Y.Z tag on main
         required: true
         type: string
       resume_run_id:
@@ -173,11 +173,13 @@ jobs:
           pattern: release-*
           path: output/release
           merge-multiple: true
-      - name: Verify inventory and publish experimental release
+      - name: Verify inventory and publish Tiny release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.source.outputs.tag }}
           VERSION: ${{ needs.source.outputs.version }}
         run: |
           python3 scripts/release-artifacts.py finalize --version "$VERSION"
-          python3 scripts/publish-release.py "$RELEASE_TAG"
+          tiny_channel=()
+          if [[ "$VERSION" != *-* ]]; then tiny_channel=(--stable); fi
+          python3 scripts/publish-release.py "$RELEASE_TAG" "${tiny_channel[@]}"

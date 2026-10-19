@@ -61,7 +61,7 @@ func asAdmin(script string) error {
 	var err error
 	switch runtime.GOOS {
 	case "darwin":
-		out, err = run("osascript", "-e", `do shell script "`+appleString(script)+`" with prompt "magpie is updating itself." with administrator privileges`)
+		out, err = run("osascript", "-e", `do shell script "`+appleString(script)+`" with prompt "tiny-magpie is updating itself." with administrator privileges`)
 		if err != nil && strings.Contains(string(out), "(-128)") {
 			return ErrCanceled
 		}

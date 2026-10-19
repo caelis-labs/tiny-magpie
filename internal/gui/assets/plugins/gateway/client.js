@@ -154,7 +154,7 @@ function renderGateway() {
   } else if (older) {
     who.append(name, el("div", "sub old", t("Agents' requests go through magpie {v} and are sent as it sends them, without this version's fixes. Quit it here and this one serves the gateway at once.", { v: g.version })));
   } else who.append(name, el("div", "sub", g.running
-    ? [t(g.models === 1 ? "{n} model" : "{n} models", { n: g.models }), n ? t(n === 1 ? "{n} agent routed through it" : "{n} agents routed through it", { n }) : t("no agent routed through it yet"), t("four model APIs, one URL")].join(" · ")
+    ? [t(g.models === 1 ? "{n} model" : "{n} models", { n: g.models }), n ? t(n === 1 ? "{n} agent routed through it" : "{n} agents routed through it", { n }) : t("no agent routed through it yet"), t("model APIs, one URL")].join(" · ")
     : t("start it with magpie serve, or open magpie at login")));
   const fix = gatewayFixButton(g, older);
   if (fix) who.append(fix);
@@ -168,6 +168,23 @@ function renderGateway() {
   url.title = t("Copy the gateway URL");
   url.onclick = () => copy(shown, t("Gateway URL"));
   box.append(dot, who, url);
+}
+
+// Retrieval APIs reuse the gateway's existing HTTP request examples.
+function retrievalFlavor(kind) {
+  const body = kind === "embedding" ? {input:"hello"} : {query:"hello",documents:["hello world","another document"]};
+  const path = kind === "embedding" ? "embeddings" : "rerank";
+  return {
+    name: kind === "embedding" ? "Embedding" : "Rerank", kind, base:u=>u+"/v1",
+    note: "Copy a model ID to call the gateway's embeddings or rerank API.",
+    curl: (b,m,k="magpie")=>({url:b+"/"+path,headers:["Authorization: Bearer "+k],body:JSON.stringify({model:m,...body},null,2)}),
+    python: (b,m,k="magpie")=>`import json, urllib.request
+
+r = urllib.request.Request(${JSON.stringify(b+"/"+path)}, data=json.dumps(${JSON.stringify({model:m,...body})}).encode(), headers={"Authorization": ${JSON.stringify("Bearer "+k)}, "Content-Type": "application/json"})
+print(urllib.request.urlopen(r).read().decode())`,
+    node: (b,m,k="magpie")=>`const r = await fetch(${JSON.stringify(b+"/"+path)}, {method:"POST", headers:{Authorization:${JSON.stringify("Bearer "+k)},"Content-Type":"application/json"},body:JSON.stringify(${JSON.stringify({model:m,...body})})});
+console.log(await r.json());`,
+  };
 }
 
 // One entry per API the gateway serves: where each SDK's base URL points,
@@ -256,6 +273,44 @@ const ai = new GoogleGenAI({
 const r = await ai.models.generateContent({ model: "${m}", contents: "hi" });
 console.log(r.text);`,
   },
+  systemone: {
+    name: "System One", base: (u) => u + "/v1", decide: true,
+    note: "TypeSafe's decision API: a Jev or Clef model answers typed questions (choice, noul, score) about a state, with how sure it is. Clef also reads images: add \"images\": [\"data:image/png;base64,…\"].",
+    curl: (b, m, k = "magpie") => ({ url: `${b}/systemone`, headers: [`Authorization: Bearer ${k}`],
+      body: `{"model": "${m}",\n "state": {"message": "My order never arrived, refund it"},\n "questions": {"team": {"type": "choice",\n   "instructions": "Which team should answer the message?",\n   "criteria": {"billing": "Payments and refunds", "shipping": "Deliveries", "other": "Anything else"}}}}` }),
+    python: (b, m, k = "magpie") => `import requests
+
+r = requests.post("${b}/systemone",
+    headers={"Authorization": "Bearer ${k}"},
+    json={
+        "model": "${m}",
+        "state": {"message": "My order never arrived, refund it"},
+        "questions": {"team": {
+            "type": "choice",
+            "instructions": "Which team should answer the message?",
+            "criteria": {"billing": "Payments and refunds", "shipping": "Deliveries", "other": "Anything else"},
+        }},
+    })
+a = r.json()["answers"]["team"]
+print(a["choice"], a["confidence"])`,
+    node: (b, m, k = "magpie") => `const r = await fetch("${b}/systemone", {
+  method: "POST",
+  headers: { Authorization: "Bearer ${k}", "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: "${m}",
+    state: { message: "My order never arrived, refund it" },
+    questions: { team: {
+      type: "choice",
+      instructions: "Which team should answer the message?",
+      criteria: { billing: "Payments and refunds", shipping: "Deliveries", other: "Anything else" },
+    } },
+  }),
+});
+const a = (await r.json()).answers.team;
+console.log(a.choice, a.confidence);`,
+  },
+  embedding: retrievalFlavor("embedding"),
+  rerank: retrievalFlavor("rerank"),
 };
 if (!FLAVORS[flavor]) flavor = "openai";
 
@@ -321,6 +376,7 @@ function gatewayModels() {
   // levels aren't known (given) offers only those it was given
   const offered = (m) => m.kept?.length || m.given ? m.kept || [] : m.efforts || [];
   for (const p of providers.providers) { if (p.off) continue; for (const m of p.models) if (m.on) out.push({ id: `${p.id}/${m.id}`, name: m.name, provider: p, context: m.context, output: m.output, efforts: offered(m), images: !!m.images }); }
+  for (const p of providers.providers) if (!p.off) for (const m of p.retrievals || []) out.push({id:p.id+"/"+m.id,name:m.name,provider:p,kind:m.kind});
   return out;
 }
 
@@ -334,7 +390,7 @@ function renderConnect() {
   box.replaceChildren();
   const f = FLAVORS[flavor] || FLAVORS.openai;
   // System One's snippets take a decision model, the others any other
-  const models = gatewayModels().filter((m) => decideEntry(m) === !!f.decide);
+  const models = gatewayModels().filter((m) => f.kind ? m.kind === f.kind : !m.kind && decideEntry(m) === !!f.decide);
   let model;
   if (f.decide) {
     if (!models.some((m) => m.id === decideModel)) decideModel = models[0]?.id || "";
@@ -388,7 +444,7 @@ function renderConnect() {
     (u) => { connectWant = u; keepPick("magpie.connectAddress", u); renderConnect(); }));
   else b.append(el("code", "", base));
   b.append(copyBtn(base, "Base URL"));
-  box.append(...field("Base URL", b, f.baseEnv ? t("What {env} takes.", { env: f.baseEnv }) : t("Requests go to POST {url}.", { url: base + "/systemone" })));
+  box.append(...field("Base URL", b, f.baseEnv ? t("What {env} takes.", { env: f.baseEnv }) : t("Requests go to POST {url}.", { url: f.curl(base, model, secret).url })));
 
   const k = el("div", "val");
   const options = keys.map((k) => ({ v: k.id, name: k.name, literalName: true, note: k.masked }));
@@ -506,7 +562,7 @@ function renderGatewayModels() {
       const so = decideEntry(m);
       if (so) { decideModel = m.id; localStorage.setItem("magpie.decideModel", m.id); }
       else { exampleModel = m.id; localStorage.setItem("magpie.model", m.id); }
-      if (so !== !!FLAVORS[flavor]?.decide) { flavor = so ? "systemone" : "openai"; localStorage.setItem("magpie.flavor", flavor); }
+      if (m.kind || so !== !!FLAVORS[flavor]?.decide || FLAVORS[flavor]?.kind) { flavor = m.kind || (so ? "systemone" : "openai"); localStorage.setItem("magpie.flavor", flavor); }
       renderConnect(); renderGatewayModels();
     };
     list.append(row);

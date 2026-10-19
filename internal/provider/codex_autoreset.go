@@ -36,21 +36,8 @@ const (
 )
 
 // CodexAutoResetWhen says at which of those times the Codex account user
-// spends a reset by itself: both unless the user kept it to one.
-func CodexAutoResetWhen(user string) (week, expiring bool) {
-	user = strings.ToLower(user)
-	s := settings.Load()
-	if user == "" || !slices.Contains(s.CodexAutoReset, user) {
-		return false, false
-	}
-	switch s.CodexAutoResetOnly[user] {
-	case ResetCaseWeek:
-		return true, false
-	case ResetCaseExpiring:
-		return false, true
-	}
-	return true, true
-}
+// spends a reset by itself. Tiny disables both, including copied preferences.
+func CodexAutoResetWhen(user string) (week, expiring bool) { return false, false }
 
 // CodexAutoReset says whether the Codex account user spends a reset by
 // itself at either time.

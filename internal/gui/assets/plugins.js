@@ -22,6 +22,7 @@
   let failedList = "";   // ...and the plugins suggested
   let tab = "discover";
   try { tab = localStorage.getItem("magpie.pluginTab") || tab; } catch {}
+  if (!["discover", "installed"].includes(tab)) tab = "discover";
   let query = "";
   let hits = null;       // npm's answer for query: { q, list } | { q, loading } | { q, error }
   let searchTimer = 0;
@@ -761,14 +762,14 @@
 
   function head() {
     const n = mine?.plugins?.length || 0;
-    const tabs = segs([["builtin", t("Built-in")], ["discover", t("Discover")], ["installed", t("Installed") + (n ? " · " + n : "")]], tab, (id) => {
+    const tabs = segs([["discover", t("Discover")], ["installed", t("Installed") + (n ? " · " + n : "")]], tab, (id) => {
       tab = id;
       try { localStorage.setItem("magpie.pluginTab", id); } catch {}
       searchShown();
       drawBody();
     });
     tabs.classList.add("lib-tabs");
-    tabs.querySelectorAll(".opt")[2].dataset.sub = "installed";
+    tabs.querySelectorAll(".opt")[1].dataset.sub = "installed";
     q.placeholder = t("Search plugins and npm…");
     if (q.value !== query) q.value = query;
     q.setAttribute("aria-label", t("Search plugins"));

@@ -153,6 +153,9 @@ func Compose(ms []Manifest, f File) []Composed {
 				c.Config[k], c.Sources[k] = merge(c.Config[k], v), FromUser
 			}
 		}
+		if Fixed(c.ID) {
+			c.Enabled, c.Source = true, FromDefault
+		}
 		c.Chosen = c.Enabled
 		if m.InUse != nil {
 			n, err := m.InUse()
@@ -215,6 +218,9 @@ func Settle() (bool, error) {
 // of plugins.yml as it was. A plugins.yml that doesn't parse is not
 // written over: the user fixes it, or removes it.
 func Set(id string, on bool) error {
+	if Fixed(id) && !on {
+		return fmt.Errorf("%s is part of tiny-magpie and stays on", id)
+	}
 	return update(func(f *File) {
 		i := slices.IndexFunc(f.Plugins, func(r Row) bool { return r.ID == id })
 		if i < 0 {

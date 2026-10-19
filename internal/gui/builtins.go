@@ -1,8 +1,6 @@
 package gui
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/yetone/magpie/internal/pluginrt"
@@ -82,7 +80,7 @@ func builtinsState() []builtinJSON {
 // builtinsOff are the ids of the plugins the window leaves out now, for
 // boot.js to hide them before the page paints.
 func builtinsOff(list []builtinJSON) []string {
-	out := []string{"library", "sessions", "otel", "search", "tools", "warmups", "tiny-removed"}
+	out := []string{"library", "sessions", "otel", "search", "tools", "warmups", "redact", "tiny-removed"}
 	for _, b := range list {
 		if !b.On {
 			out = append(out, b.ID)
@@ -109,49 +107,6 @@ func builtinConfig(list []builtinJSON) map[string]map[string]any {
 // One in use is refused off.
 func builtinRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/plugins/builtin", func(rw http.ResponseWriter, r *http.Request) {
-		writeJSON(rw, builtinsState())
-	})
-	mux.HandleFunc("POST /api/plugins/builtin", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			ID     string         `json:"id"`
-			On     *bool          `json:"on"`
-			Config map[string]any `json:"config"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		var b *builtinJSON
-		for _, x := range builtinsState() {
-			if x.ID == in.ID {
-				b = &x
-				break
-			}
-		}
-		switch {
-		case b == nil:
-			fail(rw, fmt.Errorf("no built-in plugin %q", in.ID))
-			return
-		case b.Broken != "":
-			fail(rw, fmt.Errorf("%s", b.Broken))
-			return
-		case (in.On == nil) == (in.Config == nil):
-			fail(rw, fmt.Errorf("say on or config"))
-			return
-		case in.On != nil && !*in.On && b.InUse > 0:
-			fail(rw, fmt.Errorf("%s is in use and stays on", b.Name))
-			return
-		}
-		var err error
-		if in.On != nil {
-			err = pluginrt.Set(in.ID, *in.On)
-		} else {
-			err = pluginrt.SetConfig(in.ID, in.Config)
-		}
-		if err != nil {
-			fail(rw, err)
-			return
-		}
 		writeJSON(rw, builtinsState())
 	})
 }

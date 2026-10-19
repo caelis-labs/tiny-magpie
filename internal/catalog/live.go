@@ -145,7 +145,7 @@ func LiveVideomakers(provider string) []Model {
 func Chat(ms []Model) []Model {
 	out := make([]Model, 0, len(ms))
 	for _, m := range ms {
-		if !m.Draws && !m.Films {
+		if !m.Draws && !m.Films && m.Retrieval == "" {
 			out = append(out, m)
 		}
 	}
@@ -580,10 +580,11 @@ func fetchPage(ctx context.Context, url, key string, anthropic bool, headers map
 		// Another magpie's list is already what its user exposed. Keep
 		// its retrieval models too; a vendor's general list still leaves
 		// out models agents can't chat with.
+		retrieval := RetrievalKind(id, append(slices.Clone(r.Endpoints), r.Native...))
 		decision := r.Kind == "decision"
 		films := r.Kind == "video"
 		drawer := !films && !decision && (DrawsID(id) && !strings.Contains(strings.ToLower(id), "deep-research") || r.Kind == "image")
-		if !drawer && !films && !decision && headers["X-Magpie-Drawers"] == "" && !textModel(mdModel{ID: id}) {
+		if !drawer && !films && !decision && retrieval == "" && headers["X-Magpie-Drawers"] == "" && !textModel(mdModel{ID: id}) {
 			continue
 		}
 		name, plain := r.DisplayName, ""
@@ -609,7 +610,7 @@ func fetchPage(ctx context.Context, url, key string, anthropic bool, headers map
 		if len(apis) == 0 {
 			apis = targetAPIs(r.TypeTarget)
 		}
-		m := Model{ID: id, Name: name, Plain: plain, ImageInput: input, APIs: apis, Draws: drawer, Films: films, Decides: decision,
+		m := Model{ID: id, Name: name, Plain: plain, ImageInput: input, APIs: apis, Draws: drawer, Films: films, Decides: decision, Retrieval: retrieval,
 			InputModalities: r.Modalities.Input, OutputModalities: r.Modalities.Output}
 		if n, ok := r.ContextLength.(float64); ok && n > 0 {
 			m.Context = int(n)

@@ -1,6 +1,6 @@
 # Compatibility and acceptance
 
-This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `d783df46cbac9021e26a6bd71ca0b55544552eb2`. Tests below use isolated directories, fake credentials and fixture vendors. No real Magpie profile, Agent configuration or subscription was used.
+This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `d783df46cbac9021e26a6bd71ca0b55544552eb2`. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
 
 ## Reproducible gates
 
@@ -69,6 +69,61 @@ cloud backup/sync.
   [feature checklist](feature-review-2026-10-19.md). It did not change accounts,
   settings or plugins, or issue model requests. Existing page/background
   quota reads could still occur. The user's live binary was not replaced.
+
+## Gateway-core Dev revision, 2026-10-19
+
+This local revision remains on `codex/gateway-core-dev`; it is not a release.
+The integrated upstream range has not changed. Direct System One routing and
+its decision discovery header/snippets come from that baseline. Embeddings and
+Rerank already had upstream server endpoints; Tiny adds only typed inventory
+and GUI examples around the inherited forwarding/accounting implementation.
+Intelligent/intent routing remains unavailable.
+
+- Local protocol differential: discovery and 67 bidirectional fixture comparisons
+  pass, including explicit System One, Embedding and Rerank requests/replies.
+- Retained Go suite: 51 test packages pass with Bun 1.4.2, including the actual plugin-host tests.
+  Focused race checks cover direct classification, raw request forwarding,
+  no full-body retention, fixed assembly and unavailable retired APIs.
+- Chromium/WebKit: 70 cases across five languages and wide/narrow viewports, including
+  visible token/cost/speed/TTFT summaries and tray/header icon bounds at zoom.
+  Native usage summaries reuse the upstream container breakpoints so speed
+  values and their units remain readable in the six-metric overview.
+- Removing the System One handlers through a Go source overlay makes
+  `TestTinySystemOnePassesThrough` fail with HTTP 404; the restored source
+  passes. Removing the icon bounds makes all four tray regression cases fail.
+- Native macOS Dev uses separate bundle identity, fixed environment and profile,
+  gateway 13426, Web UI 13427 and a local vendor fixture on 13430. Four calls
+  through this isolated gateway returned 200 and generated fake usage records.
+  Known demo prices and unknown prices remain distinguishable in the real UI.
+
+An initial macOS launcher did not inherit the isolation environment, so its
+read-only first window showed existing account state. It was stopped before
+UI actions or model calls; background startup reads cannot be excluded. The
+replacement Dev launcher uses a fixed `execve` environment. Its actual process
+path/environment, API data directory/version and two fixture-only Provider IDs
+were independently read back, including a normal LaunchServices launch. No live
+profile was intentionally edited or used for acceptance. No real vendor account
+or current third-party release was exercised; native Windows/Linux GUI and
+installer acceptance remain outstanding.
+
+The first release review exposed a Dev-only menu-bar hosting failure in that
+exec launcher (macOS MenuBarAgent rejected its scene). A standard native bundle
+entry displayed the icon and was confirmed by the maintainer. The final local
+Dev uses a native Go entry with task-local isolation applied before CLI startup;
+the overlay and fixed test paths are not release source. Formal packages already
+use the native Go entry. No production tray implementation or system permission
+was changed. Final browser checks cover 70 cases, including available allowance
+cards and the corrected subscription-card/tray-value bounds. Container smoke now
+requires retained System One validation/auth instead of the obsolete 404.
+
+The [macOS permission investigation](macos-permissions.md) verifies client tool
+handoff and removed management endpoints with fixtures; it does not reproduce
+the original TCC dialog. Tiny's own administrator update prompt now names Tiny.
+
+See [Dev acceptance](dev-gateway-core.md). Task-local evidence is under ignored
+`.tiny/core-dev*`, including the full suite, cross-platform vet/build, protocol,
+race, browser/mutation logs, isolation proof and native screenshots. Generated
+Dev apps, launchers, fixture profiles and credentials are not source artifacts.
 
 ## Before a stable release
 

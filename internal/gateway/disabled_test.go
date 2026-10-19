@@ -151,8 +151,8 @@ func TestDisabledModelRefusedOnEveryRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	const ask = `{"model":"jev/jev-latest","state":{"message":"hi"},"questions":{"intent":{"type":"choice"}}}`
-	if w := do("POST", "/v1/systemone", ask); w.Code != 404 {
-		t.Fatalf("removed System One: %d", w.Code)
+	if w := do("POST", "/v1/systemone", ask); w.Code != 403 {
+		t.Fatalf("disabled System One: %d", w.Code)
 	}
 	// magpie's own decision calls (a group rule's classifier, a decision
 	// group's members, the provider check) all post through postDecide
@@ -202,7 +202,7 @@ func TestDisabledModelRefusedOnEveryRoute(t *testing.T) {
 	if w := chat("spare/m2"); w.Code != 200 || !strings.Contains(w.Body.String(), "from-spare") {
 		t.Fatal("enabled again", w.Code, w.Body.String())
 	}
-	if w := do("POST", "/v1/systemone", ask); w.Code != 404 || decided != 0 {
+	if w := do("POST", "/v1/systemone", ask); w.Code != 200 || decided != 1 {
 		t.Fatal("decision enabled again", w.Code, w.Body.String())
 	}
 }
