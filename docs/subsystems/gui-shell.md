@@ -9,6 +9,60 @@ with no binding generator and no bundler. `magpie web` serves the same page
 to a browser for a machine with no desktop. Package `internal/gui` hosts all
 three.
 
+## Tiny installation, identity and self-update
+
+The desktop distribution has its own SVG bird (`build/icon/magpie*.svg`),
+shared by the header, routing hub, template tray, favicon and generated native
+icons. `make icons` also regenerates Windows resources, the macOS ICNS and
+`Assets.car`; preserve both light/dark native appearances. The compact bird
+is Tiny artwork, with original upstream notices retained.
+
+`scripts/create-macos-dmg.sh` uses pinned build-only `dmgbuild` tooling.
+Finder shows the app, an Applications symlink, an arrow and one short hint.
+License/provenance documents live in `.documentation`; the signed bundle is
+copied without changing its metadata. `test-macos-dmg.sh` mounts the actual
+image and independently verifies `.DS_Store`, icon positions, background,
+visible contents and app bytes. Release validation additionally verifies the
+signed/notarized app inside the final image.
+
+Tiny reuses the updater in `internal/update` and the progress/confirmation/idle
+wait UI in `internal/gui/update*.go`. `startBackend` starts its cancellable
+clock for released binaries, checking after startup and every six hours.
+Settings › General exposes the current version, Check, automatic checking
+and preview/stable channels. Checks never download; Download stages a
+candidate, and Restart to update asks for confirmation and waits for gateway
+requests to finish. It never installs on quit or restarts by itself. Legacy
+upstream download/restart preferences remain readable but do not enable those
+actions in Tiny.
+
+`tiny_feed.go` accepts only published `tiny-v*` releases from
+`caelis-labs/tiny-magpie`, by semantic version. Preview includes stable;
+stable excludes GitHub prereleases and SemVer prereleases. No eligible stable
+release means nothing is offered, never a downgrade. Versioned platform asset
+names, own repository/tag URLs, positive size and a GitHub SHA-256 digest are
+required. A channel change rechecks selection; installation refuses any old
+channel's staged package. The updater and release-note paths ignore inherited
+Magpie feed overrides. `TINY_MAGPIE_UPDATE_FEED` accepts only an HTTP loopback
+IP URL for fixtures; production always uses the own public GitHub API.
+
+On macOS, the verified DMG is mounted read-only at a private staging point;
+its app is copied with `ditto` and the image detached even on cancellation.
+Before replacement, the new bundle must have an intact signature, the same
+nonempty team as the installed app, Caelis team `64KZ67PM5J`, Tiny bundle ID,
+matching release version and Gatekeeper acceptance. Staging uses
+`.tiny-magpie-update`, separate from original Magpie. An app running from a
+DMG or App Translocation cannot replace itself and explains installation in
+Applications instead. Windows/Linux reuse upstream's hash-checked binary
+swap, Windows start-policy failure handling and rollback; their artifacts are
+unsigned. Signature/ticket failures do not become unchecked installation.
+
+Run `go test -tags nogui ./internal/update ./internal/gui`, the focused race
+checks, `npm run test:ui` (both engines/five languages/two widths) and the
+mounted DMG checks. Offline fixtures cover feed/channel/source/hash/signature
+rejection, clock shutdown, no background download, channel-change refusal,
+UI preference persistence and separate restart confirmation. Native signed
+staging and clean-machine installation remain separately labeled acceptance.
+
 ## Responsibilities and sources of truth
 
 | Part | Responsibility | Source |

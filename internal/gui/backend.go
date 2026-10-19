@@ -36,6 +36,7 @@ func stopServing() {
 // running from before an update, a magpie serve in a terminal), and the
 // model lists kept warm.
 func startBackend() (gw *gateway.Server) {
+	updates.start()
 	gateway.Window = true // the routing this process serves is shown on its page
 	gw = serveGateway()
 	go watchGateway(backendCtx, gatewayWatch)

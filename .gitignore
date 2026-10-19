@@ -16,3 +16,6 @@
 /output/
 
 __pycache__/
+
+# Finder metadata from native installer checks
+.DS_Store

@@ -1,12 +1,6 @@
-// Package update keeps magpie current. Builds are published as GitHub
-// releases of yetone/magpie-releases; usemagpie.ai/api/latest describes the
-// newest one: its version, notes, and every file with its SHA-256.
-//
-// The macOS app replaces its own bundle: the new zip is downloaded, checked
-// against its hash, unpacked, and accepted only if it is signed by the same
-// team as the app already installed. A bare binary (the terminal build,
-// and the desktop app on Windows and Linux) replaces itself the same way,
-// minus the signature.
+// Package update keeps tiny-magpie current. Builds are published as GitHub
+// releases of caelis-labs/tiny-magpie. The inherited installer verifies
+// SHA-256 and replaces the bundle/binary; Tiny's macOS assets are signed DMGs.
 package update
 
 import (
@@ -14,7 +8,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -34,18 +27,6 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/source"
 )
-
-// Site is magpie's home; its /api/latest is the update feed.
-const Site = "https://usemagpie.ai"
-
-// Feed is where the newest release is described. MAGPIE_UPDATE_FEED points
-// it elsewhere, for testing an update against a local server.
-func Feed() string {
-	if f := os.Getenv("MAGPIE_UPDATE_FEED"); f != "" {
-		return f
-	}
-	return Site + "/api/latest"
-}
 
 // Release is one published version.
 type Release struct {
@@ -76,32 +57,6 @@ func proxied() http.RoundTripper {
 
 // Latest asks the feed for the newest release, its notes in English.
 func Latest(ctx context.Context) (*Release, error) { return LatestIn(ctx, "") }
-
-// LatestIn asks the feed for the newest release, its notes in lang (see
-// InLang): the app's language, which What's new follows.
-func LatestIn(ctx context.Context, lang string) (*Release, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", withLang(Feed(), lang), nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := source.Do(client, req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("update feed: %s", res.Status)
-	}
-	var r Release
-	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-		return nil, fmt.Errorf("update feed: %w", err)
-	}
-	if parse(r.Version) == nil {
-		return nil, fmt.Errorf("update feed: no version")
-	}
-	r.Notes = InLang(r.Notes, lang)
-	return &r, nil
-}
 
 // Released reports whether v is a release version rather than a build from
 // source ("dev", "0bcb2cc-dirty", git describe's "v0.1.0-3-g0bcb2cc");
@@ -196,11 +151,11 @@ func parse(v string) *semver {
 var GUI bool
 
 // AppAsset and BinaryAsset name the files this machine would install.
-func AppAsset() string { return "magpie-darwin-" + runtime.GOARCH + ".zip" }
+func AppAsset() string { return "tiny-magpie-darwin-" + runtime.GOARCH + ".dmg" }
 func BinaryAsset() string {
-	name := "magpie-cli-" + runtime.GOOS + "-" + runtime.GOARCH
+	name := "tiny-magpie-cli-" + runtime.GOOS + "-" + runtime.GOARCH
 	if GUI && runtime.GOOS != "darwin" {
-		name = "magpie-" + runtime.GOOS + "-" + runtime.GOARCH
+		name = "tiny-magpie-" + runtime.GOOS + "-" + runtime.GOARCH
 	}
 	if runtime.GOOS == "windows" {
 		name += ".exe"
@@ -230,7 +185,7 @@ func Bundle() string {
 // which keeps it in its Cellar and has to be the one to upgrade it: a
 // binary replaced under it leaves brew thinking the old version is there.
 func Homebrew(exe string) bool {
-	return strings.Contains(filepath.ToSlash(exe), "/Cellar/magpie/")
+	return strings.Contains(filepath.ToSlash(exe), "/Cellar/tiny-magpie/")
 }
 
 // Executable is the running binary, symlinks resolved.
@@ -244,7 +199,7 @@ func Executable() (string, error) {
 
 // Writable reports whether magpie may replace what lives in dir.
 func Writable(dir string) bool {
-	f, err := os.CreateTemp(dir, ".magpie-update-*")
+	f, err := os.CreateTemp(dir, ".tiny-magpie-update-*")
 	if err != nil {
 		return false
 	}
@@ -253,7 +208,7 @@ func Writable(dir string) bool {
 	return true
 }
 
-// Stage downloads the app in rel and unpacks it next to the installed
+// Stage downloads the DMG in rel and unpacks it next to the installed
 // bundle, ready for Install. It returns the unpacked app.
 func Stage(ctx context.Context, rel *Release, bundle string) (string, error) {
 	a, ok := rel.Assets[AppAsset()]
@@ -265,40 +220,66 @@ func Stage(ctx context.Context, rel *Release, bundle string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	zip := filepath.Join(dir, AppAsset())
-	if err := download(ctx, a, zip); err != nil {
+	dmg := filepath.Join(dir, AppAsset())
+	if err := download(ctx, a, dmg); err != nil {
 		os.RemoveAll(dir)
 		return "", err
 	}
 	out := filepath.Join(dir, "app")
-	if b, err := proc.CommandContext(ctx, "ditto", "-x", "-k", zip, out).CombinedOutput(); err != nil {
+	app, err := unpackDMG(ctx, dmg, out)
+	if err != nil {
 		os.RemoveAll(dir)
-		return "", fmt.Errorf("unzip: %v: %s", err, b)
+		return "", err
 	}
-	os.Remove(zip)
-	app := filepath.Join(out, "magpie.app")
-	if err := sameSigner(ctx, bundle, app); err != nil {
+	os.Remove(dmg)
+	if err := verifyApp(ctx, bundle, app, rel.Version); err != nil {
 		os.RemoveAll(dir)
 		return "", err
 	}
 	return app, nil
 }
 
-// sameSigner accepts app only if its signature is intact and made by the
-// team that signed the bundle it replaces.
-func sameSigner(ctx context.Context, bundle, app string) error {
-	if b, err := proc.CommandContext(ctx, "codesign", "--verify", "--deep", "--strict", app).CombinedOutput(); err != nil {
-		return fmt.Errorf("the downloaded app's signature is broken: %s", strings.TrimSpace(string(b)))
+func verifyApp(ctx context.Context, bundle, app, version string) error {
+	if err := sameSigner(ctx, bundle, app); err != nil {
+		return err
 	}
-	want, got := team(ctx, bundle), team(ctx, app)
-	if want != got {
-		return fmt.Errorf("the downloaded app is signed by %q, not %q", got, want)
+	v, err := signatureCommand(ctx, "defaults", "read", filepath.Join(app, "Contents", "Info"), "CFBundleShortVersionString")
+	if err != nil || strings.TrimSpace(string(v)) != version {
+		return fmt.Errorf("downloaded app version does not match release %s", version)
 	}
 	return nil
 }
 
+// sameSigner accepts app only if its signature is intact and made by the
+// team that signed the bundle it replaces.
+func sameSigner(ctx context.Context, bundle, app string) error {
+	if b, err := signatureCommand(ctx, "codesign", "--verify", "--deep", "--strict", app); err != nil {
+		return fmt.Errorf("the downloaded app's signature is broken: %s", strings.TrimSpace(string(b)))
+	}
+	want, got := team(ctx, bundle), team(ctx, app)
+	if want == "" || want != got || got != "64KZ67PM5J" {
+		return fmt.Errorf("the downloaded app is signed by %q, not %q", got, want)
+	}
+	for _, path := range []string{bundle, app} {
+		b, err := signatureCommand(ctx, "defaults", "read", filepath.Join(path, "Contents", "Info"), "CFBundleIdentifier")
+		if err != nil || strings.TrimSpace(string(b)) != "dev.caelis.tiny-magpie" {
+			return errors.New("update bundle is not tiny-magpie")
+		}
+	}
+	if b, err := signatureCommand(ctx, "spctl", "--assess", "--type", "execute", app); err != nil {
+		return fmt.Errorf("downloaded app did not pass Gatekeeper: %s", strings.TrimSpace(string(b)))
+	}
+	return nil
+}
+
+// signatureCommand is kept at the OS boundary so trust failures can be
+// exercised using fixtures without any signing keys or real application state.
+var signatureCommand = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return proc.CommandContext(ctx, name, args...).CombinedOutput()
+}
+
 func team(ctx context.Context, app string) string {
-	b, _ := proc.CommandContext(ctx, "codesign", "-dv", app).CombinedOutput()
+	b, _ := signatureCommand(ctx, "codesign", "-dv", app)
 	for _, l := range strings.Split(string(b), "\n") {
 		if v, ok := strings.CutPrefix(l, "TeamIdentifier="); ok && v != "not set" {
 			return v
@@ -316,7 +297,7 @@ func stageDir(dir string) string {
 			return filepath.Join(cache, "update")
 		}
 	}
-	return filepath.Join(dir, ".magpie-update")
+	return filepath.Join(dir, ".tiny-magpie-update")
 }
 
 // Install swaps the staged app in for bundle. The running copy keeps going
@@ -333,7 +314,7 @@ func Install(staged, bundle string) error {
 		os.Rename(old, bundle) // put it back
 		return err
 	}
-	os.RemoveAll(filepath.Dir(filepath.Dir(staged))) // .magpie-update
+	os.RemoveAll(filepath.Dir(filepath.Dir(staged))) // .tiny-magpie-update
 	return nil
 }
 

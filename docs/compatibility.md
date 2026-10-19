@@ -45,6 +45,31 @@ The tree still contains coupled Agent/session/library helpers and Wails,
 SQLite and Bun dependencies. CLI `sync` refreshes model catalogs; it is not
 cloud backup/sync.
 
+## Installer/update and identity revision, 2026-10-19
+
+- Local retained Go suite: 52 test packages, 8,513 passing test/subtest events,
+  no failures; Bun 1.3.6 does not satisfy the actual plugin-host minimum.
+  Native and Linux/Windows vet pass. Exact-head CI repeats native gates with
+  Bun 1.4.2; this local count does not replace it.
+- Chromium/WebKit: 42 retained cases across all five languages and two widths,
+  including own update preference persistence, explicit download, separate
+  restart confirmation and navigation from the title-bar update badge.
+- Protocol differential: discovery, 64 bidirectional fixture comparisons and
+  removed-endpoint/config-write checks pass against the pinned upstream.
+- Mounted DMG: two visible icons, real Applications symlink, minimal background,
+  exact Finder positions and full app content comparison pass. The old public
+  0.1.2 layout fails the new layout assertion; the old disabled updater fails
+  `TestTinyUpdaterChecksWithoutDownloading` through a source overlay.
+- Native signed staging: the public 0.1.2 DMG and installed-app fixture were
+  already present locally. `TestTinySignedDMGFixture` served those bytes over
+  loopback, checked their SHA-256, mounted/copied them, validated team, bundle
+  ID, version and Gatekeeper, and replaced only a temporary copy. This does
+  not prove a native Windows/Linux restart or an unattended real-user upgrade.
+- Read-only native audit of the user's running Tiny instance informed the
+  [feature checklist](feature-review-2026-10-19.md). It did not change accounts,
+  settings or plugins, or issue model requests. Existing page/background
+  quota reads could still occur. The user's live binary was not replaced.
+
 ## Before a stable release
 
 - Run the committed CI matrix on macOS, Linux and Windows. Cross-builds and WebKit fixtures do not establish native Windows/Linux window, tray, WebView, permissions or installer behavior.

@@ -4009,93 +4009,14 @@ function updatePath(p) {
 // itself, out (a click opens the release page). The user may keep it away:
 // for good (Settings), or for this version (its ×, or a right-click), until
 // a newer one is out. magpie still downloads it and puts it in on quitting.
-async function renderUpdateBadge() { return; // tiny uses its own releases
-
-  const b = $("#update"), label = b.querySelector("span");
-  const u = await api(updatePath("update")).catch(() => null);
-  // pulling: a click is downloading it again, and restarts once it's in
-  const pulling = !!u && !!b.dataset.pulling && ["checking", "downloading", "ready"].includes(u.state);
-  if (b.dataset.pulling && !pulling) {
-    delete b.dataset.pulling;
-    b.classList.remove("busy");
-  }
-  const on = pulling || (!!u && !updatePillOff(u.latest) && (u.state === "ready" || u.state === "available" || u.state === "found" || (u.state === "error" && u.retry)));
-  if (b.hidden !== !on) b.hidden = !on;
-  if (!on) return;
-  const hide = $("#updateHide");
-  hide.setAttribute("aria-label", t("Hide until the next version"));
-  hide.onclick = b.oncontextmenu = (e) => {
-    e.preventDefault();
-    skipUpdate(u.latest);
-  };
-  const restart = async () => {
-    b.classList.add("busy");
-    label.textContent = t("Restarting…");
-    // an answer means it didn't: the password prompt dismissed, the swap
-    // failed, or a newer version is out and downloading first
-    const a = await api("update/install", installFrom()).catch(() => ({}));
-    if (!a) return backAsNew(u.current);
-    if (a) {
-      if (["checking", "downloading"].includes(a.state)) b.dataset.pulling = "1";
-      else b.classList.remove("busy");
-      if (a.waiting) b.dataset.armed = String(Date.now());
-      renderUpdateBadge();
-    }
-  };
-  if (pulling) {
-    if (u.state === "ready") {
-      delete b.dataset.pulling;
-      return restart();
-    }
-    label.textContent = downloadingText(u);
-    setTimeout(renderUpdateBadge, 700);
-    return;
-  }
-  if (b.classList.contains("busy")) return;
-  // a restart waiting for the gateway to be idle (#577): a click restarts
-  // at once; one just after the click that armed it is taken as a double
-  // click, not as "now"
-  if (u.state === "ready" && u.waiting) {
-    label.textContent = t("Waiting to update");
-    b.title = t("magpie restarts to update to {v} once the agents' requests through the gateway have finished: {busy}. Click to restart now.", { v: u.latest, busy: updateBusyText(u.busy) || "…" });
-    b.onclick = () => {
-      if (Date.now() - (+b.dataset.armed || 0) < 1500) return;
-      b.classList.add("busy");
-      label.textContent = t("Restarting…");
-      api("update/install", { ...installFrom(), when: "now" }).then((a) => {
-        if (!a) return backAsNew(u.current);
-        b.classList.remove("busy");
-        renderUpdateBadge();
-      }, () => backAsNew(u.current));
-    };
-    clearTimeout(b.waitPoll);
-    b.waitPoll = setTimeout(() => {
-      api(updatePath("update")).then(() => renderUpdateBadge(), () => backAsNew(u.current));
-    }, 1500);
-    return;
-  }
-  // a swap that failed says so where it was clicked, not only in the tooltip
-  label.textContent = u.state === "ready" && u.error ? t("Update failed") : t("Update");
-  b.title = u.state === "ready" ? t("Restart to update to {v}", { v: u.latest })
-    : u.state === "error" ? t("Couldn't download {v}", { v: u.latest }) + " · " + t("Click to try again")
-    : u.state === "found" ? t("{v} is out", { v: u.latest }) + (u.size ? " · " + t("{done} MB", { done: (u.size / 1e6).toFixed(1) }) : "") + " · " + t("Click to download and restart")
-    : u.stuck ? updateStuck(u) + " " + t("Click to open the download page.")
-    : t("{v} is out", { v: u.latest });
-  if (u.error) b.title += "\n" + u.error;
-  b.onclick = () => {
-    // what changed is shown first, and a click there restarts (#844); one
-    // that failed restarts again at once
-    if (u.state === "ready") return u.error ? restart() : confirmUpdate(u, restart);
-    // found (#2296) or failed: a click downloads it, and restarts once it's in
-    if (u.state === "error" || u.state === "found") {
-      b.dataset.pulling = "1";
-      b.classList.add("busy");
-      label.textContent = t("Downloading…");
-      return api("update/install", {}).then(renderUpdateBadge, renderUpdateBadge);
-    }
-    if (web && u.url) return window.open(u.url, "_blank", "noopener");
-    api("update/install", {}).catch(() => {});
-  };
+async function renderUpdateBadge() {
+  const b = $("#update"), u = await api(updatePath("update")).catch(() => null);
+  b.hidden = !u || !["found", "ready", "available", "downloading", "blocked"].includes(u.state);
+  if (b.hidden) return;
+  b.querySelector("span").textContent = t("Update");
+  b.title = t("Tiny updates");
+  $("#updateHide").hidden = true;
+  b.onclick = async (e) => { scrollOnPurpose(e, 3000); await show("settings"); setSetTab("general", true); $("#tinyUpdates").scrollIntoView({block:"start"}); };
 }
 
 // downloadingText is the pill's word while an update downloads: its
@@ -19054,10 +18975,28 @@ function renderUpdateMirror(r, s) {
   queueMicrotask(() => { if (i.isConnected && document.activeElement !== i) i.focus({ preventScroll: true }); });
 }
 
+// Keep upstream's progress, confirmation and idle-wait UI. Only the own
+// feed/channel and check preference are exposed; no silent download/restart.
+function renderTinyUpdates(s, keep) {
+  const box = $("#tinyUpdates");
+  box.replaceChildren();
+  const row = (name, sub, ...tools) => {
+    const r = el("div", "row pref"), who = el("div", "who"), val = el("div", "val");
+    who.append(el("div", "name", name), el("div", "sub wraps", sub));
+    val.append(...tools); r.append(who, val); box.append(r); return r;
+  };
+  renderUpdate(row(t("Version"), "", el("code", "", s.version || "dev")));
+  row(t("Check automatically"), t("Checks tiny-magpie releases every six hours. Download and restart require your confirmation."),
+    segs([["off", t("Off")], ["on", t("On")]], s.noAutoUpdate ? "off" : "on", v => savePrefs({...keep, noAutoUpdate:v === "off", updateEvery:360})));
+  row(t("Release channel"), t("Only caelis-labs/tiny-magpie releases are used. Preview includes stable releases."),
+    segs([["preview", t("Preview")], ["stable", t("Stable")]], s.updateChannel || "preview", updateChannel => savePrefs({...keep, updateChannel})));
+}
+
 function renderSettings() {
   const s = prefs;
   const keep = prefsKeep(s);
   prefsBase = keep;
+  renderTinyUpdates(s, keep);
   renderFonts(s);
   $("#themeSegs").replaceChildren(segs(THEMES.map(([id, name]) => [id, t(name)]), s.theme, (theme) => savePrefs({ ...keep, theme })));
   $("#colorblindSegs").title = t("Colorblind-safe chart colors, and each allowance window's line in a dash of its own");
@@ -21967,7 +21906,7 @@ async function renderUpdate(r, u) {
         }, 1000);
         break;
       }
-      if (u.gaveUp) sub.textContent += " · " + t("the gateway stayed busy for an hour, so magpie didn't restart; it updates when you restart or quit it");
+      if (u.gaveUp) sub.textContent += " · " + t("the gateway stayed busy for an hour; click Restart to update to try again");
       else if (busyNow) sub.textContent += " · " + busyNow;
       if (u.gaveUp) sub.classList.add("wraps");
       btn(t("Restart to update"), () => (u.error ? install() : confirmUpdate(u, () => install())));
@@ -22154,7 +22093,7 @@ function prefsKeep(s) {
     claudeWarmup: s.claudeWarmup || "", codexWarmAt: s.codexWarmAt || "", claudeWarmAt: s.claudeWarmAt || "",
     codexWarmAts: warmTimes(s.codexWarmAts, s.codexWarmAt), claudeWarmAts: warmTimes(s.claudeWarmAts, s.claudeWarmAt), workbuddyCheckin: !!s.workbuddyCheckin, traeCheckin: !!s.traeCheckin, minimaxCheckin: !!s.minimaxCheckin, qoderCheckin: !!s.qoderCheckin, noStats: !!s.noStats, noUsageStats: !!s.noUsageStats,
     memberModel: !!s.memberModel, noLoopGuard: !!s.noLoopGuard, claudeLeanPrompt: !!s.claudeLeanPrompt, refusalRetries: s.refusalRetries ?? null,
-    noUpdatePill: !!s.noUpdatePill, noAutoUpdate: !!s.noAutoUpdate, updateEvery: s.updateEvery || 360, autoRestart: !!s.autoRestart, noAutoDownload: !!s.noAutoDownload,
+    updateChannel: s.updateChannel || "preview", noUpdatePill: !!s.noUpdatePill, noAutoUpdate: !!s.noAutoUpdate, updateEvery: s.updateEvery || 360, autoRestart: !!s.autoRestart, noAutoDownload: !!s.noAutoDownload,
     trayUsage: s.trayUsage || "", trayUsageEvery: s.trayUsageEvery || 3, trayNoLogos: !!s.trayNoLogos, trayNoBird: !!s.trayNoBird, trayPace: !!s.trayPace, trayNoCost: !!s.trayNoCost, vision: s.vision || "", visionEffort: s.visionEffort || "", searcherEffort: s.searcherEffort || "", imageGen: s.imageGen || "", searcher: s.searcher || "", searchFirst: s.searchFirst || "", currency: s.currency || "usd",
     chineseUnits: !!s.chineseUnits, usageAlert: s.usageAlert || 0, balanceAlert: s.balanceAlert || 0, resetReminder: s.resetReminder || 0,
     turnDoneAlert: s.turnDoneAlert || 0 };

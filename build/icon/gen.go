@@ -1,12 +1,9 @@
 //go:build ignore
 
-// Icon generator. Everything magpie shows is drawn from one bird: a round
-// little magpie in profile, tail cocked, black and white, on a 44-unit grid.
-// magpie.svg is the full drawing, its belly, shoulder and the slits in its
-// tail cut out of the black; the app tile uses it from 64px up.
-// magpie-small.svg drops the eye, which would only be a speck; the tray and
-// the smaller tiles use it, and so does the header in
-// internal/gui/assets/index.html.
+// Tiny's compact bird is drawn from SVGs on a 44-unit grid. A short tail
+// and round body distinguish the reduction fork; a swept white wing and
+// pale belly keep it recognisably a magpie. This is original Tiny
+// artwork, rather than the upstream bird recolored.
 //
 //	go run build/icon/gen.go tray internal/gui/tray.png     # 44px black template icon (macOS menu bar)
 //	go run build/icon/gen.go tray-flap internal/gui/trayflap # its frames when clicked (a size after the folder for a bigger look)
@@ -102,9 +99,9 @@ const (
 	// the clip paths of index.html's #bird-body (even-odd: the wing is cut
 	// out of it), #bird-tail and #bird-wing, their H and V written as L for
 	// parse
-	clipBody = "M16 0L44 0L44 44L0 44L0 26.4L10.6 26.4L13 24.2L16 19Z M29.8 18.3L26 19L22 21L17 23.5L14.6 24.7L10.6 26.4L6 29V32L9 31.5L12.5 32L16.4 31.8L19 31.4L24 28.8L28.5 24L30.6 21.4Z"
-	clipTail = "M0 0L17 0L17.2 19.6L14 25L10.6 26.4L0 26.4Z"
-	clipWing = "M29.8 18.3L26 19L22 21L17 23.5L14.6 24.7L10.6 26.4L6 29V32L9 31.5L12.5 32L16.4 31.8L19 31.4L24 28.8L28.5 24L30.6 21.4Z"
+	clipBody = "M0 0L44 0L44 44L0 44Z M0 26L18 26L18 44L0 44Z M12 18L33 18L33 31L12 31Z"
+	clipTail = "M0 26L18 26L18 44L0 44Z"
+	clipWing = "M12 18L33 18L33 31L12 31Z"
 )
 
 // A keyframe: at is the fraction of the animation, deg the rotation.
@@ -115,7 +112,7 @@ var (
 	tailKeys = []key{{0, 0}, {.18, 16}, {.36, -7}, {.54, 9}, {.72, -3}, {.86, 2}, {1, 0}}
 	bobKeys  = []key{{0, 0}, {.18, -4}, {.40, 2}, {.62, -1}, {1, 0}}
 	// transform-origin, in the viewBox
-	wingAt, tailAt, bobAt = [2]float64{30, 19.8}, [2]float64{14, 22}, [2]float64{26, 38}
+	wingAt, tailAt, bobAt = [2]float64{28, 21}, [2]float64{16, 28}, [2]float64{24, 35}
 )
 
 // trayFlap writes the frames the tray icon plays when it is clicked,

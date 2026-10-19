@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,29 +18,25 @@ import (
 	"github.com/yetone/magpie/internal/update"
 )
 
-// updater keeps the app current. It asks the feed at start-up and every six
-// hours, or as often as Settings says, or only when asked (#472); when a newer release is out and the app may replace itself — the
-// bundle on a Mac, the binary elsewhere — the new one is downloaded
-// straight away, so all that is left is a restart; with Settings'
-// NoAutoDownload it is only said to be out, and downloaded on a click
-// (#2296). Quitting installs it too, and the next launch is
-// the new version. Where the app's folder isn't the user's to change, the
-// restart asks for the administrator's password; only an app that can't be
-// replaced at all (run from its disk image, say) is sent to the release page.
+// updater checks Tiny's own releases at startup and every six hours.
+// Downloads require a click and installation requires a separate confirmation.
+// It reuses upstream's progress, trusted staging, rollback and idle-wait paths.
+// Disk-image/translocated copies direct the user to install in Applications.
 type updater struct {
-	mu     sync.Mutex
-	state  string // checking | latest | found | downloading | ready | available | source | error | blocked
-	latest *update.Release
-	err    string
-	bundle string      // the .app to replace, "" when not in one or stuck
-	stuck  string      // why the .app or binary can't be replaced where it is (update.Stuck, exeStuck)
-	exe    string      // not in a .app: the binary to replace, "" when not writable
-	exeDir string      // not in a .app: the binary's folder, named when it is stuck there
-	self   os.FileInfo // exe as this process started from it
-	retry  bool        // error: the download failed, and may be tried again
-	mirror string      // error: the mirror the failed download came through (#893)
-	staged string
-	aside  string // Windows: where install moved the running exe, to put back
+	mu      sync.Mutex
+	channel string // channel used to select latest and any staged version
+	state   string // checking | latest | found | downloading | ready | available | source | error | blocked
+	latest  *update.Release
+	err     string
+	bundle  string      // the .app to replace, "" when not in one or stuck
+	stuck   string      // why the .app or binary can't be replaced where it is (update.Stuck, exeStuck)
+	exe     string      // not in a .app: the binary to replace, "" when not writable
+	exeDir  string      // not in a .app: the binary's folder, named when it is stuck there
+	self    os.FileInfo // exe as this process started from it
+	retry   bool        // error: the download failed, and may be tried again
+	mirror  string      // error: the mirror the failed download came through (#893)
+	staged  string
+	aside   string // Windows: where install moved the running exe, to put back
 	// a version this computer wouldn't start (Smart App Control, #894),
 	// which the clock's checks don't download again; byClock, the check
 	// under way is the clock's
@@ -115,8 +112,43 @@ func updateDue(s settings.Settings, last, now time.Time) bool {
 	return !s.NoAutoUpdate && now.Sub(last) >= time.Duration(s.UpdateEvery)*time.Minute
 }
 
+func tinyUpdateChannel(s settings.Settings) string {
+	if s.UpdateChannel == "" {
+		return "preview"
+	}
+	return s.UpdateChannel
+}
+
 func (u *updater) start() {
-	// Application updates use tiny releases; never contact the upstream feed.
+	if !update.Released(Version) {
+		return
+	}
+	u.place(runtime.GOOS, update.GUI)
+	go u.watch(backendCtx, 5*time.Second, time.Minute)
+}
+
+func (u *updater) watch(ctx context.Context, first, every time.Duration) {
+	timer := time.NewTimer(first)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		u.mu.Lock()
+		last := u.asked
+		u.mu.Unlock()
+		s := settings.Load()
+		s.UpdateEvery = 360 // Tiny exposes one predictable six-hour cadence.
+		if update.Released(Version) && updateDue(s, last, time.Now()) {
+			u.checkByClock()
+		}
+		timer.Reset(every)
+	}
 }
 
 // bundleOf and executable are update.Bundle and update.Executable; tests
@@ -252,25 +284,44 @@ func (u *updater) freshen() {
 // already downloaded checks too: a newer one out since takes its place,
 // so the restart goes straight to the latest.
 func (u *updater) begin() bool {
-	return false
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.state == "checking" || u.state == "downloading" {
+		return false
+	}
+	u.state, u.err, u.retry, u.mirror, u.asked, u.byClock, u.fetch = "checking", "", false, "", time.Now(), false, false
+	return true
 }
 
 func (u *updater) run() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(backendCtx, 10*time.Minute)
 	defer cancel()
 	s := settings.Load()
 	u.mu.Lock()
+	channel := tinyUpdateChannel(s)
+	if u.channel != channel {
+		if u.staged != "" {
+			os.RemoveAll(u.staged)
+		}
+		u.staged, u.latest, u.channel = "", nil, channel
+	}
 	lang := u.lang
 	// Settings' NoAutoDownload: what is found is only said, unless this
 	// is a click on Download update
-	hold := s.NoAutoDownload && !u.fetch
+	hold := !u.fetch // Tiny checks automatically; downloading always needs a click.
 	u.mu.Unlock()
 	if lang == "" {
 		lang = notesLang(trayLang(s.Lang, systemLang))
 	}
-	rel, err := update.LatestIn(ctx, lang)
+	rel, err := update.LatestInChannel(ctx, lang, channel)
+	currentChannel := tinyUpdateChannel(settings.Load())
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	if currentChannel != channel {
+		u.state = ""
+		go u.check() // the explicit channel choice is rechecked even with the clock off
+		return
+	}
 	// a version downloaded on a click stays the one restarted into while
 	// downloads wait for a click: a newer one out since isn't fetched
 	if u.staged != "" && u.latest != nil && (err != nil || !update.Newer(rel.Version, u.latest.Version) || hold) {
@@ -334,7 +385,16 @@ func (u *updater) run() {
 	} else {
 		staged, err = update.StageBinary(ctx, rel)
 	}
+	currentChannel = tinyUpdateChannel(settings.Load())
+	if currentChannel != channel && staged != "" {
+		os.RemoveAll(staged)
+	}
 	u.mu.Lock()
+	if currentChannel != channel {
+		u.state, u.staged = "", ""
+		go u.check()
+		return
+	}
 	if err != nil {
 		log.Println("update:", err)
 		u.state, u.err, u.retry, u.mirror = "error", err.Error(), true, update.MirrorOf(err)
@@ -353,6 +413,11 @@ func (u *updater) run() {
 func (u *updater) install(ask bool) bool {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	channel := tinyUpdateChannel(settings.Load())
+	if u.channel != "" && u.channel != channel {
+		u.err = "Update channel changed; check for updates again"
+		return false
+	}
 	if u.replaced() {
 		// another magpie updated the binary after this one started: it is
 		// in, and swapping this one's download in would move it aside (the
@@ -485,9 +550,9 @@ func (u *updater) inLang(lang string) {
 // relang asks the feed again for version's notes in lang, the pages'
 // language not being the one they were asked in.
 func (u *updater) relang(version, lang string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(backendCtx, 30*time.Second)
 	defer cancel()
-	rel, err := update.LatestIn(ctx, lang)
+	rel, err := update.LatestInChannel(ctx, lang, settings.Load().UpdateChannel)
 	if err != nil {
 		return
 	}
@@ -554,6 +619,17 @@ func updateRoutes(mux *http.ServeMux, w Windows) {
 			When string `json:"when"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&in)
+		if in.When != "cancel" {
+			channel := tinyUpdateChannel(settings.Load())
+			updates.mu.Lock()
+			changed := updates.channel != channel
+			updates.mu.Unlock()
+			if changed {
+				updates.check()
+				writeJSON(rw, updates.json())
+				return
+			}
+		}
 		if in.When == "cancel" {
 			updates.callOff()
 			writeJSON(rw, updates.json())

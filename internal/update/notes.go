@@ -2,11 +2,6 @@ package update
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
-	"os"
 	"regexp"
 	"slices"
 	"sort"
@@ -20,54 +15,26 @@ type Note struct {
 	URL     string `json:"url,omitempty"`
 }
 
-// NotesFeed is where the notes of past releases are listed: beside the
-// update feed, on magpie's site. MAGPIE_NOTES_FEED points it elsewhere.
-func NotesFeed() string {
-	if f := os.Getenv("MAGPIE_NOTES_FEED"); f != "" {
-		return f
-	}
-	return Site + "/api/notes"
-}
+// NotesFeed shares Tiny's own release API. Inherited notes-feed overrides
+// never redirect release notes to the original Magpie channel.
+func NotesFeed() string { return Feed() }
 
-// ReleasePage is version's page on GitHub, where its notes are when the
-// site can't give them (#661).
 func ReleasePage(version string) string {
-	return "https://github.com/yetone/magpie-releases/releases/tag/v" + strings.TrimPrefix(strings.TrimSpace(version), "v")
+	return Site + "/releases/tag/tiny-v" + strings.TrimPrefix(strings.TrimSpace(version), "v")
 }
 
-// NotesBetween asks the site for the notes of every release after after
-// (none when "") up to and including upto, newest first, in lang (see
-// InLang).
 func NotesBetween(ctx context.Context, after, upto, lang string) ([]Note, error) {
-	q := url.Values{"upto": {upto}}
-	if after != "" {
-		q.Set("after", after)
-	}
-	if lang != "" {
-		q.Set("lang", lang)
-	}
-	req, err := http.NewRequestWithContext(ctx, "GET", NotesFeed()+"?"+q.Encode(), nil)
+	list, err := releaseList(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
+	var notes []Note
+	for _, r := range list {
+		if v := tinyVersion(r); v != "" {
+			notes = append(notes, Note{Version: v, Notes: InLang(r.Body, lang), URL: r.URL})
+		}
 	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("release notes: %s", res.Status)
-	}
-	var out struct {
-		Releases []Note `json:"releases"`
-	}
-	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("release notes: %w", err)
-	}
-	for i := range out.Releases {
-		out.Releases[i].Notes = InLang(out.Releases[i].Notes, lang)
-	}
-	return Between(out.Releases, after, upto), nil
+	return Between(notes, after, upto), nil
 }
 
 // zhMarker is where a release's notes turn from English to Chinese: the
@@ -89,21 +56,6 @@ func InLang(md, lang string) string {
 		}
 	}
 	return strings.TrimSpace(md[:i])
-}
-
-// withLang adds lang to a feed's address, as ?lang= (or &lang=).
-func withLang(feed, lang string) string {
-	if lang == "" {
-		return feed
-	}
-	u, err := url.Parse(feed)
-	if err != nil {
-		return feed
-	}
-	q := u.Query()
-	q.Set("lang", lang)
-	u.RawQuery = q.Encode()
-	return u.String()
 }
 
 // MaxNotes is how many releases' notes are shown at most: magpie releases
