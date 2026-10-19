@@ -147,6 +147,10 @@ jobs:
         run: python3 scripts/test-publish-release.py
       - name: Native release inventory and provenance
         run: python3 scripts/test-release-artifacts.py
+      - name: Apple ticket retry and trusted checkpoint recovery
+        run: |
+          python3 scripts/test-notarization-stapler.py
+          python3 scripts/test-release-resume.py
       - run: npm ci
       - run: npx playwright install chromium webkit
       - run: npm run test:ui
