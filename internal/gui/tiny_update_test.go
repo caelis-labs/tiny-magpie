@@ -115,3 +115,34 @@ func TestTinyChannelChangeRejectsStagedPreview(t *testing.T) {
 		t.Fatal("channel refusal destroyed staged bytes", err)
 	}
 }
+
+func TestTinyDefaultChannelSaveRespectsChecksOff(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
+	s := settings.Load()
+	s.NoAutoUpdate = true
+	s.UpdateChannel = ""
+	if err := settings.Save(s); err != nil {
+		t.Fatal(err)
+	}
+	old := updates
+	updates = &updater{}
+	t.Cleanup(func() { updates = old })
+	s.UpdateChannel = "preview"
+	s.NoUpdatePill = true
+	body, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	Handler(nil, nil).ServeHTTP(w, httptest.NewRequest("POST", "/api/settings", strings.NewReader(string(body))))
+	if w.Code != 200 {
+		t.Fatalf("save: %d %s", w.Code, w.Body)
+	}
+	updates.mu.Lock()
+	state := updates.state
+	updates.mu.Unlock()
+	if state != "" {
+		t.Fatalf("ordinary save started an update check while disabled: %s", state)
+	}
+}

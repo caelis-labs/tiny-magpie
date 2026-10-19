@@ -1035,7 +1035,7 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		if strings.TrimSpace(in.Proxy) != strings.TrimSpace(cur.Proxy) && updates.json().State == "error" && updates.begin() {
 			go updates.run()
 		}
-		if in.UpdateChannel != cur.UpdateChannel || (cur.NoAutoUpdate && !in.NoAutoUpdate) {
+		if tinyUpdateChannel(in) != tinyUpdateChannel(cur) || (cur.NoAutoUpdate && !in.NoAutoUpdate) {
 			updates.mu.Lock()
 			updates.asked = time.Time{} // next clock tick picks the new preference
 			updates.mu.Unlock()

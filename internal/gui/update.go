@@ -112,6 +112,13 @@ func updateDue(s settings.Settings, last, now time.Time) bool {
 	return !s.NoAutoUpdate && now.Sub(last) >= time.Duration(s.UpdateEvery)*time.Minute
 }
 
+func tinyUpdateChannel(s settings.Settings) string {
+	if s.UpdateChannel == "" {
+		return "preview"
+	}
+	return s.UpdateChannel
+}
+
 func (u *updater) start() {
 	if !update.Released(Version) {
 		return
@@ -291,10 +298,7 @@ func (u *updater) run() {
 	defer cancel()
 	s := settings.Load()
 	u.mu.Lock()
-	channel := s.UpdateChannel
-	if channel == "" {
-		channel = "preview"
-	}
+	channel := tinyUpdateChannel(s)
 	if u.channel != channel {
 		if u.staged != "" {
 			os.RemoveAll(u.staged)
@@ -394,10 +398,7 @@ func (u *updater) run() {
 func (u *updater) install(ask bool) bool {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	channel := settings.Load().UpdateChannel
-	if channel == "" {
-		channel = "preview"
-	}
+	channel := tinyUpdateChannel(settings.Load())
 	if u.channel != "" && u.channel != channel {
 		u.err = "Update channel changed; check for updates again"
 		return false
@@ -604,10 +605,7 @@ func updateRoutes(mux *http.ServeMux, w Windows) {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&in)
 		if in.When != "cancel" {
-			channel := settings.Load().UpdateChannel
-			if channel == "" {
-				channel = "preview"
-			}
+			channel := tinyUpdateChannel(settings.Load())
 			updates.mu.Lock()
 			changed := updates.channel != channel
 			updates.mu.Unlock()
