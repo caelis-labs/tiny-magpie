@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Reconcile immutable draft assets before making an experimental release public."""
+"""Reconcile immutable draft assets before publishing a Tiny release."""
+import argparse
 import hashlib
 import json
 import pathlib
 import re
 import subprocess
-import sys
 import tempfile
 
 REPO = 'caelis-labs/tiny-magpie'
@@ -21,10 +21,12 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main(tag):
+def main(tag, stable=False):
     if not re.fullmatch(r'tiny-v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', tag):
         raise SystemExit('Invalid tiny release tag')
     version = tag.removeprefix('tiny-v')
+    if stable and '-' in version:
+        raise SystemExit('A prerelease version cannot be published as stable')
     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     tagged = subprocess.check_output(['git', 'rev-parse', f'{tag}^{{commit}}'], cwd=ROOT, text=True).strip()
     if sha != tagged:
@@ -46,13 +48,16 @@ def main(tag):
         if 'HTTP 404' not in result.stderr and result.stderr.strip() != 'release not found':
             raise SystemExit(result.stderr)
         gh('release', 'create', tag, '-R', REPO, '--verify-tag', '--target', sha,
-           '--draft', '--prerelease', '--title', f'tiny-magpie {version} (Preview)',
+           '--draft', f'--prerelease={str(not stable).lower()}', '--title',
+           f'tiny-magpie {version}' + ('' if stable else ' (Preview)'),
            '--notes-file', str(ROOT / f'docs/releases/{version}.md'))
     release_id = json.loads(gh(*lookup))['databaseId']
     endpoint = f'repos/{REPO}/releases/{release_id}'
     release = json.loads(gh('api', endpoint))
     if release['target_commitish'] != sha or release['tag_name'] != tag:
         raise SystemExit('Existing release targets different source')
+    if release['prerelease'] != (not stable):
+        raise SystemExit('Existing release has a different channel')
     present = {asset['name'] for asset in release['assets']}
     if present - expected.keys():
         raise SystemExit(f'Unexpected remote assets: {present - expected.keys()}')
@@ -68,12 +73,17 @@ def main(tag):
             if digest(pathlib.Path(temp) / name) != checksum:
                 raise SystemExit(f'Remote asset differs: {name}')
     if release['draft']:
-        gh('release', 'edit', tag, '-R', REPO, '--draft=false', '--prerelease', '--latest=false')
+        gh('release', 'edit', tag, '-R', REPO, '--draft=false',
+           f'--prerelease={str(not stable).lower()}', f'--latest={str(stable).lower()}')
     final = json.loads(gh('api', endpoint))
-    if final['draft'] or {asset['name'] for asset in final['assets']} != set(expected):
+    if final['draft'] or final['prerelease'] != (not stable) or {asset['name'] for asset in final['assets']} != set(expected):
         raise SystemExit('Publication readback failed')
     print(final['html_url'])
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('tag')
+    parser.add_argument('--stable', action='store_true')
+    args = parser.parse_args()
+    main(args.tag, args.stable)

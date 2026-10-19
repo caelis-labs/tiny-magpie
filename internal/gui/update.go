@@ -114,7 +114,7 @@ func updateDue(s settings.Settings, last, now time.Time) bool {
 
 func tinyUpdateChannel(s settings.Settings) string {
 	if s.UpdateChannel == "" {
-		return "preview"
+		return "stable"
 	}
 	return s.UpdateChannel
 }

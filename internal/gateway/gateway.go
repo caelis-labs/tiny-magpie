@@ -623,6 +623,8 @@ func (s *Server) Handler() http.Handler {
 	// Codex's web.run tool (anton on Discord)
 	mux.HandleFunc("POST /v1/messages/count_tokens", keepsSignIn(s.countTokens))
 
+	mux.HandleFunc("POST /v1/systemone", s.serveSystemOne)
+	mux.HandleFunc("POST /systemone", s.serveSystemOne)
 	mux.HandleFunc("POST /v1/embeddings", s.retrieve("/embeddings", "embeddings"))
 	mux.HandleFunc("POST /embeddings", s.retrieve("/embeddings", "embeddings"))
 	mux.HandleFunc("POST /v1/rerank", s.retrieve("/rerank", "rerank"))
@@ -636,7 +638,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1beta/models", s.geminiModels)
 	mux.HandleFunc("POST /v1beta/models/{call...}", s.gemini)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, provider.Chat, http.StatusNotFound, "tiny-magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/embeddings, /v1/rerank and /v1beta/models/*")
+		writeError(w, provider.Chat, http.StatusNotFound, "tiny-magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/systemone, /v1/embeddings, /v1/rerank and /v1beta/models/*")
 	})
 	return s.counted(holdCatalog(corsGuard(callerGuard(withCaller(keyLimited(mux))))))
 }
@@ -658,7 +660,7 @@ func responsesOverHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"name": "magpie", "version": Version, "models": len(provider.Catalog()), "window": Window,
-		"apis": []string{"/v1/chat/completions", "/v1/responses", "/v1/messages", "/v1beta/models/{model}:generateContent", "/v1/embeddings", "/v1/rerank", "/v1/magpie/quotas", "/v1/magpie/usage", "/v1/magpie/usage/requests", "/v1/magpie/route"}})
+		"apis": []string{"/v1/chat/completions", "/v1/responses", "/v1/messages", "/v1/systemone", "/v1beta/models/{model}:generateContent", "/v1/embeddings", "/v1/rerank", "/v1/magpie/quotas", "/v1/magpie/usage", "/v1/magpie/usage/requests", "/v1/magpie/route"}})
 }
 
 // quotas is what is left of every subscription, plan and key magpie has,
@@ -1027,6 +1029,19 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if r.Header.Get(provider.DecidersHeader) != "" {
+		deciders := keyAllowed(r, provider.Deciders())
+		for i := range deciders {
+			deciders[i].Name = cmp.Or(deciders[i].Name, deciders[i].Model)
+		}
+		labels := provider.Labels(deciders)
+		for i, e := range deciders {
+			m := modelObject(e)
+			m["kind"], m["magpie_label"] = "decision", labels[i]
+			m["native_endpoints"] = []string{"/v1/systemone"}
+			data = append(data, m)
+		}
+	}
 	// ?format=text: the ids one a line, to paste into a client that takes
 	// its models typed by hand, one a line, and asks no list of its own
 	// (ZCode's custom provider), from a browser on another computer with

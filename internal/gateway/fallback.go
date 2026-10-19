@@ -716,9 +716,9 @@ func heldAdvice(capped, noCredits bool) string {
 	case !noCredits:
 		return "raise or lift the cap in magpie (Providers → the account's cap, or magpie provider account-cap)"
 	case !capped:
-		return "to go on now, if an account holds credits, let it spend them (Usage → the account's Use credits, or magpie quota credits <account> on)"
+		return "wait for quota renewal or use another account"
 	}
-	return "to go on now, raise or lift a cap (Providers → the account's cap, or magpie provider account-cap) or, if an account holds credits, let it spend them (Usage → the account's Use credits, or magpie quota credits <account> on)"
+	return "raise a configured usage cap, wait for quota renewal or use another account"
 }
 
 // heldBy says what holds the accounts of ws held at a share: a usage cap

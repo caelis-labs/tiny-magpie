@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/usage"
 )
 
@@ -196,31 +195,6 @@ func TestRetrievalFailures(t *testing.T) {
 
 // With secrets kept, what is embedded or ranked has them masked on the
 // way out, and a document the reranker gives back has them again.
-func TestRetrievalRedacts(t *testing.T) {
-	s, l := shelved(t)
-	if err := settings.Save(settings.Settings{Redact: true}); err != nil {
-		t.Fatal(err)
-	}
-	secret := "sk-ant-api03-" + strings.Repeat("Ab3x", 20)
-	if code, raw := postRetrieval(t, s, "/v1/embeddings", `{"model":"lib/embed-1","input":"key `+secret+`"}`); code != 200 {
-		t.Fatalf("%d %s", code, raw)
-	}
-	if sent := l.got("/v1/embeddings"); len(sent) != 1 || strings.Contains(sent[0], secret) {
-		t.Fatalf("vendor was sent %v", sent)
-	}
-	code, raw := postRetrieval(t, s, "/v1/rerank", `{"model":"lib/rerank-1","query":"q","documents":["`+secret+`","b"],"return_documents":true}`)
-	if code != 200 || !strings.Contains(raw, secret) {
-		t.Fatalf("%d %s", code, raw)
-	}
-	if sent := l.got("/v1/rerank"); len(sent) != 1 || strings.Contains(sent[0], secret) {
-		t.Fatalf("vendor was sent %v", sent)
-	}
-}
-
-// #773: a routing group's members are tried in turn for embeddings and
-// rerank as for a chat: one out of quota (429) or one without the API
-// (404) passes the request to the next, and when all fail the last one's
-// refusal comes back with those tried first.
 func TestRetrievalGroupFailsOver(t *testing.T) {
 	s, l := shelved(t)
 	var asked []string

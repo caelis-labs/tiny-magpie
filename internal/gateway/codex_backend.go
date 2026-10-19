@@ -686,11 +686,11 @@ func codexAccounts(r *http.Request, model string) (string, bool) {
 	p, _, ok := provider.Resolve(id)
 	// one account named is found among them however many are on
 	pinned := h.Get(AccountHeader) != ""
-	// an account with a usage cap, or set not to spend its credits, goes
-	// through routing, which holds it there, even alone: relayed as it
-	// came, nothing would
+	// An explicit account cap is served through routing. A native client
+	// otherwise keeps upstream passthrough semantics; Tiny's managed-account
+	// quota policy must not rewrite a native authenticated request.
 	if ok && p.Account != nil && p.Account.Agent == "codex" {
-		if provider.HoldCaps(p, "codex", p.Account.User).Holds() {
+		if p.CapsOf(p.Account.User).Holds() {
 			return id, true
 		}
 	}

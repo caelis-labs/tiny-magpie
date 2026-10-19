@@ -118,10 +118,10 @@ func TestCountTokensUnsupported(t *testing.T) {
 			var got struct {
 				Tokens int `json:"input_tokens"`
 			}
-			if err := json.Unmarshal([]byte(body), &got); err != nil || code != 200 || got.Tokens != 4 {
-				t.Fatalf("masked estimate: %d %s (decode: %v)", code, body, err)
+			if err := json.Unmarshal([]byte(body), &got); err != nil || code != 200 || got.Tokens != 2 {
+				t.Fatalf("unmodified estimate: %d %s (decode: %v)", code, body, err)
 			}
-			if f.calls != 1 || f.path != "/v1/messages/count_tokens" || !strings.Contains(string(f.got), "{{PHONE_") {
+			if f.calls != 1 || f.path != "/v1/messages/count_tokens" || !strings.Contains(string(f.got), "13812345678") {
 				t.Fatalf("upstream: %d calls to %s, body %s", f.calls, f.path, f.got)
 			}
 		})
@@ -200,8 +200,8 @@ func TestCountTokensKeyFailover(t *testing.T) {
 			if rec.Code != want || strings.Join(seen, ",") != "k-first,k-next" {
 				t.Fatalf("reply: %d %s; tried %v", rec.Code, rec.Body, seen)
 			}
-			if bodies[0] != bodies[1] || modelOf([]byte(bodies[0])) != "m1" || !strings.Contains(bodies[0], "{{PHONE_") {
-				t.Fatalf("retried a different or unmasked prompt: %v", bodies)
+			if bodies[0] != bodies[1] || modelOf([]byte(bodies[0])) != "m1" || !strings.Contains(bodies[0], "13812345678") {
+				t.Fatalf("retried a different prompt: %v", bodies)
 			}
 			retry := ""
 			if tc.status == 429 {
@@ -220,8 +220,8 @@ func TestCountTokensKeyFailover(t *testing.T) {
 					t.Fatalf("limited key did not rest: %d %s, tried %v", rec.Code, rec.Body, seen)
 				}
 			case 404:
-				if !strings.Contains(rec.Body.String(), `"input_tokens":4`) {
-					t.Fatalf("masked estimate: %s", rec.Body)
+				if !strings.Contains(rec.Body.String(), `"input_tokens":2`) {
+					t.Fatalf("unmodified estimate: %s", rec.Body)
 				}
 			default:
 				if !strings.Contains(rec.Body.String(), "Count: "+provider.APIError([]byte(tc.reply), "")) {
@@ -287,7 +287,7 @@ func TestCountTokensTransportFailover(t *testing.T) {
 				}
 				key := r.Header.Get("x-api-key")
 				seen, bodies = append(seen, key), append(bodies, string(body))
-				if r.URL.Path != "/v1/messages/count_tokens" || modelOf(body) != "m1" || !strings.Contains(string(body), "{{PHONE_") {
+				if r.URL.Path != "/v1/messages/count_tokens" || modelOf(body) != "m1" || !strings.Contains(string(body), "13812345678") {
 					t.Fatalf("upstream: %s %s", r.URL, body)
 				}
 				if key == "first" {

@@ -1,5 +1,13 @@
 {
   "repository": "https://github.com/yetone/magpie.git",
   "base": "d783df46cbac9021e26a6bd71ca0b55544552eb2",
-  "retainedBuiltins": ["budget", "gateway", "groups", "middleware", "redact", "rotation", "routing", "usage"]
+  "retainedBuiltins": [
+    "budget",
+    "gateway",
+    "groups",
+    "middleware",
+    "rotation",
+    "routing",
+    "usage"
+  ]
 }

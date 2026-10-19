@@ -34,7 +34,6 @@ import (
 	"github.com/yetone/magpie/internal/autostart"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/filememo"
-	"github.com/yetone/magpie/internal/fonts"
 	"github.com/yetone/magpie/internal/fx"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/lastgood"
@@ -750,7 +749,7 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 			boot["colorblind"] = true
 		}
 		if !isWeb(w) {
-			boot["uiFont"], boot["codeFont"] = s.UIFont, s.CodeFont
+			boot["uiFont"], boot["codeFont"] = nil, nil
 		}
 		// and whether it is a gateway's page alone (gatewaymode.go), so the
 		// pages left out never show
@@ -782,7 +781,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		writeJSON(rw, nil)
 	})
 	omarchyRoutes(mux, w)
-	fontRoutes(mux, isWeb(w) || !fonts.Available, fonts.List)
 	mux.HandleFunc("GET /api/state", func(rw http.ResponseWriter, r *http.Request) {
 		// the panel and its model picker load from here: an account still
 		// without its vendor's list (one whose try at start-up failed) is
@@ -1142,151 +1140,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		writeJSON(rw, settingsState())
 	})
-	// whether Codex's OpenAI models say multi-agent V1 (#141): Codex's lists
-	// are written again and asked for again
-	mux.HandleFunc("POST /api/settings/codex-agents-v1", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ On bool }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		if err := provider.SetCodexAgentsV1(in.On); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// the Agents page's Get started card put away, or back (GuideHidden)
-	mux.HandleFunc("POST /api/settings/guide", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Hidden bool }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		s := settings.Load()
-		s.GuideHidden = in.Hidden
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// whether Claude Desktop lists a model of 1M or more once, by its 1M id
-	// (settings.DesktopLongest, #1272): it reads the list as it starts
-	mux.HandleFunc("POST /api/settings/desktop-longest", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ On bool }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		s := settings.Load()
-		was := s.DesktopLongest
-		s.DesktopLongest = in.On
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		// a model listed by its 1M id leaves the window Claude Code is
-		// told for Desktop's others, or joins it (#1458)
-		if was != in.On {
-			catalog.Touched()
-		}
-		writeJSON(rw, settingsState())
-	})
-	// whether Codex and Claude Code are told a model's whole context window
-	// or the working one (settings.FullContext): their lists are written
-	// again
-	mux.HandleFunc("POST /api/settings/full-context", func(rw http.ResponseWriter, r *http.Request) {
-		// At, when given, is a threshold to compact at instead, in
-		// tokens: 0 is the working window again (#876)
-		var in struct {
-			On bool
-			At *int
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		err := provider.SetFullContext(in.On)
-		if err == nil && !in.On && in.At != nil {
-			err = provider.SetCompactAt(*in.At)
-		}
-		if err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// Codex's background compaction (#2490): on or off, and the share of
-	// a model's window it starts at (0: Codex's own, 65), written into the
-	// config Codex is routed through
-	mux.HandleFunc("POST /api/settings/codex-async-compact", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			On      bool
-			Percent *int
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		pct := settings.Load().CodexAsyncCompactPercent
-		if in.Percent != nil {
-			pct = *in.Percent
-		}
-		if err := provider.SetCodexAsyncCompact(in.On, pct); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// where Codex's request for a thread's description goes: "" as Codex
-	// sends it, or a model's id. It is separate from the title setting.
-	mux.HandleFunc("POST /api/settings/codex-descriptions", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Model string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		v := strings.TrimSpace(in.Model)
-		if v != "" {
-			if _, _, ok := provider.Resolve(v); !ok {
-				fail(rw, fmt.Errorf("no model %s to write Codex's descriptions", v))
-				return
-			}
-		}
-		s := settings.Load()
-		s.CodexDescriptions = v
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// where the Codex app's request to predict the user's next message
-	// goes (#1970): "" as Codex sends it, "off", or a model's id
-	mux.HandleFunc("POST /api/settings/codex-predictions", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Model string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		v := strings.TrimSpace(in.Model)
-		if v != "" && v != "off" {
-			if _, _, ok := provider.Resolve(v); !ok {
-				fail(rw, fmt.Errorf("no model %s to write Codex's composer predictions", v))
-				return
-			}
-		}
-		s := settings.Load()
-		s.CodexPredictions = v
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// where Codex's requests for a thread's title go (#705): "" as Codex
-	// sends them, "off", or a model's id
 	// the models turned off for every request through magpie (#1867), each
 	// an id or a glob, the list sent whole
 	mux.HandleFunc("POST /api/settings/disabled-models", func(rw http.ResponseWriter, r *http.Request) {
@@ -1304,92 +1157,7 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 	// Settings › Proxy's Test (#2076): the address Cloudflare sees a request
 	// from through the proxy in force, and without it
 	mux.HandleFunc("POST /api/proxy/check", handleProxyCheck)
-	mux.HandleFunc("POST /api/settings/codex-titles", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Model string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		v := strings.TrimSpace(in.Model)
-		if v != "" && v != "off" {
-			if _, _, ok := provider.Resolve(v); !ok {
-				fail(rw, fmt.Errorf("no model %s to write Codex's titles", v))
-				return
-			}
-		}
-		s := settings.Load()
-		s.CodexTitles = v
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// the model Codex's auto-review runs on (#938): "" as Codex picks it,
-	// or a model's id, named in every entry of Codex's list
-	mux.HandleFunc("POST /api/settings/codex-auto-review", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Model string }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		v := strings.TrimSpace(in.Model)
-		if v != "" {
-			// Resolve intentionally accepts arbitrary names under a known
-			// provider. An approval reviewer must be a model or group magpie
-			// actually lists, including providers kept unlisted for routing.
-			if !slices.ContainsFunc(provider.Served(), func(e provider.Entry) bool { return e.ID == v }) {
-				fail(rw, fmt.Errorf("no model %s for Codex's auto-review", v))
-				return
-			}
-		}
-		if err := provider.SetCodexAutoReview(v); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// whether a Codex account spends one of its resets by itself once its
-	// week is used up, the Usage card's toggle, set on its own
-	// a Codex account's own daily warm-up time: "06:00", "off", or "" to
-	// follow the one for all (#957)
-
-	// a Codex account's auto-use of its resets: at both times, or with When
-	// ("week" or "expiring") at that one alone, the other kept (#2078)
-
-	// whether a Codex account spends its credits once its allowance is
-	// used up, the Usage card's toggle, set on its own
-	mux.HandleFunc("POST /api/settings/codex-credits", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			User string
-			On   bool
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		if strings.TrimSpace(in.User) == "" {
-			fail(rw, fmt.Errorf("which Codex account?"))
-			return
-		}
-		if err := provider.SetCodexCredits(in.User, in.On); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// whether WorkBuddy's daily check-in is pressed each day, the Usage
-	// card's toggle (#694), set on its own as Settings' is
-
-	// and Trae CN's (#694)
-
-	// and MiniMax Code's (#811)
-
-	// and Qoder's daily credits
-
-	// and a plugin's own daily check-in, by its provider
-
-	// and a switch a plugin declares for its provider (auth.options, #2038),
+	// a switch a plugin declares for its provider (auth.options, #2038),
 	// by the plugin's own provider id, handed to the running host at once
 	mux.HandleFunc("POST /api/settings/plugin-option", func(rw http.ResponseWriter, r *http.Request) {
 		var in struct {
@@ -1598,64 +1366,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		writeJSON(rw, map[string]any{"settings": settingsState(), "port": res})
 	})
-	// the user's own masking rules, all of them each time: set on their own,
-	// so a pattern that doesn't compile is said and the rest are kept (#195)
-	mux.HandleFunc("POST /api/settings/redact-rules", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ Rules []redact.Rule }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		s := settings.Load()
-		s.RedactRules = in.Rules
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// one masking rule changed in place (nf1qaz2w on Discord): the rule at
-	// At, which must still be Was, becomes Rule, checked as an added one is.
-	// A rule that can't be used is said and every rule is kept as it was.
-	mux.HandleFunc("POST /api/settings/redact-rule", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			At   int         `json:"at"`
-			Was  redact.Rule `json:"was"`
-			Rule redact.Rule `json:"rule"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		s := settings.Load()
-		next, err := editRedactRule(s.RedactRules, in.At, in.Was, in.Rule)
-		if err != nil {
-			fail(rw, err)
-			return
-		}
-		s.RedactRules = next
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// the GitHub token the library's requests to GitHub carry: set, or
-	// taken away with ""
-
-	// the GitHub download mirror updates come through (#893), the same
-	// setting `magpie update mirror` sets: a full https:// prefix, or ""
-	// for GitHub itself. The feed and its checksums are never the mirror's.
-
-	// a web search API added, given a new key or address, switched on or
-	// off, or taken away; or the APIs put in a new order (#2286)
-
-	// a search API's saved key, for its row's Show button (OnurBen on
-	// Discord); like a provider's, it never leaves this machine
-
-	// what each of a search API's keys has used of its limit (SlouchyQuill
-	// on Discord), the keys masked; fresh reads again what was read lately
-
 	// the config folder only: the page names no path, so it can't open others
 	mux.HandleFunc("POST /api/settings/reveal", func(rw http.ResponseWriter, r *http.Request) {
 		if err := w.OpenFolder(settings.Dir()); err != nil {

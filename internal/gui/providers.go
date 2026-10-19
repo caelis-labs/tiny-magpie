@@ -78,11 +78,15 @@ type providerJSON struct {
 	Responses string            `json:"responses"`
 	Anthropic string            `json:"anthropic"`
 	Gemini    string            `json:"gemini,omitempty"` // a Gemini API's base (#1346)
-	Decide    string            `json:"decide,omitempty"` // a decision API: it only routes groups
+	Decide    string            `json:"decide,omitempty"` // an explicit classification API
 	Catalog   string            `json:"catalog"`
 	Website   string            `json:"website"`
 	KeysURL   string            `json:"keysUrl"`
 	Headers   map[string]string `json:"headers,omitempty"`
+
+	// Existing retrieval models, separate from chat picks in the GUI.
+	Retrievals []modelJSON `json:"retrievals,omitempty"`
+
 	// JSON fields added to each request's body (provider.ExtraBody, #1604)
 	ExtraBody provider.ExtraBody `json:"extraBody,omitempty"`
 	// the API the user gave a custom provider's Base URL as (BaseAPI)
@@ -775,6 +779,11 @@ func providerInfoWith(p provider.Provider, agents []agentUse, desktop map[string
 		}
 		return j
 	}
+	for _, m := range p.RetrievalModels() {
+		j := named(m, true)
+		j.Kind, j.Efforts, j.Kept = m.Retrieval, nil, nil
+		out.Retrievals = append(out.Retrievals, j)
+	}
 	for _, m := range p.Available() {
 		seen[m.ID] = true
 		out.Models = append(out.Models, named(m, exposed[m.ID]))
@@ -889,9 +898,6 @@ func providersState() providersJSON {
 		s.Presets = append(s.Presets, presetJSON{PresetDef: pa.PresetDef, Added: have[pa.ID], Notes: pa.Notes, Langs: pa.Langs, New: !have[pa.ID] && !provider.PartnerNoticed(pa.ID), OwnClient: presetOwnClient(pa.PresetDef)})
 	}
 	for _, pr := range provider.Presets() {
-		if pr.Decide != "" && pr.Chat == "" && pr.Responses == "" && pr.Anthropic == "" {
-			continue
-		}
 		bases := provider.Provider{Chat: pr.Chat, Responses: pr.Responses, Anthropic: pr.Anthropic}
 		team := provider.TakesZhipuTeam(bases)
 		vendor, keyRegions := presetAccessKey(pr)

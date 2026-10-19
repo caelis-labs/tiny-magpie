@@ -192,7 +192,7 @@ body:not(.window.linux) #winclose { display: none; }
 /* the magpie flaps, flicks its tail and bobs when the window opens and on
    hover. It moves in pieces cut from the logo, and is drawn whole at rest, so
    the cuts never show. */
-.logo svg { display: block; overflow: visible; }
+.logo svg { display: block; width: 18px; height: 18px; flex: none; overflow: visible; }
 .logo .parts, .logo.wag .whole { display: none; }
 .logo.wag .parts { display: inline; }
 .logo .tail { transform-box: view-box; transform-origin: 16px 28px; }
@@ -1468,7 +1468,7 @@ details.cx-part[open] > summary .cx-h { margin-bottom: 2px; }
    the rows it follows, as a card's "+N more" is */
 .sess-page-more { align-self: flex-start; margin: 6px 0 2px; font-size: 12px; }
 /* the overview: six figures, the calendar, and four cards two by two */
-.sess-pane { container-type: inline-size; }
+.sess-pane, #usagePane { container-type: inline-size; }
 .stats.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @container (max-width: 960px) { .stats.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @container (max-width: 420px) { .stats.six { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -2233,7 +2233,7 @@ body.window .ag-sk-icon { width: 22px; height: 22px; border-radius: 6px; }
 .connect .val { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 7px; background: var(--pill); box-shadow: inset 0 0 0 1px var(--line-2); max-width: 100%; }
 .connect .val code { font-size: 12px; color: var(--fg); user-select: text; -webkit-user-select: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .connect .val > .val { min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; }
-.connect .segs { margin-top: -1px; }
+.connect .segs { margin-top: -1px; flex-wrap: wrap; }
 .connect .stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 @media (max-width: 520px) {
   .connect { grid-template-columns: 48px minmax(0, 1fr); column-gap: 8px; padding-left: 10px; padding-right: 10px; }
@@ -2724,7 +2724,7 @@ body.window .ag-sk-icon { width: 22px; height: 22px; border-radius: 6px; }
    its fade reaches 12px past each side from a ::before, the bar's own box
    in the content box (a negative margin-end was sideways scroll in macOS
    15's WebKit: see .lib-head, #1236) */
-#view-providers .after-list { position: sticky; bottom: -8px; z-index: 2; margin: 0 0 -8px; padding: 14px 4px 12px; transition: opacity .18s ease, visibility 0s; }
+#view-providers .after-list { position: sticky; bottom: -8px; z-index: 2; margin: 0 0 8px; padding: 14px 4px 12px; transition: opacity .18s ease, visibility 0s; }
 #view-providers .after-list::before { content: ""; position: absolute; z-index: -1; inset: 0 -12px; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--bg) 12px); }
 /* stepping aside it fades, then goes; back, it is there at once, so the
    focus can go to it as the sheet closes */
@@ -3750,9 +3750,11 @@ body.panel .modal { padding: 16px 12px; }
 .pu-bar .sess-pick { min-width: 0; max-width: 150px; }
 .pu-bar .text { flex: none; font-size: 12px; }
 .pu-bar .pu-again { width: 22px; height: 22px; flex: none; }
-.pu-tot { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 11px; background: var(--card); box-shadow: var(--card-edge); }
+.pu-tot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 11px; background: var(--card); box-shadow: var(--card-edge); }
 .pu-tot .blk { min-width: 0; padding: 8px 10px 8px; }
 .pu-tot .blk + .blk { border-left: 1px solid var(--line-2); }
+.pu-tot .blk:nth-child(3n + 1) { border-left: 0; }
+.pu-tot .blk:nth-child(n + 4) { border-top: 1px solid var(--line-2); }
 .pu-tot .k { display: block; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pu-tot .v { display: block; margin-top: 1px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pu-tot .v.cost { color: var(--green); }
@@ -3770,7 +3772,8 @@ body.panel .modal { padding: 16px 12px; }
 .panel-usage :is(.pu-tot, .pu-card) { transition: opacity .15s; }
 @media (max-width: 400px) {
   .pu-tot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pu-tot .blk:nth-child(3) { border-left: 0; }
+  .pu-tot .blk:nth-child(2n) { border-left: 1px solid var(--line-2); }
+  .pu-tot .blk:nth-child(2n + 1) { border-left: 0; }
   .pu-tot .blk:nth-child(n + 3) { border-top: 1px solid var(--line-2); }
 }
 

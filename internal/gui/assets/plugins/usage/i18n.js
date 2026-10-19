@@ -2,6 +2,10 @@
 // kernel adds them to i18n.js's (magpie.strings).
 magpie.strings({
   zh: {
+    "Gateway calls only; local rejections excluded from totals.": "仅统计网关调用；本地拒绝的请求不计入汇总。",
+    "Search models and providers": "搜索模型和供应商",
+    "Tokens are reported by providers; costs use effective model prices, including custom prices.": "Token 数取自供应商报告；费用按生效模型价格（含自定义价格）估算。",
+
     "(prompt not recorded)": "（未记录提示词）",
     "Gateway session": "网关会话",
     "Seen only through the gateway: the agent kept no session file magpie can read. Turn on Record gateway conversations in Sessions to keep its prompts.": "只经网关看到：agent 没有留下 magpie 能读的会话文件。在「会话」里开启「记录网关对话」可保留它的提示词。",
@@ -193,6 +197,10 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "以 {to} 协议发往上游，与 agent 所用协议相同",
   },
   "zh-TW": {
+    "Gateway calls only; local rejections excluded from totals.": "僅統計閘道呼叫；本地拒絕的請求不計入彙總。",
+    "Search models and providers": "搜尋模型和供應商",
+    "Tokens are reported by providers; costs use effective model prices, including custom prices.": "Token 數取自供應商報告；費用按生效模型價格（含自訂價格）估算。",
+
     "(prompt not recorded)": "（未記錄提示詞）",
     "Gateway session": "閘道會話",
     "Seen only through the gateway: the agent kept no session file magpie can read. Turn on Record gateway conversations in Sessions to keep its prompts.": "只經閘道看到：agent 沒有留下 magpie 能讀的會話檔案。在「會話」裡開啟「記錄閘道對話」可保留它的提示詞。",
@@ -384,6 +392,10 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "以 {to} 協議發往上游，與 agent 所用協議相同",
   },
   ja: {
+    "Gateway calls only; local rejections excluded from totals.": "ゲートウェイ経由の呼び出しのみ。ローカルで拒否されたものは合計に含みません。",
+    "Search models and providers": "モデルとプロバイダを検索",
+    "Tokens are reported by providers; costs use effective model prices, including custom prices.": "トークン数はプロバイダの報告値です。費用はカスタム価格を含む有効なモデル価格で推定します。",
+
     "(prompt not recorded)": "（プロンプト未記録）",
     "Gateway session": "ゲートウェイのセッション",
     "Seen only through the gateway: the agent kept no session file magpie can read. Turn on Record gateway conversations in Sessions to keep its prompts.": "ゲートウェイ経由でのみ確認：エージェントは magpie が読めるセッションファイルを残していません。「セッション」で「ゲートウェイの会話を記録」をオンにするとプロンプトが残ります。",
@@ -575,6 +587,10 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "エージェントと同じ {to} で上流へ送信",
   },
   de: {
+    "Gateway calls only; local rejections excluded from totals.": "Nur Aufrufe über den Zugangspunkt; lokale Ablehnungen sind nicht in den Summen enthalten.",
+    "Search models and providers": "Modelle und Anbieter durchsuchen",
+    "Tokens are reported by providers; costs use effective model prices, including custom prices.": "Token laut Anbieterangaben; Kosten geschätzt mit den geltenden Modellpreisen einschließlich eigener Preise.",
+
     "(prompt not recorded)": "(Prompt nicht aufgezeichnet)",
     "Gateway session": "Gateway-Sitzung",
     "Seen only through the gateway: the agent kept no session file magpie can read. Turn on Record gateway conversations in Sessions to keep its prompts.": "Nur über das Gateway gesehen: Der Agent hat keine Sitzungsdatei hinterlassen, die magpie lesen kann. Schalte unter Sitzungen „Gateway-Gespräche aufzeichnen“ ein, um seine Prompts zu behalten.",

@@ -44,7 +44,7 @@ func TestQuietCodexStreamKeptAliveThroughReplyWriters(t *testing.T) {
 	for _, tc := range []struct {
 		name              string
 		masks, middleware bool
-	}{{"masked", true, false}, {"a middleware", false, true}} {
+	}{{"a middleware", false, true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			fresh(t)
 			quietFast(t)
@@ -92,7 +92,7 @@ func TestQuietCodexStreamKeptAliveThroughReplyWriters(t *testing.T) {
 			defer resp.Body.Close()
 			body := readQuiet(resp.Body, heard, "")
 
-			if tc.masks == strings.Contains(string(sent), "moon.shard@proton.me") {
+			if !strings.Contains(string(sent), "moon.shard@proton.me") {
 				t.Fatalf("masked %v, sent %s", tc.masks, sent)
 			}
 			alive, words := strings.Index(body, ": keepalive"), strings.Index(body, "response.output_text.delta")

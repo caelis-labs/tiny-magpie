@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+
 	"sync"
 	"testing"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/yetone/magpie/internal/masking"
 	"github.com/yetone/magpie/internal/middleware"
 	"github.com/yetone/magpie/internal/plugin"
-	"github.com/yetone/magpie/internal/provider"
+
 	"github.com/yetone/magpie/internal/settings"
 )
 
@@ -65,89 +65,6 @@ func (panicky) JSON([]byte) ([]byte, int) { panic("masker broke") }
 // refused with 503 and the vendor never sees it, unless a refresh turns
 // the plugin on, as the settings asking for masking do. A masker that
 // panics refuses too. Off with nothing asked for, a request goes as it is.
-func TestMaskingOnAndOff(t *testing.T) {
-	fresh(t)
-	const secret = "sk-proj-abcdEFGH1234ijklMNOP5678qrst"
-	v := &echoing{}
-	serveOn(t, "pa", "ka", []string{"m"}, v)
-	if err := settings.Save(settings.Settings{Redact: true}); err != nil {
-		t.Fatal(err)
-	}
-	s := New()
-	ask := `{"model":"pa/m","messages":[{"role":"user","content":"key ` + secret + `"}]}`
-	masked := func(when string) {
-		t.Helper()
-		code, body := postAs(t, s, "", ask)
-		if code != 200 || strings.Contains(v.last(), secret) || !strings.Contains(body, "you said key "+secret) {
-			t.Fatalf("%s: %d %s, the vendor got %s", when, code, body, v.last())
-		}
-	}
-	refused := func(when string) {
-		t.Helper()
-		n := v.count()
-		code, body := postAs(t, s, "", ask)
-		if code != http.StatusServiceUnavailable || !strings.Contains(body, "nothing was sent") || v.count() != n {
-			t.Fatalf("%s: %d %s, the vendor was sent %d", when, code, body, v.count()-n)
-		}
-	}
-	masked("on")
-	t.Run("off", func(t *testing.T) {
-		withoutMasker(t)
-		gwmw.ForgetRefreshForTest()
-		refused("off")
-		// the settings ask for masking: the refresh turns it on
-		gwmw.ForgetRefreshForTest()
-		var remove func()
-		stop := gwmw.Refresh(func() { remove = gwmw.Mask(masking.Masker{}) })
-		masked("off, turned on by the refresh")
-		remove()
-		stop()
-		gwmw.ForgetRefreshForTest()
-		// nothing asked for: it goes as it is
-		if err := settings.Save(settings.Settings{}); err != nil {
-			t.Fatal(err)
-		}
-		if code, body := postAs(t, s, "", ask); code != 200 || !strings.Contains(v.last(), secret) {
-			t.Fatalf("off, not asked for: %d %s, the vendor got %s", code, body, v.last())
-		}
-		if err := settings.Save(settings.Settings{Redact: true}); err != nil {
-			t.Fatal(err)
-		}
-	})
-	t.Run("panics", func(t *testing.T) {
-		remove := gwmw.Mask(panicky{})
-		defer remove()
-		refused("a masker that panics")
-	})
-	masked("on again")
-}
-
-// The same for a web search's query, which goes to a search service, not
-// a model: off with masking asked for, the search MCP's query isn't sent.
-func TestMaskedQueryFailsClosed(t *testing.T) {
-	fresh(t)
-	if err := settings.Save(settings.Settings{Redact: true}); err != nil {
-		t.Fatal(err)
-	}
-	const secret = "sk-proj-abcdEFGH1234ijklMNOP5678qrst"
-	if q, err := maskedQuery("find "+secret, nil); err != nil || strings.Contains(q, secret) {
-		t.Fatalf("on: %q %v", q, err)
-	}
-	withoutMasker(t)
-	gwmw.ForgetRefreshForTest()
-	if q, err := maskedQuery("find "+secret, nil); err == nil {
-		t.Fatalf("off: sent %q", q)
-	}
-	// one the user set to go unmasked keeps it, plugin or not
-	p := &provider.Provider{ID: "local", Unredacted: true, Chat: "http://127.0.0.1:1/v1"}
-	if q, err := maskedQuery("find "+secret, p); err != nil || q != "find "+secret {
-		t.Fatalf("off, to a provider set unmasked: %q %v", q, err)
-	}
-}
-
-// The middleware point's agent middleware with plugins/middleware on and
-// off: on, a JS middleware in plugins.json rewrites the request; off, the
-// gateway runs none, and the request is routed as the agent sent it.
 func TestMiddlewareOnAndOff(t *testing.T) {
 	fresh(t)
 	v := &echoing{}

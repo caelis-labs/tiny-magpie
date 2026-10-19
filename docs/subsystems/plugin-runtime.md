@@ -1,5 +1,7 @@
 # Plugin runtime
 
+Tiny fixes its seven compiled gateway built-ins on through pluginrt.Fixed. Existing lifecycle, config schemas and community plugin host/wire stay upstream. The Built-in switchboard and POST /api/plugins/builtin are removed; GET remains available for boot metadata.
+
 > tiny-magpie: [the fork scope](../tiny-scope.md) takes precedence over upstream-only product features described below. The model/provider/plugin implementations remain upstream-derived; removed UI/API/lifecycle entry points are not supported.
 
 magpie's built-in plugins are the parts of magpie not everyone needs, each

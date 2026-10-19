@@ -18,19 +18,9 @@ func TestCodexNoCreditsMovesOn(t *testing.T) {
 	if err := provider.SetRouting("codex", provider.Ordered); err != nil {
 		t.Fatal(err)
 	}
-	code, body := resetPost(t, New())
-	if tried, _ := b.seen(); code != 200 || !strings.Contains(body, "pong") || tried != "acct-1" {
-		t.Fatalf("credits spent: %d %s tried %s", code, body, tried)
-	}
-
-	if err := provider.SetCodexCredits("Me@Example.com", false); err != nil {
-		t.Fatal(err)
-	}
-	b.mu.Lock()
-	b.tried = nil
-	b.mu.Unlock()
+	// Tiny defaults to quota fallback; no credit-spending switch is needed.
 	srv := New()
-	code, body = resetPost(t, srv)
+	code, body := resetPost(t, srv)
 	if tried, _ := b.seen(); code != 200 || !strings.Contains(body, "pong") || tried != "acct-2" {
 		t.Fatalf("credits not spent: %d %s tried %s", code, body, tried)
 	}
@@ -64,7 +54,7 @@ func TestCodexNoCreditsEveryAccount(t *testing.T) {
 	if tried, _ := b.seen(); code != 429 || tried != "" {
 		t.Fatalf("%d tried %q: %s", code, tried, body)
 	}
-	for _, want := range []string{"rate_limit_error", "set in magpie not to spend its credits", "me@example.com", "spare@example.com", "if an account holds credits, let it spend them", "quota credits"} {
+	for _, want := range []string{"rate_limit_error", "set in magpie not to spend its credits", "me@example.com", "spare@example.com", "wait for quota renewal or use another account"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no %q in %s", want, body)
 		}
@@ -85,7 +75,7 @@ func TestCodexNoCreditsEveryAccount(t *testing.T) {
 	if tried, _ := b.seen(); code != 429 || tried != "" {
 		t.Fatalf("%d tried %q: %s", code, tried, body)
 	}
-	for _, want := range []string{"held by magpie", "past its 70% cap", "(spare@example.com) has used up a usage window and is set not to spend its credits", "account-cap", "if an account holds credits, let it spend them", "quota credits"} {
+	for _, want := range []string{"held by magpie", "past its 70% cap", "(spare@example.com) has used up a usage window and is set not to spend its credits", "raise a configured usage cap", "wait for quota renewal or use another account"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no %q in %s", want, body)
 		}
@@ -101,60 +91,3 @@ func TestCodexNoCreditsEveryAccount(t *testing.T) {
 // left a reset is spent first and the turn goes through on the windows
 // started again — the trace says so. Without leave to spend resets, it is
 // refused, and nothing is spent.
-func TestCodexNoCreditsSpendsAReset(t *testing.T) {
-	codexSignedIn(t)
-	b := newResetBackend(t)
-	b.week["acct-1"], b.held["acct-1"] = 100, 1 // answers all the same: credits
-	capUsage(t, map[string]float64{"me@example.com": 100})
-	if err := provider.SetCodexCredits("me@example.com", false); err != nil {
-		t.Fatal(err)
-	}
-	srv := New()
-	code, body := resetPost(t, srv)
-	if tried, spent := b.seen(); code != 429 || !strings.Contains(body, "not to spend its credits") || tried != "" || spent != "" {
-		t.Fatalf("no auto-reset: %d %s tried %q spent %q", code, body, tried, spent)
-	}
-
-	if err := provider.SetCodexAutoReset("me@example.com", true); err != nil {
-		t.Fatal(err)
-	}
-	code, body = resetPost(t, srv)
-	if tried, spent := b.seen(); code != 200 || !strings.Contains(body, "pong") || tried != "acct-1" || spent != "acct-1" {
-		t.Fatalf("auto-reset: %d %s tried %q spent %q", code, body, tried, spent)
-	}
-	if got := resetsTraced(srv); len(got) != 1 || got[0] != "me@example.com: 2 windows started again" {
-		t.Fatalf("traced %v", got)
-	}
-	// the account it was spent on is in the trace's order, tried, not
-	// left out
-	r := srv.Trace(t.Context(), 0, 0).Routes[0]
-	if len(r.Order) != 1 || r.Order[0].Who != "me@example.com" || r.Order[0].Capped != 0 || len(r.Left) != 0 {
-		t.Fatalf("order %+v left %+v", r.Order, r.Left)
-	}
-}
-
-// The account Codex is signed in to is out of its allowance, its credits
-// spent or none, and the only other is held as it won't spend its credits,
-// its week used up, with leave to spend its resets: once the first is
-// refused, the held one spends a reset and answers.
-func TestCodexNoCreditsResetAfterTheLastRefusal(t *testing.T) {
-	codexSignedIn(t, "spare@example.com")
-	b := newResetBackend(t, "acct-1")
-	b.held["acct-1"] = 0
-	b.week["acct-2"], b.held["acct-2"] = 100, 1
-	capUsage(t, map[string]float64{"me@example.com": 60, "spare@example.com": 100})
-	if err := provider.SetCodexCredits("spare@example.com", false); err != nil {
-		t.Fatal(err)
-	}
-	if err := provider.SetCodexAutoReset("spare@example.com", true); err != nil {
-		t.Fatal(err)
-	}
-	srv := New()
-	code, body := resetPost(t, srv)
-	if tried, spent := b.seen(); code != 200 || !strings.Contains(body, "pong") || tried != "acct-1,acct-2" || spent != "acct-2" {
-		t.Fatalf("%d %s tried %q spent %q", code, body, tried, spent)
-	}
-	if got := resetsTraced(srv); len(got) != 1 || got[0] != "spare@example.com: 2 windows started again" {
-		t.Fatalf("traced %v", got)
-	}
-}

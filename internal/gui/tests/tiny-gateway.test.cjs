@@ -11,13 +11,22 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       const browser = await (engine === 'webkit' ? webkit.launch() : chromium.launch({channel: 'chromium'}));
       t.after(() => browser.close());
       const page = await browser.newPage({viewport: {width, height: 820}, reducedMotion: 'reduce'});
+      await page.addInitScript(() => Object.defineProperty(navigator, 'platform', {value:'MacIntel'}));
       page.setDefaultTimeout(8000);
       const errors = [], mutations = [];
       page.on('pageerror', err => errors.push(err.message));
-      await page.route('**/*', fixture(lang, 'dark', mutations, {web:false}));
+      await page.route('**/*', fixture(lang, 'dark', mutations, {web:false,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}}));
       await page.goto('http://magpie.test/');
       await page.locator('#view-providers').waitFor({state:'visible'});
       await page.waitForFunction(() => document.querySelector('#providers')?.textContent.includes('Relay'));
+      const accountSpacing = await page.evaluate(() => ({
+        add: document.querySelector('#view-providers .after-list').getBoundingClientRect().bottom,
+        card: document.querySelector('#discoveryList').getBoundingClientRect().top,
+      }));
+      assert.ok(accountSpacing.card >= accountSpacing.add + 4, 'subscription card must clear the add-provider gradient');
+      const bird = await page.locator('.brand .logo svg').boundingBox();
+      assert.ok((width < 1100 && !bird) || bird && bird.width <= 22 && bird.height <= 22, `brand bird bounds: ${JSON.stringify(bird)}`);
+
       for (const view of ['agents','library','sessions']) {
         assert.equal(await page.locator(`#nav [data-view="${view}"]`).isVisible(), false, view);
       }
@@ -26,11 +35,23 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
         await page.locator(`#view-${view}`).waitFor({state:'visible'});
       }
       assert.equal(await page.locator('#usageTab').textContent().then(s => /Sessions|Context|会话|上下文/.test(s)), false);
+      await page.locator('#nav [data-view="usage"]').click();
+      await page.locator('#stats .kpi').first().waitFor({state:'visible'});
+      assert.equal(await page.locator('#stats .kpi').count(), 6, 'overview retains tokens, cache, reasoning, calls, speed and first-token timing');
+      assert.ok(await page.locator('#stats .kpi b').evaluateAll(xs => xs.every(e => e.scrollWidth <= e.clientWidth + 1)), 'summary values and timing units must not be clipped');
+      assert.equal(await page.locator('#usageCost').isVisible(), true, 'estimated cost must stay visible');
+      await page.locator(':is(#usageTab .opt, .nav-s):visible').nth(1).click();
+      await page.locator('#ledKpi .blk').first().waitFor({state:'visible'});
+      assert.equal(await page.locator('#ledScope').textContent().then(s => /session|会话|會話|セッション|Sitzungs/i.test(s)), false);
       await page.locator('#prefs').click();
       await page.locator('#view-settings').waitFor({state:'visible'});
       assert.equal(await page.locator('#keepAwakeRow').isVisible(), false);
       assert.equal(await page.locator('#setPage-sync').isVisible(), false);
       assert.equal(await page.locator('#setTab-sync').isVisible(), false);
+      for (const id of ['privacy','models','usage','about']) assert.equal(await page.locator('#setTab-' + id).isVisible(), false, id);
+      assert.equal(await page.locator('#uiFontRow').isVisible(), false);
+      assert.equal(await page.locator('#codeFontRow').isVisible(), false);
+
       assert.equal(await page.locator('#status.err').isVisible(), false);
       // Applying freshly fetched built-ins must never resurrect removed pages.
       await page.evaluate(() => applyFeatures([]));
@@ -40,7 +61,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
         await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `tiny-${engine}-${lang}-${width}.png`)});
       }
       assert.deepEqual(errors, []);
-      assert.deepEqual(mutations, []);
+      assert.ok(mutations.some(e => e.action === 'ledger'), 'requests must load the retained gateway ledger');
+      assert.deepEqual(mutations.filter(e => e.action !== 'ledger'), []);
     });
   }
 }

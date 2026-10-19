@@ -1,15 +1,7 @@
 package gateway
 
-// The text behind the context window card (masaka on Discord): click a
-// part of the prompt, and see what the request sent there — the agent's
-// system prompt, each tool's definition, an instruction file, a turn.
-//
-// The routing history keeps a prompt's sizes and names only. The text is
-// read again from the request's body, which the trace holds for the last
-// few requests: in memory only, never written to disk or sent anywhere,
-// and masked as the vendor got it (redacted), the same body the Recent
-// calls keep. When magpie quits, or a request is older than the last
-// promptBodies, its text is gone.
+// Tiny retains upstream prompt parsing types for the coupled routing
+// metadata, but has no context-text API or whole-request body retention.
 
 import (
 	"bytes"
@@ -39,24 +31,9 @@ type keptBody struct {
 	body []byte
 }
 
-// keepBody keeps a request's masked body for its prompt's text, dropping
-// the oldest past promptBodies or promptBodiesMax.
+// keepBody preserves the upstream call sites without retaining request text.
 func (t *trace) keepBody(id int64, from provider.Protocol, body []byte) {
-	if len(body) == 0 || len(body) > promptBodyMax {
-		return
-	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.bodies = append(t.bodies, keptBody{id: id, from: from, body: body})
-	total := 0
-	for _, b := range t.bodies {
-		total += len(b.body)
-	}
-	for len(t.bodies) > promptBodies || total > promptBodiesMax {
-		total -= len(t.bodies[0].body)
-		t.bodies[0] = keptBody{}
-		t.bodies = t.bodies[1:]
-	}
+	// Tiny has no context-text product; do not retain whole request bodies.
 }
 
 // keptBodyOf is a route's kept body; false when it isn't kept.

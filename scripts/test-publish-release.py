@@ -26,6 +26,8 @@ class PublishRecovery(unittest.TestCase):
             self.publisher.digest(asset) + '  test.zip\n', encoding='utf-8')
         self.sha, self.tag = '1' * 40, 'tiny-v0.1.1'
         self.exists, self.draft = False, True
+        self.prerelease = True
+        self.latest = False
         self.assets, self.uploads = {}, {}
         self.creates, self.edits = 0, 0
         self.interrupt_create = self.interrupt_upload = False
@@ -38,7 +40,8 @@ class PublishRecovery(unittest.TestCase):
 
     def snapshot(self):
         return {'id': 4242, 'target_commitish': self.sha, 'tag_name': self.tag,
-                'draft': self.draft, 'assets': [{'name': n} for n in self.assets],
+                'draft': self.draft, 'prerelease': self.prerelease,
+                'assets': [{'name': n} for n in self.assets],
                 'html_url': 'fixture://published'}
 
     def lookup(self, args, **kwargs):
@@ -67,6 +70,7 @@ class PublishRecovery(unittest.TestCase):
         if action == 'create':
             self.assertFalse(self.exists, 'an existing draft must not be recreated')
             self.exists = True
+            self.prerelease = '--prerelease=true' in args
             self.creates += 1
             if self.interrupt_create:
                 self.interrupt_create = False
@@ -85,6 +89,8 @@ class PublishRecovery(unittest.TestCase):
             (out / name).write_bytes(self.assets[name])
         elif action == 'edit':
             self.draft = False
+            self.prerelease = '--prerelease=true' in args
+            self.latest = '--latest=true' in args
             self.edits += 1
         else:
             raise AssertionError(args)
@@ -122,6 +128,20 @@ class PublishRecovery(unittest.TestCase):
         self.lookup_error = 'HTTP 503: upstream unavailable'
         with self.assertRaises(SystemExit):
             self.publisher.main(self.tag)
+        self.assertEqual(self.creates, 0)
+
+    def test_stable_is_latest_and_reconciles_without_republishing(self):
+        self.publisher.main(self.tag, stable=True)
+        self.assertFalse(self.prerelease)
+        self.assertTrue(self.latest)
+        self.publisher.main(self.tag, stable=True)
+        self.assertEqual((self.creates, self.edits), (1, 1))
+        with self.assertRaisesRegex(SystemExit, 'different channel'):
+            self.publisher.main(self.tag)
+
+    def test_preview_version_cannot_be_stable(self):
+        with self.assertRaisesRegex(SystemExit, 'prerelease version'):
+            self.publisher.main('tiny-v0.2.0-rc.1', stable=True)
         self.assertEqual(self.creates, 0)
 
 

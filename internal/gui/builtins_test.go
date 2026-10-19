@@ -31,78 +31,7 @@ func postBuiltin(h http.Handler, body string) *httptest.ResponseRecorder {
 
 // A plugins.yml that doesn't parse leaves every plugin on, says so, and
 // no switch writes over it.
-func TestBuiltinBrokenFile(t *testing.T) {
-	h := builtinHome(t)
-	if err := os.MkdirAll(filepath.Dir(pluginrt.Path()), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(pluginrt.Path(), []byte("plugins: [\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for _, b := range builtinsState() {
-		if b.Broken == "" {
-			t.Fatalf("not told broken: %+v", b)
-		}
-	}
-	if rec := postBuiltin(h, `{"id":"library","on":false}`); rec.Code != http.StatusBadRequest {
-		t.Fatalf("switched over a broken file: %d", rec.Code)
-	}
-	if b, _ := os.ReadFile(pluginrt.Path()); string(b) != "plugins: [\n" {
-		t.Fatalf("written over: %q", b)
-	}
-}
 
-// A plugin's settings are set only as their schema allows, kept in
-// plugins.yml, and handed to the page in boot.js; a request says on or
-// config, not both.
-func TestBuiltinConfig(t *testing.T) {
-	h := builtinHome(t)
-	if _, err := pluginrt.Settle(); err != nil {
-		t.Fatal(err)
-	}
-	gw := func() builtinJSON {
-		for _, b := range builtinsState() {
-			if b.ID == "gateway" {
-				return b
-			}
-		}
-		t.Fatal("no gateway plugin")
-		return builtinJSON{}
-	}
-	if b := gw(); b.Schema == nil || b.Schema.Properties["callsPage"] == nil || b.Config["callsPage"] != int64(20) {
-		t.Fatalf("before: %+v", b)
-	}
-	if rec := postBuiltin(h, `{"id":"gateway","config":{"callsPage":50}}`); rec.Code != http.StatusOK {
-		t.Fatalf("50: %d %s", rec.Code, rec.Body)
-	}
-	if b := gw(); b.Config["callsPage"] != int64(50) || !b.On {
-		t.Fatalf("after 50: %+v", b)
-	}
-	for _, bad := range []string{
-		`{"id":"gateway","config":{"callsPage":30}}`,
-		`{"id":"gateway","config":{"other":1}}`,
-		`{"id":"gateway","on":true,"config":{"callsPage":10}}`,
-		`{"id":"gateway"}`,
-		`{"id":"library","config":{"callsPage":10}}`,
-	} {
-		if rec := postBuiltin(h, bad); rec.Code != http.StatusBadRequest {
-			t.Errorf("%s: %d %s", bad, rec.Code, rec.Body)
-		}
-	}
-	if b := gw(); b.Config["callsPage"] != int64(50) {
-		t.Fatalf("a refused one written: %+v", b)
-	}
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("GET", "/boot.js", nil))
-	if !strings.Contains(rec.Body.String(), `"pluginConfig":{"gateway":{"callsPage":50}}`) {
-		t.Fatalf("boot.js: %s", rec.Body)
-	}
-}
-
-// Every file a built-in plugin says it has is on disk, loaded by the page
-// and named with its hash so a new one isn't read from the cache: a script
-// after the kernel and before app.js, which looks for its pages, a
-// stylesheet in the head with the others.
 func TestBuiltinClientsLoaded(t *testing.T) {
 	page, err := os.ReadFile("assets/index.html")
 	if err != nil {
@@ -184,43 +113,6 @@ func TestBuiltinsTranslated(t *testing.T) {
 				if !strings.Contains(block, "\n    "+string(k)+": ") {
 					t.Errorf("%s doesn't say %s", lang, k)
 				}
-			}
-		}
-	}
-}
-
-func TestBuiltinSwitch(t *testing.T) {
-	h := builtinHome(t)
-	if _, err := pluginrt.Settle(); err != nil {
-		t.Fatal(err)
-	}
-	if len(builtinsState()) != 8 {
-		t.Fatalf("assembly: %+v", builtinsState())
-	}
-	if err := pluginrt.SetPreset(pluginrt.PresetEssentials); err != nil {
-		t.Fatal(err)
-	}
-	if w := postBuiltin(h, `{"id":"groups","on":true}`); w.Code != 200 || !pluginrt.Running().Active("groups") {
-		t.Fatalf("groups: %d %s", w.Code, w.Body)
-	}
-	for _, id := range []string{"library", "sessions", "search", "tools", "warmups", "otel", "nope"} {
-		if w := postBuiltin(h, `{"id":"`+id+`","on":true}`); w.Code != 400 {
-			t.Fatalf("resurrected %s", id)
-		}
-	}
-}
-
-func TestBootSaysBuiltinsOff(t *testing.T) {
-	h := builtinHome(t)
-	for _, preset := range []string{pluginrt.PresetEssentials, pluginrt.PresetAll} {
-		if err := pluginrt.SetPreset(preset); err != nil {
-			t.Fatal(err)
-		}
-		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest("GET", "/boot.js", nil))
-		for _, id := range []string{"library", "sessions", "search", "tools", "warmups", "otel", "tiny-removed"} {
-			if !strings.Contains(w.Body.String(), `"`+id+`"`) {
-				t.Fatalf("can resurrect %s: %s", id, w.Body)
 			}
 		}
 	}

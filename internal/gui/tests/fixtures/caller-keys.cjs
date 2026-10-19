@@ -1,6 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const assets = path.resolve(__dirname, "../../assets");
+const assets = process.env.TINY_GUI_ASSETS || path.resolve(__dirname, "../../assets");
 
 const sum = (rows) => ({
   calls: rows.length, errors: rows.filter((r) => r.status >= 400).length,
@@ -49,7 +49,7 @@ function fixture(lang, theme, events, options = {}) {
     let rs = rows;
     if (q.get("callerKey")) rs = rs.filter((r) => r.callerKeyId === q.get("callerKey"));
     if (q.get("failed") === "1") rs = rs.filter((r) => r.status >= 400);
-    return { ...sum(rs), ...groups(), total: rs.length, offset: 0, agents: [{ id: "codex", name: "Codex" }],
+    return { ...sum(rs), ...options.usageTiming, ...groups(), total: rs.length, offset: 0, agents: [{ id: "codex", name: "Codex" }],
       rows: rs.map((r) => ({ ...r, callerKeyLabel: keyName(r) })) };
   };
   return async (route) => {
@@ -162,7 +162,7 @@ function fixture(lang, theme, events, options = {}) {
       return json({ keys, secret });
     }
     if (url.pathname === "/api/copy") { events.push({ action: "clipboard", body: req.postDataJSON() }); return json({}); }
-    if (url.pathname === "/api/usage") return json({ ...sum(rows), ...groups(), agents: [], models: [], series: [], bucket: "day", path: "~/.config/magpie/usage.jsonl" });
+    if (url.pathname === "/api/usage") return json({ ...sum(rows), ...options.usageTiming, ...groups(), agents: [], models: [], series: [], bucket: "day", path: "~/.config/magpie/usage.jsonl" });
     if (url.pathname === "/api/usage/requests") { events.push({ action: "ledger", query: url.search }); return json(ledger(url.searchParams)); }
     if (url.pathname === "/api/usage/requests/export") { events.push({ action: "export", query: url.search }); return json({ path: "~/Downloads/keys.csv", rows: ledger(url.searchParams).total }); }
     if (url.pathname === "/api/usage/quotas") return json([]);

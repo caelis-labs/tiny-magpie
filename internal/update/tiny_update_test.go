@@ -60,7 +60,7 @@ func TestTinyReleaseChannelsAndAssets(t *testing.T) {
 	draft := tinyFixture("98.0.0", false)
 	draft["draft"] = true
 	tinyServer(t, []any{tinyFixture("1.9.0", false), foreign, draft, tinyFixture("1.10.0", true), tinyFixture("2.0.0-rc.1", false)})
-	for channel, want := range map[string]string{"stable": "1.9.0", "preview": "2.0.0-rc.1"} {
+	for channel, want := range map[string]string{"": "1.9.0", "stable": "1.9.0", "preview": "2.0.0-rc.1"} {
 		r, err := LatestInChannel(context.Background(), "zh", channel)
 		if err != nil {
 			t.Fatal(err)
@@ -219,4 +219,26 @@ func TestTinySignedDMGFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("signed DMG hash, mount, team, bundle ID, version, Gatekeeper and temporary-copy install passed")
+}
+
+func TestTinyAdminPromptIdentity(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS administrator dialog")
+	}
+	previous := run
+	t.Cleanup(func() { run = previous })
+	var command string
+	run = func(name string, args ...string) ([]byte, error) {
+		if name != "osascript" || len(args) != 2 || args[0] != "-e" {
+			t.Fatalf("unexpected administrator launcher: %s %v", name, args)
+		}
+		command = args[1]
+		return nil, nil
+	}
+	if err := asAdmin(`mv '/tmp/staged.app' '/Applications/tiny-magpie.app'`); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(command, `with prompt "tiny-magpie is updating itself."`) {
+		t.Fatalf("administrator prompt uses another product's name: %s", command)
+	}
 }

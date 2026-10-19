@@ -15,7 +15,7 @@ func TestTinyManagementSurface(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
 	h := Handler(nil, nil)
-	for _, path := range []string{"/api/set", "/api/agents/rescan", "/api/profile/save", "/api/backup/export", "/api/library", "/api/gateway/take-over", "/api/codex/daemon/restart", "/api/usage/workbuddy-checkin"} {
+	for _, path := range []string{"/api/set", "/api/agents/rescan", "/api/agents/connect/codex", "/api/agents/cli/codex", "/api/sessions/resume", "/api/profile/save", "/api/backup/export", "/api/library", "/api/gateway/take-over", "/api/codex/daemon/restart", "/api/usage/workbuddy-checkin"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, strings.NewReader(`{}`)))
 		if w.Code != 404 {

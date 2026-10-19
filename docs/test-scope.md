@@ -16,7 +16,7 @@ the original measurements and the reduction.
   profile bundles; keep-awake, image/video MCP generation, telemetry and
   automatic context tuning. Their positive Go suites are deleted.
 - GUI tests accepting Agent models, Library, session pages/export/resume,
-  cloud backup/sync, telemetry, System One and context tuning. Corresponding
+  cloud backup/sync, telemetry, intelligent routing and context tuning. Corresponding
   browser tests leave the tree too. Shared GUI sandbox fixtures are kept
   unchanged in `internal/gui/sandbox_test.go`.
 
@@ -31,7 +31,7 @@ executable/CLI identity helpers used by plugins, Bun and Tiny startup remain.
 ## Retained guarantees
 
 Gateway, all Provider families, subscription/plugin migrations and host,
-middleware, routing/fallback, budgets, redaction, cancellation, streaming,
+middleware, routing/fallback, budgets, log credential scrubbing, cancellation, streaming,
 usage/account attribution, SQLite, concurrent settings/account writes,
 profile isolation and GUI/network guards keep their regressions. Vendor-owned
 search and tool calls, screenshots and the private Claude subscription bridge
@@ -49,7 +49,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 64 upstream differential comparisons, 42 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 66 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
@@ -81,3 +81,15 @@ Compared with released 0.1.1, Go test source changes from 2,121 files,
 468 Go files and 90 browser cases. Shared fixture code is preserved. These
 are source-size measurements, not a coverage percentage or a live-vendor
 compatibility claim.
+
+## Gateway-core Dev iteration
+
+Direct System One API tests and differential fixtures are retained; intelligent
+route classification remains a negative gate. Embedding/Rerank fixtures compare
+vendor bodies and replies as well. The differential corpus now has 67 calls.
+Removed masking/font/builtin-switch/reset-spending positive tests leave the
+suite; shared auth, request fixtures, quota accounting and log scrubbing remain.
+New Tiny checks cover explicit classification calls, split retrieval inventory,
+fixed core assembly, visible token/cost/speed/TTFT summaries, unavailable retired settings APIs, old settings remaining
+inert, and real rendered icon bounds. Browser acceptance uses both engines,
+five languages, narrow/wide layouts and isolated native Dev inspection.

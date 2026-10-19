@@ -72,8 +72,8 @@ export function onEvent(ev, ctx) {
 	if code != 200 {
 		t.Fatalf("%d %s", code, body)
 	}
-	if strings.Contains(string(got), key) {
-		t.Fatalf("the middleware's body went out unredacted: %s", got)
+	if !strings.Contains(string(got), key) {
+		t.Fatalf("the middleware's body was unexpectedly rewritten: %s", got)
 	}
 	var text strings.Builder
 	for _, e := range events(body) {

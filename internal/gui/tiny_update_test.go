@@ -28,7 +28,10 @@ func TestTinyUpdaterChecksWithoutDownloading(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode([]map[string]any{{"tag_name": "tiny-v2.0.0", "html_url": update.ReleasePage("2.0.0"), "prerelease": true, "body": "fixture"}})
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"tag_name": "tiny-v2.0.0", "html_url": update.ReleasePage("2.0.0"), "prerelease": false, "body": "fixture"},
+			{"tag_name": "tiny-v3.0.0", "html_url": update.ReleasePage("3.0.0"), "prerelease": true, "body": "preview fixture"},
+		})
 	}))
 	defer srv.Close()
 	t.Setenv("TINY_MAGPIE_UPDATE_FEED", srv.URL)
@@ -132,7 +135,7 @@ func TestTinyDefaultChannelSaveRespectsChecksOff(t *testing.T) {
 	old := updates
 	updates = &updater{}
 	t.Cleanup(func() { updates = old })
-	s.UpdateChannel = "preview"
+	s.UpdateChannel = "stable"
 	s.NoUpdatePill = true
 	body, err := json.Marshal(s)
 	if err != nil {

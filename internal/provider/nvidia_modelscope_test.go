@@ -61,7 +61,8 @@ func TestNvidiaModelScopeLiveList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ms) != 2 || ms[0].ID != "deepseek-ai/deepseek-v4-pro" || ms[1].ID != "ZhipuAI/GLM-5.2" {
+	chat := catalog.Chat(ms)
+	if len(ms) != 3 || ms[1].Retrieval != "embedding" || len(chat) != 2 || chat[0].ID != "deepseek-ai/deepseek-v4-pro" || chat[1].ID != "ZhipuAI/GLM-5.2" {
 		t.Fatalf("%+v", ms)
 	}
 }

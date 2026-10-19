@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"context"
 	"testing"
 	"time"
 )
@@ -64,68 +63,6 @@ func TestPaceUntilAutoUsedReset(t *testing.T) {
 // A reset counts only for an account the user lets spend its resets, that
 // holds one that runs out, and whose windows have been used — as the
 // spending itself (check). The allowances routing reads carry it.
-func TestResetRunsOutForRouting(t *testing.T) {
-	signIn(t)
-	now := time.Now()
-	at := func(d time.Duration) *time.Time { u := now.Add(d); return &u }
-	until := now.Add(4 * time.Hour)
-	used := []QuotaWindow{{Span: 7 * 24 * time.Hour, Used: 20, ResetsAt: at(120 * time.Hour)}}
-	unused := []QuotaWindow{{Span: 7 * 24 * time.Hour, Used: 0, ResetsAt: at(120 * time.Hour)}}
-	aside := []QuotaWindow{{Span: 30 * 24 * time.Hour, Used: 50, Aside: true}}
-	held := &ResetCredits{Count: 1, Until: &until}
-	if got := resetRunsOut("codex", "me@example.com", used, held); !got.IsZero() {
-		t.Fatalf("auto-use off: %v", got)
-	}
-	if err := SetCodexAutoReset("me@example.com", true); err != nil {
-		t.Fatal(err)
-	}
-	for name, c := range map[string]struct {
-		agent   string
-		windows []QuotaWindow
-		resets  *ResetCredits
-		want    time.Time
-	}{
-		"on, used":            {"codex", used, held, until},
-		"none held":           {"codex", used, nil, time.Time{}},
-		"count none":          {"codex", used, &ResetCredits{Until: &until}, time.Time{}},
-		"never runs out":      {"codex", used, &ResetCredits{Count: 1}, time.Time{}},
-		"windows unused":      {"codex", unused, held, time.Time{}},
-		"on-demand only used": {"codex", aside, held, time.Time{}},
-		"another vendor's":    {"claude", used, held, time.Time{}},
-	} {
-		if got := resetRunsOut(c.agent, "Me@example.com", c.windows, c.resets); !got.Equal(c.want) {
-			t.Errorf("%s: %v, want %v", name, got, c.want)
-		}
-	}
-
-	LoginUsageVia(func(context.Context, string) map[string]SubscriptionQuota {
-		return map[string]SubscriptionQuota{
-			"me@example.com":    {Windows: used, Resets: held},
-			"other@example.com": {Windows: used, Resets: held},
-		}
-	})
-	reset := func() {
-		usedCache.Lock()
-		usedCache.m, usedCache.at, usedCache.loading = map[string]map[string]Allowance{}, map[string]time.Time{}, map[string]chan struct{}{}
-		usedCache.stale = nil
-		usedCache.Unlock()
-	}
-	reset()
-	t.Cleanup(func() { LoginUsageVia(nil); reset() })
-	oldWait := firstWait
-	firstWait = 5 * time.Second
-	t.Cleanup(func() { firstWait = oldWait })
-	all := Allowances("codex")
-	if got := all["me@example.com"].Restarts(now); !got.Equal(until.Add(-resetExpiryLead)) {
-		t.Fatalf("allowance read: restarts %v", got)
-	}
-	if got := all["other@example.com"].Restarts(now); !got.IsZero() {
-		t.Fatalf("an account not let spend its resets: restarts %v", got)
-	}
-}
-
-// Routing takes the reset as spent when check spends it: half an hour
-// before it runs out, or now when the account is held up past then (#718).
 func TestRestartsWhenHeldUp(t *testing.T) {
 	now := time.Now()
 	acct := func(fiveUsed float64, fiveBack time.Duration) Allowance {

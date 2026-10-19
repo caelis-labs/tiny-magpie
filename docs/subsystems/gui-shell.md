@@ -9,6 +9,35 @@ with no binding generator and no bundler. `magpie web` serves the same page
 to a browser for a machine with no desktop. Package `internal/gui` hosts all
 three.
 
+## Tiny gateway interface
+
+The header bird is 18x18 CSS pixels in both the main window and tray panel,
+with explicit SVG dimensions, a fixed CSS box and currentColor. Browser tests
+check rendered bounds, zoom, themes and the actual macOS header context.
+
+Tiny renders only core appearance/startup/update settings plus gateway network
+configuration. Account discovery and disabled-model controls live on Providers.
+The add-provider footer leaves positive spacing before the subscription card,
+so its sticky gradient does not cover the card's upper border or text.
+The tray keeps upstream's conditional Allowances tab: it appears when a quota,
+balance or error card exists. With no such card it is hidden. The six Usage
+totals use three columns, or two in narrow panels, so speed units fit.
+The Privacy/Models/Allowances/About settings tabs, font picker, account screenshot
+masking and quota reset/credit/check-in actions are removed from the product.
+Legacy settings cannot enable request redaction or automatic reset/credit use.
+POST builtin controls, font discovery and removed settings writes are unavailable.
+Core plugin lifecycle and community plugin options still use upstream's runtime.
+
+Providers' `retrievals` is a GUI-only list of the existing vendor cache's
+Embedding/Rerank models. It does not change the Provider/plugin wire or put
+retrieval models into chat picks. Gateway's existing snippets also cover System
+One and retrieval HTTP calls. Routing groups appear before live diagnostics;
+there is no classifier-based routing. Speed and TTFT use upstream's existing
+weighted timing/accounting in the overview and tray; unknown timings show a dash.
+
+For macOS permission ownership and the client/tool boundary, see
+[macOS permission attribution](../macos-permissions.md).
+
 ## Tiny installation, identity and self-update
 
 The desktop distribution has its own SVG bird (`build/icon/magpie*.svg`),
@@ -36,7 +65,8 @@ upstream download/restart preferences remain readable but do not enable those
 actions in Tiny.
 
 `tiny_feed.go` accepts only published `tiny-v*` releases from
-`caelis-labs/tiny-magpie`, by semantic version. Preview includes stable;
+`caelis-labs/tiny-magpie`, by semantic version. Stable is the default from 0.2.0;
+an explicit Preview preference is preserved. Preview includes stable;
 stable excludes GitHub prereleases and SemVer prereleases. No eligible stable
 release means nothing is offered, never a downgrade. Versioned platform asset
 names, own repository/tag URLs, positive size and a GitHub SHA-256 digest are

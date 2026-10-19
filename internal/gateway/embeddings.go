@@ -252,16 +252,13 @@ func resolveRetrievalModel(id string) (provider.Provider, string, bool) {
 	if p, model, ok := provider.Resolve(id); ok {
 		return p, model, true
 	}
-	if strings.Contains(id, "/") {
-		return provider.Provider{}, "", false
-	}
 	for _, p := range provider.All() {
 		if !p.On() || p.DecideOnly() {
 			continue
 		}
-		for _, m := range p.PlanEmbeddings() {
-			if m.ID == id {
-				return p, id, true
+		for _, m := range p.RetrievalModels() {
+			if m.ID == id || p.ID+"/"+m.ID == id {
+				return p, m.ID, true
 			}
 		}
 	}

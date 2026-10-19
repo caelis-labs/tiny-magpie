@@ -14,69 +14,19 @@ import (
 	"github.com/yetone/magpie/internal/settings"
 )
 
-const quotaUsage = `usage: magpie quota [<provider>…] [--json]
-       magpie quota reset [<codex account>] [--yes]
-       magpie quota auto-reset [<codex account>] [week|expiring] [on|off]
-       magpie quota credits [<codex account>] [on|off]
-       magpie quota alert [<percent>|off] [--balance <amount>|off]
-       magpie quota wait <provider|account> [--timeout <duration>] [--quiet]
-       magpie quota history [<provider|account>…] [--days <n>] [--json]
-       magpie quota refresh <provider> [<account>] [--json]
-  what is left of every subscription, plan and key magpie has: each window's use and
-  when it starts again, and each key's balance, asked of the vendors now (or less than
-  a minute ago). --json is for scripts and agents, each entry with lastServedAt, when it
-  last answered through the gateway, and last: true on the latest; the gateway answers the same at
-  GET http://127.0.0.1:3425/v1/magpie/quotas (on Settings' Gateway port), and to another machine only while magpie is
-  shared on the local network, with its key as the API key (Authorization: Bearer or x-api-key)
-  A Codex account that holds rate-limit resets says how many; quota reset spends one,
-  starting the account's current windows again (the one Codex is signed in to unless
-  named). It can't be undone, so it asks first; --yes doesn't. quota auto-reset on lets
-  the account spend one by itself when its weekly window is used up and no other
-  account can take a request, one a week at most (the five hours running out never
-  does), and spend the one about to expire about half an hour before it does, if
-  the account's windows have been used, so what they have left can be used until
-  then and it isn't lost; at once when the account is held up until after then.
-  week on|off or expiring on|off turns only one of those two times on or off, the
-  other kept as it is: expiring on alone waits out a used-up week (the vendor may
-  reset it) and still spends the reset about to expire.
-  It is the account's standing setting, held resets or not; off stops it, and alone
-  it says which accounts have it on. It is off until turned on.
-  quota credits off keeps a Codex account from spending its credits: once one of
-  its windows is used up, by magpie's latest reading (refreshed about every
-  minute), routing holds it as used up until that window renews and the request
-  goes to the other accounts, groups and fallbacks, or is refused with why (with
-  auto-reset on, its week used up and no one else left, it spends a reset first).
-  on, the default, lets the vendor answer on its credits then, so the task goes
-  on; alone it says which accounts don't spend theirs.
-  quota alert 80 has the magpie app notify when any window of a subscription or plan
-  reaches 80% used, once each time the window runs (not windows set aside, such as
-  on-demand spending); --balance 5 when a balance falls to 5 or under, in its own
-  currency or credits, once until topped up past it. off turns either off, and alone
-  it says what is set. Both are off until set.
-  quota wait codex returns once any Codex account magpie has on has allowance again
-  (a window that stops it no longer used up), and an account's email or login, or
-  <provider>/<account>, waits for that one alone: it reads the vendors itself, gateway
-  running or not, again shortly after the soonest reset (every 1 to 10 minutes), and
-  says on stderr what it waits for. For a script to go on with work it stopped:
-  until codex exec …; do magpie quota wait codex || break; done. Exit 0 once there
-  is allowance, 1 when --timeout (30m, 6h) passes first, 2 for a name it doesn't
-  know, 130 on Ctrl+C.
-  quota history is what magpie has read of each subscription's and plan's windows
-  over time, kept 45 days (UTC times, a reading only when it changed, each window's
-  runs apart by when they reset): the latest readings of each window, or with --json
-  every one since --days days ago, as GET /v1/magpie/quotas/history?days=&provider=&user=
-  answers. A provider, an account's email or login, or <provider>/<account> narrows it.
-  A reading is kept at the time it was read: a Claude account's, which Claude Code
-  tells only as it answers or runs /usage, isn't written again each time it is shown.
-  quota refresh reads one card again, as its refresh button on the Usage page does:
-  the provider's, or of the one account named (<provider>/<account> works too), and
-  shows only it, --json with each card's readAt and error. A saved Claude account is
-  read by running Claude Code's /usage in its own folder, which plain magpie quota
-  never does. A card read less than 30 seconds ago isn't asked again: what was read
-  then is shown.`
+const quotaUsage = `usage: tiny-magpie quota [<provider>...] [--json]
+       tiny-magpie quota refresh [<provider/account>] [--json]
+       tiny-magpie quota history [<provider/account>] [--days N] [--json]
+       tiny-magpie quota wait [<provider>] [--timeout 30m]
+
+Read subscription allowances and API balances. No reset-card, warm-up,
+check-in or credit-spending actions are available.`
 
 // quotaCmd: magpie quota [<provider>…] [--json]
 func quotaCmd(args []string) error {
+	if len(args) > 1 && (args[1] == "reset" || args[1] == "auto-reset" || args[1] == "credits" || args[1] == "warm" || args[1] == "warm-at") {
+		return fmt.Errorf("tiny-magpie only reads quotas; reset and credit spending are not supported")
+	}
 	if len(args) > 1 && args[1] == "reset" {
 		return quotaResetCmd(args[2:])
 	}
