@@ -49,7 +49,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 | --- | --- | --- | --- |
 | PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 64 upstream differential comparisons, 22 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
-| Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before six native packages |
+| Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
 
 Manual runs use the normal PR-sized gate. Routine jobs have a 20-minute job
