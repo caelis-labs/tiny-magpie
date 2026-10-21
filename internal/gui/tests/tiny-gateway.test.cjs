@@ -6,16 +6,33 @@ const { chromium, webkit } = require('playwright');
 const { fixture } = require('./fixtures/caller-keys.cjs');
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium', 'webkit'])) {
-  for (const lang of ['en', 'zh', 'zh-TW', 'ja', 'de']) for (const width of [1100, 440]) {
-    test(`${engine} ${lang} ${width}: tiny gateway pages and retained controls`, async t => {
+  for (const lang of ['en', 'zh', 'zh-TW', 'ja', 'de']) for (const width of [1100, 560, 440]) {
+    // Native windows stop at 560px (windowMinW); 440px exercises the Web phone layout.
+    const web = width < 560;
+    test(`${engine} ${lang} ${width} ${web ? 'Web' : 'desktop'}: tiny gateway pages and retained controls`, async t => {
       const browser = await (engine === 'webkit' ? webkit.launch() : chromium.launch({channel: 'chromium'}));
-      t.after(() => browser.close());
-      const page = await browser.newPage({viewport: {width, height: 820}, reducedMotion: 'reduce'});
+      let page, completed = false;
+      const errors = [], mutations = [];
+      t.after(async () => {
+        try {
+          if (!completed && page && process.env.ARTIFACT_DIR) {
+            await fs.mkdir(process.env.ARTIFACT_DIR, {recursive:true});
+            await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `failed-tiny-${engine}-${lang}-${width}.png`)});
+            console.error('Navigation failure', await page.evaluate(() => ({
+              view: document.querySelector('.view:not([hidden])')?.id,
+              header: document.querySelector('.top')?.className,
+              tabs: [...document.querySelectorAll('#nav button:not([hidden])')].map(b => ({
+                view:b.dataset.view, x:b.getBoundingClientRect().x, width:b.getBoundingClientRect().width,
+              })),
+            })), errors);
+          }
+        } finally { await browser.close(); }
+      });
+      page = await browser.newPage({viewport: {width, height: 820}, reducedMotion: 'reduce'});
       await page.addInitScript(() => Object.defineProperty(navigator, 'platform', {value:'MacIntel'}));
       page.setDefaultTimeout(8000);
-      const errors = [], mutations = [];
       page.on('pageerror', err => errors.push(err.message));
-      await page.route('**/*', fixture(lang, 'dark', mutations, {web:false,usageDelay:100,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}}));
+      await page.route('**/*', fixture(lang, 'dark', mutations, {web,usageDelay:100,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}}));
       await page.goto('http://magpie.test/');
       await page.locator('#view-providers').waitFor({state:'visible'});
       await page.waitForFunction(() => document.querySelector('#providers')?.textContent.includes('Relay'));
@@ -63,6 +80,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       assert.deepEqual(errors, []);
       assert.ok(mutations.some(e => e.action === 'ledger'), 'requests must load the retained gateway ledger');
       assert.deepEqual(mutations.filter(e => e.action !== 'ledger'), []);
+      completed = true;
     });
   }
 }

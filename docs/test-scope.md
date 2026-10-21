@@ -50,7 +50,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 74 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 84 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
@@ -94,3 +94,8 @@ New Tiny checks cover explicit classification calls, split retrieval inventory,
 fixed core assembly, visible token/cost/speed/TTFT summaries, unavailable retired settings APIs, old settings remaining
 inert, and real rendered icon bounds. Browser acceptance uses both engines,
 five languages, narrow/wide layouts and isolated native Dev inspection.
+
+The gateway-page matrix uses 1100px and the real 560px native minimum, plus
+440px in the Web phone layout. It keeps the original assertions and action
+timeouts. Failed cases save a screenshot and navigation bounds in the existing
+browser-evidence artifact before closing their browser.
