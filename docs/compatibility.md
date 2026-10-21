@@ -158,3 +158,11 @@ folded group editor. These are fixture results, not live-account acceptance.
 macOS native compilation is checked without replacing or launching either
 installed app. Windows/Linux native GUI, signing/notarization, clean-machine
 installation and real Agent/account use remain unverified in this candidate.
+
+All 55 retained Go test packages pass across the complete package run plus
+its corrected gateway rerun (282s). The first run stopped gateway compilation
+on a stale test-only import; the corrected package was rerun in full. The CLI
+package is rerun after restoring the preview subprocess dispatch. Focused
+Agent/GUI/CLI race checks and vet also pass. Local native builds retain the
+upstream macOS SDK/deployment-target warnings; no signing or packaging claim
+is made.

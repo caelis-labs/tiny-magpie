@@ -562,8 +562,7 @@
   }
   window.ctxCard = ctxCard;
 
-  // clickable makes e a button for the keyboard too, its handlers set as
-  // properties, so a morphed card keeps them
+  // Tiny renders these rows as metadata only; no request-text action.
   function clickable(e, go) {
     // Tiny keeps composition metadata only; request text is not retained.
   }
