@@ -10,21 +10,25 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
     // Native windows stop at 560px (windowMinW); 440px exercises the Web phone layout.
     const web = width < 560;
     test(`${engine} ${lang} ${width} ${web ? 'Web' : 'desktop'}: tiny gateway pages and retained controls`, async t => {
-      const browser = await (engine === 'webkit' ? webkit.launch() : chromium.launch({channel: 'chromium'}));
+      // Use the same pinned headless Chromium as the other retained suites.
+      const browser = await (engine === 'webkit' ? webkit.launch() : chromium.launch());
       let page, completed = false;
       const errors = [], mutations = [];
       t.after(async () => {
         try {
           if (!completed && page && process.env.ARTIFACT_DIR) {
             await fs.mkdir(process.env.ARTIFACT_DIR, {recursive:true});
-            await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `failed-tiny-${engine}-${lang}-${width}.png`)});
-            console.error('Navigation failure', await page.evaluate(() => ({
+            let diagnosticTimer;
+            const geometry = await Promise.race([page.evaluate(() => ({
               view: document.querySelector('.view:not([hidden])')?.id,
               header: document.querySelector('.top')?.className,
+              visibility: document.visibilityState,
               tabs: [...document.querySelectorAll('#nav button:not([hidden])')].map(b => ({
                 view:b.dataset.view, x:b.getBoundingClientRect().x, width:b.getBoundingClientRect().width,
               })),
-            })), errors);
+            })), new Promise(resolve => { diagnosticTimer = setTimeout(() => resolve({unresponsive:true}), 2000); })]).finally(() => clearTimeout(diagnosticTimer));
+            console.error('Navigation failure', geometry, errors);
+            await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `failed-tiny-${engine}-${lang}-${width}.png`),timeout:2000}).catch(err => console.error('Failure screenshot unavailable:', err.message));
           }
         } finally { await browser.close(); }
       });

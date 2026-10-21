@@ -202,3 +202,11 @@ The measurement now uses one P and disables automatic GC within its window,
 restoring both settings afterward. Thresholds and runtime pooling are unchanged.
 Both allocation checks pass 20 rounds under GOGC=1; a fresh-decoder mutation
 still fails at 3330385 bytes/scan, and the complete sessions package passes.
+
+CI also intermittently stalled in a Chromium full-browser-channel click at
+native narrow widths; the screenshot step produced no artifact. The gateway
+suite now uses the same pinned default headless Chromium as the other retained
+suites, and reports bounded failure geometry before screenshots. All 84 cases
+pass locally (42.297s), plus 20 normal-click navigation cycles at native 560px
+with 6x CPU throttling. No timeout, assertion, viewport or product source is
+weakened; this does not attribute the full-browser stall to a product bug.
