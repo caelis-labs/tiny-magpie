@@ -217,27 +217,7 @@ func (a *Agent) Drift() *Drift {
 			return d
 		}
 	}
-	if a.Reached != nil && onMagpie {
-		if at, to, refused := a.Reached(rec.At); !at.IsZero() {
-			switch {
-			// a request the gateway saw since, or one to where the config
-			// keeps magpie (Codex's kept address, a reverse proxy, #1985),
-			// came through
-			case !sameHost(to, gateway.URL()) && !sameHost(to, a.pointedAt()) && lastSeen(a.ID).Before(at.Add(-2*time.Second)):
-				return &Drift{Kind: "bypassed", Field: on.Key, Now: vals[on.Key], Want: vals[on.Key],
-					Detail: a.Name + "'s last request (" + at.Format("15:04") + ") went to " + hostOf(to) + ", not magpie — it was started before magpie set it up and still runs on its old config: quit and reopen it"}
-			case refused:
-				return &Drift{Kind: "bypassed", Field: on.Key, Now: vals[on.Key], Want: vals[on.Key],
-					Detail: a.Name + " couldn't reach magpie at " + at.Format("15:04") + " — magpie wasn't running then, so it has none of magpie's models: quit and reopen it"}
-			}
-		}
-	}
-	if a.LastUsed != nil && onMagpie {
-		if used := a.LastUsed(); bypassed(used, rec.At, lastSeen(a.ID)) {
-			return &Drift{Kind: "bypassed", Field: on.Key, Now: vals[on.Key], Want: vals[on.Key],
-				Detail: a.Name + " was used at " + used.Format("15:04") + " but none of its requests reached magpie — one started before magpie set it up still runs on its old config: restart it"}
-		}
-	}
+	// Tiny checks configuration drift without reading Agent history or logs.
 	return nil
 }
 

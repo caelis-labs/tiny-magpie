@@ -99,3 +99,9 @@ The gateway-page matrix uses 1100px and the real 560px native minimum, plus
 440px in the Web phone layout. It keeps the original assertions and action
 timeouts. Failed cases save a screenshot and navigation bounds in the existing
 browser-evidence artifact before closing their browser.
+
+The PR #12 independent review removes `TestDriftBypassed` and
+`TestCodexDriftReached`: both require the retired Agent-log readers. New Tiny
+regressions assert that configuration drift never invokes history callbacks,
+Codex model picks never import session-only providers, and mixed plugins never
+execute their Agent facet. The other restored upstream Agent tests remain.

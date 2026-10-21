@@ -179,16 +179,9 @@ type found struct {
 }
 
 func modules() []found {
-	var out []found
-	for _, e := range plugin.Load().Plugins {
-		if e.Off {
-			continue
-		}
-		if file, _ := plugin.Agent(plugin.Target(e.Spec)); file != "" {
-			out = append(out, found{e, file})
-		}
-	}
-	return out
+	// Tiny loads a mixed package's gateway facets through their original
+	// hosts, but never its out-of-scope Agent extension.
+	return nil
 }
 
 func stamp() string {

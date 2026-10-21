@@ -146,11 +146,13 @@ and disconnect/restore. Tiny filters model-write fields on both API and UI;
 installation/updates, Profiles, sign-in, memories and subagent orchestration are
 not exposed. The private disconnect-preview subprocess entry is restored,
 and its fixture verifies the original configuration is unchanged by preview.
-The restored Agent suites are original upstream files, not rewritten writers.
+The restored Agent suites use upstream fixtures; only the two out-of-scope
+log-based drift tests are removed during independent review. Model writers
+remain upstream-derived.
 
 The pinned upstream/Tiny binary differential passes discovery, 67 protocol
 comparisons (HTTP/SSE, tools/screenshots, System One and retrieval APIs), and
-removed endpoint/config-write checks. Chromium and WebKit pass 74 Tiny UI
+removed endpoint/config-write checks. Chromium and WebKit pass 84 Tiny UI
 cases across five languages and narrow/wide layouts. CUA additionally inspected
 and switched a model in a synthetic local Agent fixture, and inspected the
 folded group editor. These are fixture results, not live-account acceptance.
@@ -166,3 +168,19 @@ package is rerun after restoring the preview subprocess dispatch. Focused
 Agent/GUI/CLI race checks and vet also pass. Local native builds retain the
 upstream macOS SDK/deployment-target warnings; no signing or packaging claim
 is made.
+
+Independent PR #12 review found and cut two residual Agent session readers:
+drift no longer asks LastUsed/Reached history callbacks, and Codex model writes
+no longer reconstruct old providers from session databases. It also disabled
+Agent extension discovery for mixed plugins, while preserving their gateway
+entry metadata and original hosts. Three new regression tests failed on the
+reviewed pre-fix source with actual history callbacks, a reconstructed legacy
+provider, and an executed Agent module respectively. Configuration drift,
+manual model switching and restoration remain upstream-derived.
+
+The same review restored upstream `Reseat` and `RenameProvider` at GUI/CLI
+Provider-edit seams: a renamed or disabled Provider must not leave an Agent on
+an unavailable reference. Both regression tests failed before restoration
+(`rename left Agent on "fixture/m"`) and exercise rename, same-model fallback
+and disconnect restoration. This is a response to explicit configuration edits,
+not the removed automatic account-switching service.

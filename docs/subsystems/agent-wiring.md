@@ -183,5 +183,10 @@ model-list visibility/order, connection drift and disconnect/restore previews.
 installation/updates, Profiles, memories, subagent orchestration and optimization
 settings remain unavailable. The GUI uses upstream `Pick`, `ConnectHow`,
 `Disconnect` and the upstream catalog sync hook. No rollout-portability or
-Agent daemon restart background job is started. Fixtures use isolated homes;
-this is not live Agent acceptance. See [Tiny scope](../tiny-scope.md).
+Agent daemon restart background job is started. Drift checks configuration and
+reachability only; it never reads Agent history/logs for bypass detection. Codex
+model writes do not reconstruct provider tables from session databases.
+Fixtures use isolated homes;
+this is not live Agent acceptance. Explicit Provider edits in GUI/CLI use upstream
+`Reseat` and `RenameProvider` so connected Agents do not retain a removed model
+or the old Provider id. This starts no account-switching background job. See [Tiny scope](../tiny-scope.md).

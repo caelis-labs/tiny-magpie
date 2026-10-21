@@ -26,7 +26,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/lastgood"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
 )
 
@@ -538,42 +537,6 @@ func codexIn(at place) *Agent {
 		}
 		return out
 	}
-	// putThreadTables writes a table for each provider a Codex thread was
-	// started on that config.toml has none of, pointed at magpie. The
-	// Codex app resumes a thread on its own provider, and without that
-	// table it loads no config for it: "Model provider `custom` not found",
-	// a thread started through CC Switch reopened after CC Switch rewrote
-	// config.toml without its table (#1372). Codex's built-in providers
-	// need none, and magpie's own is putProvider's. A table written so
-	// stays, as magpie's own does, for the threads that name it.
-	putThreadTables := func() error {
-		// the providers config.toml has, however spelled (a table, inline,
-		// dotted keys); one that doesn't parse is left alone
-		raw, err := edit.Read(path)
-		if err != nil {
-			return nil
-		}
-		var cfg struct {
-			Providers map[string]any `toml:"model_providers"`
-		}
-		if toml.Unmarshal(raw, &cfg) != nil {
-			return nil
-		}
-		for _, id := range sessions.CodexThreadProviders(dir) {
-			if _, ok := cfg.Providers[id]; ok || id == magpieID || codexBuiltinProvider[id] {
-				continue
-			}
-			if err := edit.SetTOMLTable(path, "model_providers."+id,
-				edit.KV{Path: "name", Value: id},
-				edit.KV{Path: "base_url", Value: at.v1()},
-				edit.KV{Path: "wire_api", Value: "responses"},
-				edit.KV{Path: "experimental_bearer_token", Value: keptBearerToken("model_providers." + id)},
-			); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
 	// takeMirrors points CC Switch's OpenAI mirrors (the official OpenAI on
 	// the ChatGPT sign-in, under an id of its own and with no base_url) at
 	// magpie's ChatGPT backend while Codex's built-in provider goes there
@@ -635,13 +598,9 @@ func codexIn(at place) *Agent {
 	}
 	// takeTables points CC Switch's tables at magpie, each one's own base
 	// URL kept in the stash for giveTables (a table already on magpie's
-	// keeps the one kept for it), and writes the tables threads name that
-	// are gone (putThreadTables), and takes CC Switch's OpenAI mirrors
+	// keeps the one kept for it), and takes CC Switch's OpenAI mirrors
 	// (takeMirrors)
 	takeTables := func() error {
-		if err := putThreadTables(); err != nil {
-			return err
-		}
 		if err := takeMirrors(); err != nil {
 			return err
 		}
