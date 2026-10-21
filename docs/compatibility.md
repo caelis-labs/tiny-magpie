@@ -194,3 +194,11 @@ unchanged; its failure after restoring Reseat exposed the same missing guard.
 Connected-Agent list fixtures explicitly establish Tiny ownership before their
 original catalog-preservation assertions. No live Agent state was inspected
 or modified for these tests.
+
+Final full-suite validation passed every retained package except the inherited
+packed-decoder allocation assertion (880600 bytes/scan). A controlled double
+GC after warmup reproduced the same invalid cache premise (884472 bytes).
+The measurement now uses one P and disables automatic GC within its window,
+restoring both settings afterward. Thresholds and runtime pooling are unchanged.
+Both allocation checks pass 20 rounds under GOGC=1; a fresh-decoder mutation
+still fails at 3330385 bytes/scan, and the complete sessions package passes.

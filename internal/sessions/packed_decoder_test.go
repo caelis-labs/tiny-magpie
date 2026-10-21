@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"testing"
@@ -111,6 +112,13 @@ func dshPacked(t testing.TB, dir string, size int) (string, int64) {
 // allocated is the bytes fn allocates a call, on average over n calls
 // after a first one.
 func allocated(n int, fn func()) uint64 {
+	// Measure warm reuse on one P with its pool intact. sync.Pool may
+	// discard idle entries at GC, and each P has its own private entry.
+	procs := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(procs)
+	gc := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(gc)
+	runtime.GC()
 	fn()
 	var a, b runtime.MemStats
 	runtime.ReadMemStats(&a)
