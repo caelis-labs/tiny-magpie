@@ -23,7 +23,7 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
    await page.evaluate(()=>loadQuotas());
    await quotaTab.waitFor({state:'visible'});await quotaTab.click();
    await page.locator('#panelQuota .pq-card').first().waitFor({state:'visible'});
-   assert.equal(await page.locator('#ptabs [data-ptab=agents]').isVisible(),false);
+   assert.equal(await page.locator('#ptabs [data-ptab=agents]').isVisible(),true);
    assert.ok((await page.locator('#panelQuota').textContent()).includes('ChatGPT fixture'));
    await page.locator('#ptabs [data-ptab=stats]').click();
    await page.waitForFunction(()=>document.querySelector('#panelUsage .pu-tot')?.textContent.includes('592'));

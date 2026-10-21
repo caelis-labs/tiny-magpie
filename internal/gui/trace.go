@@ -278,12 +278,6 @@ func traceRoutes(mux *http.ServeMux) {
 		}
 		if gw != nil {
 			out.TraceState = gw.Trace(r.Context(), after, wait)
-		} else if st, ok := gateway.OwnerTrace(r.Context(), after, wait); ok {
-			// another magpie on this computer serves the gateway: show the
-			// routing it decides here too, live, and let the page name the
-			// process that is routing (#2606)
-			out.TraceState = st
-			out.Mine = true
 		}
 		out.Now = time.Now()
 		out.Routes = pricedRoutes(out.TraceState.Routes)

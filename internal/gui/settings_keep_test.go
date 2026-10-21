@@ -107,6 +107,7 @@ func TestSettingsSaveKeepsWhatItDoesNotSend(t *testing.T) {
 	}
 	one, two := 1.0, 2.0
 	was := settings.Settings{
+		ImageTimeout:         12,
 		AgentOrder:           []string{"codex"},
 		AgentsHidden:         []string{"goose"},
 		AgentsShown:          []string{"pi"},

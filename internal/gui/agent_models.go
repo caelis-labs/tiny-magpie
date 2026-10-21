@@ -78,6 +78,9 @@ func takesCatalog(fields []fieldJSON) bool {
 func agentFields(a *agent.Agent, vals map[string]string) []fieldJSON {
 	out := []fieldJSON{}
 	for _, f := range a.Fields {
+		if !tinyAgentField(&f) {
+			continue
+		}
 		opts := a.Picks(f, vals)
 		if opts == nil {
 			opts = []agent.Option{}
@@ -332,4 +335,16 @@ func agentModelsAPI(mux *http.ServeMux) {
 		}
 		answer()
 	})
+}
+
+// tinyAgentField keeps manual model and reasoning picks. Sign-in, memories,
+// subagent orchestration and automatic classifiers remain outside Tiny's UI/API.
+func tinyAgentField(f *agent.Field) bool {
+	switch f.Label {
+	case "model", "large", "small", "executor", "planner", "effort", "thinking",
+		"opus", "sonnet", "haiku", "fable", "opus effort", "sonnet effort", "haiku effort", "fable effort":
+		return true
+	}
+	// Some agents connect by choosing a provider rather than a model.
+	return f.Key == "provider"
 }

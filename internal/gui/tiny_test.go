@@ -15,7 +15,7 @@ func TestTinyManagementSurface(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
 	h := Handler(nil, nil)
-	for _, path := range []string{"/api/set", "/api/agents/rescan", "/api/agents/connect/codex", "/api/agents/cli/codex", "/api/sessions/resume", "/api/profile/save", "/api/backup/export", "/api/library", "/api/gateway/take-over", "/api/codex/daemon/restart", "/api/usage/workbuddy-checkin"} {
+	for _, path := range []string{"/api/agents/cli/codex", "/api/agents/install", "/api/sessions/resume", "/api/profile/save", "/api/backup/export", "/api/library", "/api/gateway/take-over", "/api/codex/daemon/restart", "/api/usage/workbuddy-checkin"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, strings.NewReader(`{}`)))
 		if w.Code != 404 {
@@ -70,6 +70,14 @@ func TestTinyDoesNotAttachToAnotherGateway(t *testing.T) {
 	state := providersState()
 	if state.Gateway.Running || state.Gateway.Mine || state.Gateway.Window || !state.Gateway.Taken {
 		t.Fatalf("attached to other gateway: %+v", state.Gateway)
+	}
+	// Trace must not attach to the other process either.
+	mux := http.NewServeMux()
+	traceRoutes(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("GET", "/api/gateway/trace", nil))
+	if w.Code != 200 || strings.Contains(w.Body.String(), `"mine":true`) {
+		t.Fatalf("attached trace: %d %s", w.Code, w.Body)
 	}
 	if !gateway.Running() {
 		t.Fatal("other gateway was stopped")

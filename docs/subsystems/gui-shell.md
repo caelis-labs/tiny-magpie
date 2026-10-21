@@ -603,3 +603,14 @@ still follows the existing Not set up folding rules. The dialog explains that
 restoring visibility does not pin an unconfigured agent into the main list.
 See `agent-bulk-visibility.test.cjs` for persistence, partial selection, failed
 saves, narrow layouts and all five languages in Chromium and WebKit.
+
+## Tiny Agent boundary (2026-10-21)
+
+Tiny restores upstream local detection, model/effort and Claude tier pickers,
+model-list visibility/order, connection drift and disconnect/restore previews.
+`tinyAgentField` restricts both the rendered fields and model-write APIs;
+installation/updates, Profiles, memories, subagent orchestration and optimization
+settings remain unavailable. The GUI uses upstream `Pick`, `ConnectHow`,
+`Disconnect` and the upstream catalog sync hook. No rollout-portability or
+Agent daemon restart background job is started. Fixtures use isolated homes;
+this is not live Agent acceptance. See [Tiny scope](../tiny-scope.md).

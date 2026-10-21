@@ -17,7 +17,7 @@ const web = !!window.bootPrefs?.web;
 // pages — Agents, Sessions, Library — and their settings; Settings ›
 // General turns it off, and they are back.
 let gatewayMode = true;
-const GATEWAY_HIDES = ["agents", "library", "sessions"];
+const GATEWAY_HIDES = ["library", "sessions"];
 // Plugins › Built-in (builtins.go; Lxxyx on X: too much to look through):
 // the optional parts of the window switched off, by id. Whatever is marked
 // data-feature="<id>" leaves the page while its feature is off — by a
@@ -407,7 +407,7 @@ function renderAgents() {
     const row = el("div", "row agent");
     row.dataset.id = a.id;
     row.title = a.path;
-    row.oncontextmenu = (ev) => { ev.preventDefault(); openAgentMenu(row.querySelector(".ag-handle"), a, inFold); };
+
     const who = el("div", "who");
     who.append(el("div", "name", a.name));
     // the model picker takes the wide column, everything else the narrow one,
@@ -763,11 +763,9 @@ function renderAgents() {
     list.append(more, fold);
   }
 
-  agentsManageButton(list);
+
   confirmAsk?.refreshAgents?.();
-  paintUpdateAll();
-  paintInstalls();
-  renderProfiles();
+
   fit(0, agentsGlide);
   agentsGlide = null;
 }
@@ -1881,7 +1879,7 @@ function connectPanel(a, { fields, fieldBtn }) {
         // Codex's daemon, which magpie restarts itself while no codex
         // session is on it: with one on, here, when the user says (open
         // sessions of Codex 0.162 reconnect to the new one)
-        if (c.kind === "daemon" && a.id === "codex") l.append(daemonRestart());
+
         parts.push(l);
       }
     }
@@ -1954,7 +1952,7 @@ function connectPanel(a, { fields, fieldBtn }) {
       w.append(el("span", "ag-dot"), el("span", "", t("The Codex app's model menu shows only the first {max}: the last {n} models can't be picked there (the Codex CLI's /model lists them all). In Pick, turn off the ones you don't use, or drag the ones you use to the front under Order.", { max: CODEX_APP_MENU, n: a.models.shown - CODEX_APP_MENU })));
       v.append(w);
     }
-    if (a.id === "claude-desktop") v.append(desktopLongestLine());
+
   }
   // what a new session starts on: optional, the agent's own last pick
   // unset; Codex's is the very value its /model picks, so one choice
@@ -2779,23 +2777,9 @@ const EYE = "M1.75 8S4.25 3.5 8 3.5 14.25 8 14.25 8 11.75 12.5 8 12.5 1.75 8 1.7
 // Hide; Alt+↑/↓ moves it from the keyboard. The grip that says so is drawn
 // in the row's margin on hover (app.css), not over the logo.
 function agentHandle(a, row, inFold) {
-  const b = el("button", "ag-handle");
-  b.type = "button";
-  b.setAttribute("aria-label", t("Arrange {agent}", { agent: a.name }));
-  b.setAttribute("aria-haspopup", "menu");
-  b.title = inFold ? t(isHidden(a) ? "Show {agent}" : "Hide {agent}", { agent: a.name }) : t(a.wired ? "Drag to reorder · click to move, hide or disconnect from magpie" : "Drag to reorder · click to move or hide");
+  const b = el("span", "ag-handle");
+  b.setAttribute("aria-hidden", "true");
   b.append(icon(a.icon));
-  b.onkeydown = (e) => {
-    if (inFold || !e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
-    e.preventDefault();
-    const { shown } = arrangeAgents();
-    const i = shown.findIndex((x) => x.id === a.id);
-    moveAgent(a.id, i + (e.key === "ArrowUp" ? -1 : 1));
-    // the rows were drawn anew: keep the keyboard on this one
-    $(`#agents .row.agent[data-id="${CSS.escape(a.id)}"] .ag-handle`)?.focus();
-  };
-  b.onclick = (e) => { if (!b.dataset.dragged) openAgentMenu(b, a, inFold); delete b.dataset.dragged; };
-  if (!inFold) b.onpointerdown = (e) => dragAgent(e, b, row);
   return b;
 }
 
@@ -3989,9 +3973,8 @@ async function load(again) {
     redrawNoNames();
     // Update all's outcome stays until the agents are read again
     if (cliAll && cliAll.done >= cliAll.n) cliAll = null;
-    paintUpdateAll(true);
-    loadCLIs(); // after the rows, never holding them up
-    loadInstalls();
+
+
     // the Providers page made ready behind the one shown (#1519)
     if (mode !== "panel" && !(view === "providers" || providersPage(view))) prefetchProviders();
     // the panel brought up on its Allowances tab is the reader opening
@@ -22867,7 +22850,7 @@ async function refreshPage(kind) {
     case "agents":
       state = await api("agents/rescan", {});
       renderAgents();
-      await Promise.all([loadInstalls(), loadCLIs()]);
+
       return t("Agents looked for again");
     case "usage":
       await magpie.call("usage", "reload");

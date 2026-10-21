@@ -8,14 +8,14 @@ the original measurements and the reduction.
 
 ## Removed positive suites
 
-- Agent configuration, model switching, installation, disconnect and profiles.
-  The Agent package keeps its sandbox `TestMain` and the source-scanning
-  `TestFolderVarsAreListed` guard; account discovery/authentication tests in
-  Provider remain.
+- Agent installation, CLI updates, profiles, and orchestration/optimization UI.
+  Agent model wiring, effort, catalog sync, stashes and disconnect/restore regressions
+  are restored verbatim from the pinned upstream (including shared fixture suites).
+  The sandbox `TestMain` and `TestFolderVarsAreListed` guard remain.
 - Library instructions, skills and public MCP setup; cloud backup/sync and
   profile bundles; keep-awake, image/video MCP generation, telemetry and
   automatic context tuning. Their positive Go suites are deleted.
-- GUI tests accepting Agent models, Library, session pages/export/resume,
+- GUI tests accepting Library, session pages/export/resume,
   cloud backup/sync, telemetry, intelligent routing and context tuning. Corresponding
   browser tests leave the tree too. Shared GUI sandbox fixtures are kept
   unchanged in `internal/gui/sandbox_test.go`.
@@ -39,6 +39,7 @@ remain model/protocol behavior. Session parsing/accounting helpers remain
 coupled to usage and keep their shared corpus; removing a session page does
 not justify removing accounting coverage.
 
+Tiny fixture tests exercise Agent model switching and configuration restoration.
 Tiny negative tests reject removed endpoints, imported intent/recording
 settings and standalone tool/page/Agent extensions, and verify Provider edits
 leave Agent configuration alone. `scripts/check-scope.py` also rejects the

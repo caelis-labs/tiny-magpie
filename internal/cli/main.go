@@ -48,7 +48,7 @@ const usage = `tiny-magpie — multi-provider model gateway
 
 Model APIs: Chat Completions, Responses, Anthropic Messages, Gemini,
 Embeddings and Rerank. Existing MAGPIE_* gateway options are supported.
-Agent configuration, intent routing, media tools and cloud backup/sync are not included.
+Agent model switching is available in the GUI. Intent routing, media tools and cloud backup/sync are not included.
 `
 
 var (
@@ -111,7 +111,7 @@ func Main(v string) {
 func run(args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
-		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "version", "--version", "-v", "help", "--help", "-h":
+		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":
 		default:
 			return fmt.Errorf("unknown tiny-magpie command %q; run tiny-magpie --help", args[0])
 		}
@@ -150,6 +150,10 @@ func run(args []string) error {
 	if _, err := pluginrt.Refresh(); err != nil {
 		return err
 	}
+	// Keep upstream model lists current for agents connected through the GUI.
+	catalog.Changed = agent.SyncCatalog
+	gateway.StandIn = agent.StandIn
+	gateway.CodexOwnOnly = agent.CodexOwnOnly
 	if len(args) == 0 {
 		if hasGUI {
 			return runGUI(true, "")
@@ -159,7 +163,7 @@ func run(args []string) error {
 	// how this process was started, for the Routing page of another magpie on
 	// this computer to name the one that serves the gateway (#2606)
 	switch args[0] {
-	case "tui", "web", "serve", "tray":
+	case "web", "serve", "tray":
 		gateway.Serves = args[0]
 	case "app", "gui", "panel", "-Embedding":
 		gateway.Serves = "app"

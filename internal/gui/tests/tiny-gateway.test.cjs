@@ -27,7 +27,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       const bird = await page.locator('.brand .logo svg').boundingBox();
       assert.ok((width < 1100 && !bird) || bird && bird.width <= 22 && bird.height <= 22, `brand bird bounds: ${JSON.stringify(bird)}`);
 
-      for (const view of ['agents','library','sessions']) {
+      for (const view of ['library','sessions']) {
         assert.equal(await page.locator(`#nav [data-view="${view}"]`).isVisible(), false, view);
       }
       for (const view of ['gateway','routing','usage','plugins']) {

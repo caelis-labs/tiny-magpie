@@ -851,7 +851,7 @@ func providersState() providersJSON {
 	// models, not magpie's own list of them (#204): asked behind the page,
 	// which is told so and asks again, never waited for (#541)
 	provider.FetchNewBehind(8 * time.Second)
-	var agents []*agent.Agent
+	agents := agent.Detected()
 	s := providersJSON{Providers: []providerJSON{}, Presets: []presetJSON{}, Excluded: []excludedJSON{}}
 	s.OnPlugins = provider.OnPlugins()
 	s.Movable = provider.MovableIDs()

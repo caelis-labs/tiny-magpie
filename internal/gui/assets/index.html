@@ -66,7 +66,7 @@
         <svg viewBox="0 0 10 10" width="8" height="8"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
     </span>
-    <button class="icon" data-feature="tiny-removed" id="sync" title="Look for agents on this computer again: one just installed or removed, or its settings changed" data-tt>
+    <button class="icon" id="sync" title="Look for agents on this computer again: one just installed or removed, or its settings changed" data-tt>
       <svg viewBox="0 0 16 16" width="14" height="14"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <button class="icon" id="open" title="Open as a window" data-tt>
@@ -82,7 +82,7 @@
 </header>
 
 <nav class="ptabs" id="ptabs" hidden>
-  <button type="button" data-feature="tiny-removed" data-ptab="agents"><span data-t>Agents</span><em id="ptabN"></em></button>
+  <button type="button" data-ptab="agents"><span data-t>Agents</span><em id="ptabN"></em></button>
   <button type="button" data-ptab="usage"><span data-t>Allowances</span></button>
   <button type="button" data-ptab="stats"><span data-t>Usage</span></button>
   <button type="button" data-ptab="routing" data-feature="routing"><span data-t>Routing</span></button>
@@ -90,7 +90,7 @@
 
 <main class="view" id="view-agents">
   <div class="list" id="agents"></div>
-  <section class="profiles">
+  <section class="profiles" data-feature="tiny-removed">
     <span class="label" data-t>Profiles</span>
     <div id="profiles" class="chips"></div>
     <button class="text" id="save" data-t>＋ Save current</button>
