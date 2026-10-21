@@ -75,6 +75,21 @@ channel's staged package. The updater and release-note paths ignore inherited
 Magpie feed overrides. `TINY_MAGPIE_UPDATE_FEED` accepts only an HTTP loopback
 IP URL for fixtures; production always uses the own public GitHub API.
 
+Asset downloads have no total-duration deadline, including Windows' standalone
+binary. `updater.run` retains backend cancellation; closing a page does not end
+its asynchronous download. The feed remains bounded to 20 seconds. The update
+transport bounds connection and response-header waits to 30 seconds and the
+TLS handshake to 10 seconds. Once headers arrive,
+[`idleTransport`](../../internal/update/download_idle.go) cancels a response only after two minutes without a positive byte read, even when `Read` is blocked.
+One byte per minute can therefore continue indefinitely; zero-byte reads do not
+renew the clock. Each redirect response, source fallback, retry and subsequent
+asset starts its own clock, stopped on EOF/error/close before final verification or install.
+A failed download removes its partial file, and cancellation stops retries.
+Size (when supplied) and SHA-256 must both match before staging succeeds.
+`TestTinyDownload*` and `TestTinyUpdaterLongStagingAndCancellation` cover these
+boundaries with fake time and a loopback stalled HTTP body, without updating a
+running application.
+
 On macOS, the verified DMG is mounted read-only at a private staging point;
 its app is copied with `ditto` and the image detached even on cancellation.
 Before replacement, the new bundle must have an intact signature, the same
