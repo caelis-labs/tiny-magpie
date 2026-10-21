@@ -109,6 +109,11 @@ func Main(v string) {
 }
 
 func run(args []string) error {
+	if len(args) == 2 && args[0] == agent.DryRunArg {
+		// Upstream disconnect preview executes against a copied temporary home.
+		return agent.DryRun(args[1])
+	}
+
 	if len(args) > 0 {
 		switch args[0] {
 		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":

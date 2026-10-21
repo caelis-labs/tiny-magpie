@@ -230,7 +230,7 @@ console.log(r.output_text);`,
   },
   anthropic: {
     name: "Anthropic", base: (u) => u, baseEnv: "ANTHROPIC_BASE_URL", keyEnv: "ANTHROPIC_API_KEY",
-    note: "Messages API. Claude Code reads ANTHROPIC_AUTH_TOKEN instead of the key; the Agents tab sets that for you.",
+    note: "Messages API. Connect Claude Code from the Agents tab, or use the API key shown below.",
     curl: (b, m, k = "magpie") => ({ url: `${b}/v1/messages`, headers: [`x-api-key: ${k}`, "anthropic-version: 2023-06-01"],
       body: `{"model": "${m}", "max_tokens": 1024,\n "messages": [{"role": "user", "content": "hi"}]}` }),
     python: (b, m, k = "magpie") => `import anthropic
@@ -466,7 +466,7 @@ function renderConnect() {
   m.append(el("code", "", model), copyBtn(model, t("Model id")));
   box.append(...field(t("Model"), m, f.decide
     ? t(models.length ? "A decision model (Jev, Clef), as listed below. Click one there to put it in the snippets." : "No decision models yet. Add a System One, Jev or Workers AI provider.")
-    : t(models.length ? "provider/model, as listed below. Click a model there to put it in the snippets." : "No models yet. Add a provider, or sign in to Codex or Copilot.")));
+    : f.kind ? t("Copy a model ID to call the gateway's embeddings or rerank API.") : t(models.length ? "provider/model, as listed below. Click a model there to put it in the snippets." : "No models yet. Add a provider, or sign in to Codex or Copilot.")));
 
   const ex = el("div", "stack");
   const tabs = el("div", "snip-tabs");

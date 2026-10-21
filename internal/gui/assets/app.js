@@ -2772,10 +2772,7 @@ const MOVE_TOP = "M8 13v-7.5M4.5 9l3.5-3.5 3.5 3.5M3.5 2.75h9", MOVE_BOTTOM = "M
 const EYE_OFF = "M6.6 3.7A6.9 6.9 0 0 1 8 3.5c3.75 0 6.25 4.5 6.25 4.5a11 11 0 0 1-1.5 2M4.4 4.4C2.7 5.55 1.75 8 1.75 8S4.25 12.5 8 12.5c1.2 0 2.25-.45 3.1-1.05M6.75 6.75a1.75 1.75 0 0 0 2.5 2.5M2 2l12 12";
 const EYE = "M1.75 8S4.25 3.5 8 3.5 14.25 8 14.25 8 11.75 12.5 8 12.5 1.75 8 1.75 8ZM8 9.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5Z";
 
-// agentHandle is the row's logo, which is also its handle: drag it to move
-// the row, click it (or right-click the row) for Move up, Move down and
-// Hide; Alt+↑/↓ moves it from the keyboard. The grip that says so is drawn
-// in the row's margin on hover (app.css), not over the logo.
+// Tiny keeps the upstream row layout with a plain logo, without arrange/hide menus.
 function agentHandle(a, row, inFold) {
   const b = el("span", "ag-handle");
   b.setAttribute("aria-hidden", "true");
@@ -7851,7 +7848,7 @@ document.addEventListener("click", (e) => {
   }, () => {});
 }, true); // before the editor, which keeps its clicks to itself
 // advancedSet says whether a setting under the editor's Advanced is set,
-// which opens it: none hides behind a fold
+// to mark its closed summary without exposing every setting at first opening
 function advancedSet(d, p) {
   return (d.headers || []).some(([k]) => (k || "").trim()) || !!(d.extraBody || "").trim() ||
     !!d.proxyMode || Object.values(d.accountProxies || {}).some((x) => x?.mode) ||
@@ -9114,10 +9111,10 @@ function drawEditor(p, presetID) {
   // folded under Advanced, out of the way of the key and the models: open
   // when one of them is set, or as it was left in this editor
   const adv = el("details", "more advanced");
-  adv.open = advanced && advanced.of === editing ? advanced.open : advancedSet(draft, p);
+  adv.open = advanced && advanced.of === editing ? advanced.open : false;
   const of = editing;
   adv.onfold = (open) => { advanced = { of, open }; };
-  adv.append(el("summary", "", t("Advanced")));
+  adv.append(el("summary", "", t("Advanced") + (advancedSet(draft, p) ? " · " + t("Custom") : "")));
   const advIn = el("div", "inner");
   adv.append(advIn);
 
@@ -9136,13 +9133,11 @@ function drawEditor(p, presetID) {
       ed.append(...field(t("Account"), acct, t("{agent}'s sign-in, read from its own files. Sign out there and this provider goes away.", { agent: a.agentName })));
     }
     ed.append(...field(t("Models"), renderModels(p), ""));
-    if (p.drawIds?.length) ed.append(...renderDrawers(p));
     // a subscription's window too: Codex's backend says 272K for models
     // that take 872K (#120)
     const cx = input(draft.contexts || "", t("e.g. 128k · or gpt-6=1m, comma separated"));
     advIn.append(...field(t("Context window"), contextPicks(p, cx), t("How long a request the models take, told to the agents; empty leaves it to the vendor and models.dev")));
     advIn.append(...outputField());
-    advIn.append(...compactField());
     if (p.carriesCompaction) advIn.append(...nativeCompactionField(() => true)[0]);
     advIn.append(...field(t("Fallback"), renderFallback(p), fallbackHint(p)));
     const proxies = el("div", "stack");
@@ -9349,7 +9344,7 @@ function drawEditor(p, presetID) {
   if (p?.keyList?.length) ed.append(...field(t("Accounts"), renderKeyAccounts(p), p.routing ? t("Tick every key to use; Routing says how requests spread over them.") : t("Tick every key to use. Requests go to the first; when it runs out of quota or hits a rate limit, the next ticked key takes over.")));
   if (p?.keyList?.filter((k) => k.on).length > 1) ed.append(...renderRouting(p));
   else if (vertex) ed.append(...vertexFields());
-  else ed.append(...field(t("API key"), keyWrap, isNew ? t("Kept in ~/.config/magpie/providers.json, readable by you alone. Nothing is read from your shell.") : ""));
+  else ed.append(...field(t("API key"), keyWrap, isNew ? t("Kept in ~/.config/tiny-magpie/providers.json, readable by you alone. Nothing is read from your shell.") : ""));
   if (addressMore) ed.append(addressMore);
 
   // A user-defined provider can have its own picture; presets keep theirs.
@@ -9610,7 +9605,6 @@ function drawEditor(p, presetID) {
   // key once the resource is added (#1995): said here, so no one takes the
   // add page for one where they must type them
   else if (pr?.id === "azure") ed.append(...field(t("Models"), el("div", "hint azure-models", t("No need to type them: once added, magpie lists the deployments this key can call. Type a deployment's name as a model id only if that list can't be fetched.")), ""));
-  if (p?.drawIds?.length) ed.append(...renderDrawers(p));
   {
     // the window agents are told a model has, over what the vendor or
     // models.dev says: one for all of them, and model=size for one
@@ -9618,8 +9612,7 @@ function drawEditor(p, presetID) {
     if (!decideOnly(p || pr)) advIn.append(...field(t("Context window"), contextPicks(p, cx), t("How long a request the models take, told to the agents; empty leaves it to the vendor and models.dev")));
     if (!decideOnly(p || pr)) advIn.append(...outputField());
     if (!decideOnly(p || pr)) {
-      advIn.append(...compactField());
-      const [row, refresh] = nativeCompactionField(carriesCompaction);
+        const [row, refresh] = nativeCompactionField(carriesCompaction);
       advIn.append(...row);
       showCompaction = refresh;
     }
@@ -10383,7 +10376,7 @@ function renderImport(im) {
   if (p.keysUrl && !p.key) { const b = el("button", "link", t("Get a key ↗")); b.onclick = () => api("open", { url: p.keysUrl }); side.append(b); }
   const keyWrap = el("div", "pair");
   keyWrap.append(key, side);
-  ed.append(...field(t("API key"), keyWrap, p.key ? t("From the link. Kept in ~/.config/magpie/providers.json, readable by you alone.") : ""));
+  ed.append(...field(t("API key"), keyWrap, p.key ? t("From the link. Kept in ~/.config/tiny-magpie/providers.json, readable by you alone.") : ""));
 
   ed.append(...field(t("Endpoints"), renderEndpoints(null, p), ""));
   if (p.models?.length) {

@@ -1,6 +1,6 @@
 # Compatibility and acceptance
 
-This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `d783df46cbac9021e26a6bd71ca0b55544552eb2`. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
+This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `ba319a7587923fc7a4ea3859658244d591261a59` (see `UPSTREAM.json`). Earlier dated gates below describe their original revision. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
 
 ## Reproducible gates
 
@@ -133,3 +133,28 @@ Dev apps, launchers, fixture profiles and credentials are not source artifacts.
 - Verify clean-machine installation and any future Tiny update mechanism. Tiny never self-updates from Magpie's application feed. [The release workflow](releasing.md) gates experimental GitHub releases on exact-source CI, macOS signatures/notarization and asset readback; Windows/Linux remain unsigned. No container registry image is published.
 
 Task-local diagnostic logs are under ignored `.tiny/`: `baseline-tests.log`, `baseline-network-recheck.log`, `tests-final-head.log`, `usage-final.log`, `gui-isolation-tests.log`, `retained-tests-final.log`, `vet-final.log`, `differential-final.log`, `ui-tests-final.log`, `cross-final.log`, `windows-final.log`, `native-run-final.log`, and `docker-build.log`, `container-smoke.log`, `linux-isolation-tests.log`, `linux-gui-final.log` and `rehearsal-differential.log`. Browser screenshots are in ignored `output/playwright/`. CI uploads browser evidence. Logs and generated binaries are not committed.
+
+## Upstream sync and reduced Agent candidate, 2026-10-21
+
+Integrated upstream `ba319a7587923fc7a4ea3859658244d591261a59`, the complete
+203-commit interval after `d783df46cbac9021e26a6bd71ca0b55544552eb2` (#1).
+The merge retains Tiny identity, independent gateway ownership and retired
+products, including upstream's newly added privacy-model product.
+
+Agent wiring uses upstream detection, Pick/ConnectHow, drift, model visibility
+and disconnect/restore. Tiny filters model-write fields on both API and UI;
+installation/updates, Profiles, sign-in, memories and subagent orchestration are
+not exposed. The private disconnect-preview subprocess entry is restored,
+and its fixture verifies the original configuration is unchanged by preview.
+The restored Agent suites are original upstream files, not rewritten writers.
+
+The pinned upstream/Tiny binary differential passes discovery, 67 protocol
+comparisons (HTTP/SSE, tools/screenshots, System One and retrieval APIs), and
+removed endpoint/config-write checks. Chromium and WebKit pass 74 Tiny UI
+cases across five languages and narrow/wide layouts. CUA additionally inspected
+and switched a model in a synthetic local Agent fixture, and inspected the
+folded group editor. These are fixture results, not live-account acceptance.
+
+macOS native compilation is checked without replacing or launching either
+installed app. Windows/Linux native GUI, signing/notarization, clean-machine
+installation and real Agent/account use remain unverified in this candidate.

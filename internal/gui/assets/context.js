@@ -301,7 +301,7 @@
       e.stopPropagation();
       const items = [...(cur.partOf.get(c.kind)?.items || [])].sort((a, b) => b.tokens - a.tokens);
       tip.hidden = true;
-      openCtxText(rid, c.kind, items[c.item]);
+      // Tiny keeps composition metadata, not request-body text.
     });
 
     // the contents, part by part
@@ -565,15 +565,7 @@
   // clickable makes e a button for the keyboard too, its handlers set as
   // properties, so a morphed card keeps them
   function clickable(e, go) {
-    e.setAttribute("role", "button");
-    e.tabIndex = 0;
-    e.classList.add("ctx-click");
-    e.onclick = (ev) => { ev.stopPropagation(); go(); };
-    e.onkeydown = (ev) => {
-      if (ev.key !== "Enter" && ev.key !== " ") return;
-      ev.preventDefault();
-      go();
-    };
+    // Tiny keeps composition metadata only; request text is not retained.
   }
 
   // ---------- the text of a part (masaka on Discord) ----------

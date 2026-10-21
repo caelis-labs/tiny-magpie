@@ -4677,6 +4677,14 @@ function routingPage(part) {
     h.append(el("b", "", g ? g.name : t("New group")));
     if (g?.auto) h.append(el("span", "note", t("found by magpie — saving a change makes it yours")));
     ed.append(h);
+    // Keep upstream controls and save semantics, disclose infrequent choices on demand.
+    const more = el("details", "more tiny-group-advanced");
+    more.open = !!gEdit.advanced;
+    more.onfold = (open) => { gEdit.advanced = open; };
+    more.append(el("summary", "", t("Advanced")));
+    const moreIn = el("div", "inner");
+    more.append(moreIn);
+
     const keys = (i) => { i.onkeydown = (e) => { e.stopPropagation(); if (e.key === "Escape") { cancelGroup(); } else if (e.key === "Enter" && i === name) saveBtn.onclick(); }; return i; };
     const name = keys(input(d.name, t("e.g. Opus anywhere")));
     const idHint = el("div", "hint");
@@ -4731,13 +4739,13 @@ function routingPage(part) {
     const sw = el("div", "gsuffix");
     sw.append(sfxSaid);
     sayLabel();
-    ed.append(el("label", "", t("In agents’ lists")), sw);
+    moreIn.append(el("label", "", t("In agents’ lists")), sw);
     if (idIn) {
       idIn.oninput = () => { d.id = idIn.value; showId(); };
       idIn.onblur = () => { d.id = idIn.value = idOf(); showId(); };
       const iw = el("div");
       iw.append(idIn, idHint);
-      ed.append(el("label", "", t("ID")), iw);
+      moreIn.append(el("label", "", t("ID")), iw);
     }
     showId();
 
@@ -5031,13 +5039,13 @@ function routingPage(part) {
     drawPats();
     const pw = el("div");
     pw.append(pbox, el("div", "hint", t("Every model a pattern matches is in the group, now and as providers list new ones, after the models above: * is any run of characters in provider/model, re: starts a regular expression.")));
-    ed.append(el("label", "", t("Patterns")), pw);
+    moreIn.append(el("label", "", t("Patterns")), pw);
     // its models in the lists agents see too, or the group alone (#1783)
     const listHint = el("div", "hint", t(LIST_HINT[d.unlists ? "unlists" : ""])), listW = el("div");
     const listPick = segs(LIST_OPTS.map(([id, n]) => [id, t(n)]), d.unlists ? "unlists" : "", (v) => { d.unlists = v === "unlists"; listHint.textContent = t(LIST_HINT[v]); });
     listPick.classList.add("list-pick");
     listW.append(listPick, listHint);
-    ed.append(el("label", "", t("Model lists")), listW);
+    moreIn.append(el("label", "", t("Model lists")), listW);
 
     const gHint = (v) => GROUP_HINT[v] ? t(GROUP_HINT[v]) : MODES[v] || !v ? t(GROUP_HINT[""]) : modeOf(v)[1];
     const rHint = el("div", "hint", gHint(d.routing));
@@ -5054,7 +5062,7 @@ function routingPage(part) {
     const kPick = segs(SINK_OPTS.map(([id, n]) => [id, t(n)]), d.sink ? "sink" : "", (v) => { d.sink = v === "sink"; drawSink(); });
     kPick.classList.add("sink-pick");
     kw.append(kPick, kHint);
-    ed.append(kLab, kw);
+    moreIn.append(kLab, kw);
     drawSink();
     // a member slow to begin its answer: waited for, or the next asked
     // or after as many minutes as the user types (Kismet Alan on Discord)
@@ -5096,7 +5104,7 @@ function routingPage(part) {
       if (n > 0) d.firstToken = n;
       drawFirst();
     };
-    ed.append(el("label", "", t("Slow to start")), fw);
+    moreIn.append(el("label", "", t("Slow to start")), fw);
     drawFirst();
     // every member busy at once: the agent told, or the members asked
     // again within a budget (#1418)
@@ -5105,7 +5113,7 @@ function routingPage(part) {
       ? t("When every member has failed, the agent gets the last one's error at once.")
       : t("When every member has failed with an error that may pass — overloaded, unavailable, rate limited for a moment — and nothing of the reply has reached the agent, each is asked again after a pause, longer each time and never shorter than the vendor asks, for up to {n} more. A streaming agent is kept waiting meanwhile.", { n: patienceWord(d.patience) });
     patW.append(segs(PATIENCE_OPTS.map(([n, l]) => [n, t(l)]), d.patience || 0, (v) => { d.patience = +v; drawPatience(); }), patHint);
-    ed.append(el("label", "", t("Every member busy")), patW);
+    moreIn.append(el("label", "", t("Every member busy")), patW);
     drawPatience();
     // the window agents are told: the largest member's, the smallest's, or
     // one the user names (Mikan on Discord)
@@ -5145,12 +5153,12 @@ function routingPage(part) {
       if (n > 0) d.context = n;
       drawCtx();
     };
-    ed.append(el("label", "", t("Context")), ctxW);
+    moreIn.append(el("label", "", t("Context")), ctxW);
     drawCtx();
     const aHint = el("div", "hint", t(AFF_HINT[d.affinity] || AFF_HINT[""]));
     const aw = el("div");
     aw.append(segs(AFF_OPTS.map(([id, n]) => [id, t(n)]), d.affinity, (v) => { d.affinity = v; aHint.textContent = t(AFF_HINT[v] || AFF_HINT[""]); }), aHint);
-    ed.append(el("label", "", t("Stays")), aw);
+    moreIn.append(el("label", "", t("Stays")), aw);
 
     // rules: which member a turn goes to first, by what the request shows.
     // A rule reads as one line, a sentence: the conditions it has, then →
@@ -5592,7 +5600,7 @@ function routingPage(part) {
     rbox.append(rlist, rAdds);
     const rw2 = el("div");
     rw2.append(rHint2, rbox);
-    ed.append(el("label", "", t("Rules")), rw2);
+    moreIn.append(el("label", "", t("Rules")), rw2);
     // the effort: the agent's, or the classifier's pick for each turn
     const eHint = infoTip("");
     const ew = el("div", "rt-pickrow");
@@ -5607,8 +5615,8 @@ function routingPage(part) {
       drawEffort(); drawClassifier();
     }), eHint);
     drawEffort();
-    ed.append(el("label", "", t("Effort")), ew);
-    ed.append(clabel, cw);
+    moreIn.append(el("label", "", t("Effort")), ew);
+    moreIn.append(clabel, cw);
     drawRules();
     // the levels agents are offered: those every model has, or ones the
     // group names (#295) — a model without the one asked is sent its
@@ -5643,7 +5651,7 @@ function routingPage(part) {
       drawLevels();
     }), chips, lHint);
     drawLevels();
-    ed.append(el("label", "", t("Levels")), lw);
+    moreIn.append(el("label", "", t("Levels")), lw);
 
     const bar = el("div", "bar");
     if (g) {
@@ -5701,7 +5709,7 @@ function routingPage(part) {
       try { save(); } catch (e) { saveBtn.classList.remove("busy"); status(t("Couldn't save the group: {error}", { error: e.message }), "err"); }
     };
     bar.append(cancel, saveBtn);
-    ed.append(bar);
+    ed.append(more, bar);
     if (!g) setTimeout(() => name.focus({ preventScroll: true }), 0); // WebKit would scroll the page to put it mid-view
     if (gEdit.was == null) gEdit.was = JSON.stringify(d);
     return ed;

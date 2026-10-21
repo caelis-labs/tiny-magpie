@@ -614,3 +614,12 @@ settings remain unavailable. The GUI uses upstream `Pick`, `ConnectHow`,
 `Disconnect` and the upstream catalog sync hook. No rollout-portability or
 Agent daemon restart background job is started. Fixtures use isolated homes;
 this is not live Agent acceptance. See [Tiny scope](../tiny-scope.md).
+
+Tiny's Provider Advanced starts folded even when custom settings are saved;
+its summary marks them Custom, and explicit disclosure is kept while editing.
+Routing group editors show name, members and policy first. IDs, patterns,
+list naming, timeouts, context/affinity, rules and offered effort levels remain
+upstream controls under Advanced; their stored values and save payloads are
+unchanged. Removed image/compaction setup hints and request-text inspector
+click targets are absent. GitHub discovery omits listings explicitly marked
+pure Agent/tool/page extensions; mixed gateway packages remain installable.

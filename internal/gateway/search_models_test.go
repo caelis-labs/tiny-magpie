@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"slices"
 	"strings"
 	"testing"
 

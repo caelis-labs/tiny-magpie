@@ -180,7 +180,7 @@
   async function loadTagged(again) {
     try {
       const r = await api("plugins/github" + (again ? "?again=1" : ""));
-      const got = (r.repos || []).map(ghListing);
+      const got = (r.repos || []).map(ghListing).filter((l) => !["ag", "tl", "pg"].includes(kindOf(l)));
       if (!(r.error && !got.length && tagged?.length)) tagged = got;
       taggedErr = r.error || "";
       taggedMissing = r.missing || 0;
