@@ -64,7 +64,7 @@ func TestTinyAutostartPreservesOriginalMagpie(t *testing.T) {
 	if err := os.WriteFile(original, before, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if Enabled() {
+	if Enabled() != Off {
 		t.Fatal("original entry was mistaken for tiny")
 	}
 	if err := enable("/fixture/tiny-magpie"); err != nil {
