@@ -27,6 +27,9 @@ func providerAt(t *testing.T, path, top string) map[string]any {
 // a sync with nothing new writes nothing.
 func TestPiKeepsTheirKeysInMagpiesProvider(t *testing.T) {
 	home := syncHome(t)
+	if err := pi(home).Apply("model", "magpie/relay/glm-4.6"); err != nil {
+		t.Fatal(err)
+	}
 	piModels := filepath.Join(home, ".pi", "agent", "models.json")
 	// the block as magpie wrote it, with the optimizer's key added
 	writeFile(t, piModels, `{

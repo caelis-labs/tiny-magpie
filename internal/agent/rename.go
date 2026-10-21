@@ -23,6 +23,9 @@ func RenameProvider(from, to string) ([]string, error) {
 	var moves []move
 	if from != to {
 		for _, a := range Detected() {
+			if !a.Managed() {
+				continue
+			}
 			vals := a.Values()
 			for _, f := range a.Fields {
 				v := vals[f.Key]
@@ -69,7 +72,7 @@ func RenameProvider(from, to string) ([]string, error) {
 	}
 	if from != to {
 		for _, a := range Detected() {
-			if a.RenameRefs == nil {
+			if a.RenameRefs == nil || !a.Managed() {
 				continue
 			}
 			ok, err := a.RenameRefs(from, to)

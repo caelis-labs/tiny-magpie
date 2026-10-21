@@ -105,3 +105,10 @@ The PR #12 independent review removes `TestDriftBypassed` and
 regressions assert that configuration drift never invokes history callbacks,
 Codex model picks never import session-only providers, and mixed plugins never
 execute their Agent facet. The other restored upstream Agent tests remain.
+
+Automatic Agent updates now require Tiny ownership. The catalog/list fixtures
+explicitly Apply a model first; the multi-account disconnect fixture now
+expects an unmanaged first start to leave Codex alone, while retaining all
+connect/disconnect/reconnect assertions. The unmanaged Agent-config API guard
+is unchanged, and a new catalog regression verifies both foreign-config
+preservation and synchronization after an explicit model pick.

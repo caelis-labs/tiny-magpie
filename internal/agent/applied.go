@@ -408,6 +408,13 @@ func (a *Agent) Wired() bool {
 	return false
 }
 
+// Managed reports whether this Tiny profile explicitly configured the Agent.
+// A compatible model/provider id alone may belong to the original Magpie.
+func (a *Agent) Managed() bool {
+	return !a.Disconnected() && a.Wired() &&
+		(len(appliedOf(a.ID).Fields) > 0 || stashLoad()[a.ID+".connect.was"] != "")
+}
+
 // Pick sets a field from the Agents page's model picker. One of magpie's
 // models picked on an agent not connected yet connects it first, as its
 // switch does, then starts it on that model (the owner: the switch, and a

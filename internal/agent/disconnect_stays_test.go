@@ -119,10 +119,10 @@ func TestCodexDisconnectStaysWithAccountsOn(t *testing.T) {
 			os.MkdirAll(filepath.Dir(provider.Path()), 0o755)
 			os.WriteFile(filepath.Join(filepath.Dir(provider.Path()), "logins.json"), b, 0o600)
 			cx := codex(home)
-			// magpie's first start: failover points Codex at the gateway
+			// Tiny's first start leaves an unconnected Codex alone.
 			SyncCatalog()
-			if cfg := read(); !strings.Contains(cfg, "openai_base_url") {
-				t.Fatalf("first start, two accounts on:\n%s", cfg)
+			if cfg := read(); cfg != own {
+				t.Fatalf("first start changed unmanaged Codex:\n%s", cfg)
 			}
 			if login != "" {
 				if err := cx.Apply("login", login); err != nil {

@@ -1633,7 +1633,7 @@ func state() stateJSON {
 	}
 	detected := agent.Detected()
 	for _, a := range detected {
-		if a.Follow != nil {
+		if a.Follow != nil && a.Managed() {
 			_ = a.Follow()
 		}
 		vals := a.Values()

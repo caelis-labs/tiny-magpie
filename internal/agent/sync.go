@@ -47,6 +47,9 @@ func SyncCatalog() {
 		release := provider.Hold()
 		renaming := setToFoundGroups()
 		for _, a := range All() {
+			if !a.Managed() {
+				continue
+			}
 			if a.Sync != nil {
 				_ = synced(a.Sync)
 			}

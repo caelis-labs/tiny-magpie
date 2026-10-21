@@ -11,7 +11,7 @@ This file is the product contract. Subsystem references elsewhere in this tree r
 - Core built-ins (budget, gateway, groups, middleware, rotation, routing, usage) are fixed on; upstream runtime, schemas and community-plugin controls are retained. There is no Built-in switchboard in the GUI.
 - Three-platform desktop/tray and Web GUI. Providers is the default page; Agents, Gateway, Routing, Plugins, Usage (quotas, token/cost accounting, output tok/s, TTFT and errors) and Settings remain. Existing visual style, translations, accessibility and keyboard conventions are reused.
 
-- Agent detection, gateway connection/disconnection with upstream configuration restoration, manual model and reasoning picks, Claude tier models, and per-Agent model visibility/order. These reuse upstream writers and pickers. Sign-in/account management, memories, subagent orchestration and Agent-specific optimization settings are not exposed. Catalog changes use upstream synchronization for connected Agents.
+- Agent detection, gateway connection/disconnection with upstream configuration restoration, manual model and reasoning picks, Claude tier models, and per-Agent model visibility/order. These reuse upstream writers and pickers. Sign-in/account management, memories, subagent orchestration and Agent-specific optimization settings are not exposed. Catalog changes use upstream synchronization only for actively wired Agents this Tiny profile explicitly configured. Compatible Magpie ids alone never authorize automatic takeover.
 
 ## Removed from the product
 

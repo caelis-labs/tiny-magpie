@@ -224,6 +224,12 @@ func TestMaxTokensWithinContextWindow(t *testing.T) {
 // keep of magpie's models; a file magpie wrote nothing into stays as it is.
 func TestSyncCatalogRewritesAgentLists(t *testing.T) {
 	home := syncHome(t)
+	if err := pi(home).Apply("model", "magpie/relay/glm-4.6"); err != nil {
+		t.Fatal(err)
+	}
+	if err := codex(home).Apply("model", "relay/glm-4.6"); err != nil {
+		t.Fatal(err)
+	}
 	piModels := filepath.Join(home, ".pi", "agent", "models.json")
 	writeFile(t, piModels, `{"providers":{"mine":{"baseUrl":"http://x"},"magpie":{"name":"magpie","models":[]}}}`)
 	crushCfg := filepath.Join(home, ".config", "crush", "crush.json")
@@ -271,6 +277,9 @@ func TestSyncCatalogAgesCodexCache(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "auth.json"), `{"tokens":{"access_token":"x","id_token":"x.e30.x"}}`)
 	writeFile(t, filepath.Join(dir, "config.toml"), "model = \"relay/glm-4.6\"\nopenai_base_url = \""+codexGatewayURL()+"\"\n")
 	cache := filepath.Join(dir, "models_cache.json")
+	if err := codex(home).Apply("model", "relay/glm-4.6"); err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, cache, `{"fetched_at":"2026-09-25T10:00:00Z","etag":"W/\"v1\"","client_version":"0.155.1","models":[{"slug":"gpt-5.5"}]}`)
 	SyncCatalog()
 	var c struct {

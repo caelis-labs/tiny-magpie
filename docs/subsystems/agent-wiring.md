@@ -190,3 +190,11 @@ Fixtures use isolated homes;
 this is not live Agent acceptance. Explicit Provider edits in GUI/CLI use upstream
 `Reseat` and `RenameProvider` so connected Agents do not retain a removed model
 or the old Provider id. This starts no account-switching background job. See [Tiny scope](../tiny-scope.md).
+
+Automatic synchronization, Follow, Provider rename/reseat and port migration
+only write Agents that `Agent.Managed` recognizes from this Tiny profile's
+applied/connect records and current wiring. A Magpie-compatible model id or
+provider block by itself does not authorize Tiny to take over another
+installation's Agent. Disconnected and unmanaged Agents are skipped. The
+upstream list-preservation fixtures now establish ownership with explicit
+`Apply` before exercising their original catalog assertions.

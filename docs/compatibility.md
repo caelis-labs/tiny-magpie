@@ -146,9 +146,10 @@ and disconnect/restore. Tiny filters model-write fields on both API and UI;
 installation/updates, Profiles, sign-in, memories and subagent orchestration are
 not exposed. The private disconnect-preview subprocess entry is restored,
 and its fixture verifies the original configuration is unchanged by preview.
-The restored Agent suites use upstream fixtures; only the two out-of-scope
-log-based drift tests are removed during independent review. Model writers
-remain upstream-derived.
+The restored Agent suites use upstream fixtures. The two out-of-scope
+log-based drift tests are removed; catalog and disconnect fixtures establish
+Tiny ownership explicitly and retain their original preservation assertions.
+Model writers remain upstream-derived.
 
 The pinned upstream/Tiny binary differential passes discovery, 67 protocol
 comparisons (HTTP/SSE, tools/screenshots, System One and retrieval APIs), and
@@ -184,3 +185,12 @@ an unavailable reference. Both regression tests failed before restoration
 (`rename left Agent on "fixture/m"`) and exercise rename, same-model fallback
 and disconnect restoration. This is a response to explicit configuration edits,
 not the removed automatic account-switching service.
+
+The final ownership pass reproduced an unmanaged Codex catalog/config being
+rewritten by SyncCatalog. A Tiny ownership guard now limits automatic sync,
+Follow, rename/reseat and port migration to this Tiny profile's actively wired
+Agents. The existing TestTinyProviderEditLeavesAgentConfig regression is kept
+unchanged; its failure after restoring Reseat exposed the same missing guard.
+Connected-Agent list fixtures explicitly establish Tiny ownership before their
+original catalog-preservation assertions. No live Agent state was inspected
+or modified for these tests.
