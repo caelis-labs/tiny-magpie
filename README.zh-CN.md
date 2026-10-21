@@ -2,7 +2,7 @@
 
 保留 Magpie 多 Provider 模型网关、原版协议转换、订阅/Provider 插件，以及桌面和 Web GUI 的精简 fork。
 
-裁剪 Agent 管理、内容库、会话浏览、同步、意图路由及附加媒体/搜索/MCP 服务。沿用原版实现，以删减和兼容验证为主线。配置目录独立，不自动迁移原版数据。
+保留精简 Agent 页：本机检测、接入/断开并恢复配置、模型与推理档位切换。继续裁剪 Agent 安装更新、Profiles、内容库、会话浏览、同步、意图路由及附加媒体/搜索/MCP 服务。沿用原版实现，以删减和兼容验证为主线。配置目录独立，不自动迁移原版数据。
 
 当前为实验性版本。构建使用 `GOWORK=off make cli`，随后运行 `./tiny-magpie serve` 或 `./tiny-magpie web --no-open`。macOS 可用 `make app`；Windows/Linux 沿用原生构建流程。
 

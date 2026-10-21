@@ -23,7 +23,7 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
    await page.evaluate(()=>loadQuotas());
    await quotaTab.waitFor({state:'visible'});await quotaTab.click();
    await page.locator('#panelQuota .pq-card').first().waitFor({state:'visible'});
-   assert.equal(await page.locator('#ptabs [data-ptab=agents]').isVisible(),false);
+   assert.equal(await page.locator('#ptabs [data-ptab=agents]').isVisible(),true);
    assert.ok((await page.locator('#panelQuota').textContent()).includes('ChatGPT fixture'));
    await page.locator('#ptabs [data-ptab=stats]').click();
    await page.waitForFunction(()=>document.querySelector('#panelUsage .pu-tot')?.textContent.includes('592'));
@@ -61,6 +61,12 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
    await page.locator('.rt-gsec').waitFor({state:'visible'});
    const groupTop=await page.locator('.rt-gsec').boundingBox();
    assert.ok(groupTop.y<350,'groups must be reachable before the live diagram');
+   await page.locator('.rt-gnew').click();
+   const advanced=page.locator('.tiny-group-advanced');
+   assert.equal(await advanced.getAttribute('open'),null);
+   assert.equal(await advanced.locator('.inner').isVisible(),false);
+   await advanced.locator('summary').click();
+   await advanced.locator('.inner').waitFor({state:'visible'});
    assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
   });
  }

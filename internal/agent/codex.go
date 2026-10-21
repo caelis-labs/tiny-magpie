@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	satomic "sync/atomic"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -24,7 +26,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/lastgood"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
 )
 
@@ -536,42 +537,6 @@ func codexIn(at place) *Agent {
 		}
 		return out
 	}
-	// putThreadTables writes a table for each provider a Codex thread was
-	// started on that config.toml has none of, pointed at magpie. The
-	// Codex app resumes a thread on its own provider, and without that
-	// table it loads no config for it: "Model provider `custom` not found",
-	// a thread started through CC Switch reopened after CC Switch rewrote
-	// config.toml without its table (#1372). Codex's built-in providers
-	// need none, and magpie's own is putProvider's. A table written so
-	// stays, as magpie's own does, for the threads that name it.
-	putThreadTables := func() error {
-		// the providers config.toml has, however spelled (a table, inline,
-		// dotted keys); one that doesn't parse is left alone
-		raw, err := edit.Read(path)
-		if err != nil {
-			return nil
-		}
-		var cfg struct {
-			Providers map[string]any `toml:"model_providers"`
-		}
-		if toml.Unmarshal(raw, &cfg) != nil {
-			return nil
-		}
-		for _, id := range sessions.CodexThreadProviders(dir) {
-			if _, ok := cfg.Providers[id]; ok || id == magpieID || codexBuiltinProvider[id] {
-				continue
-			}
-			if err := edit.SetTOMLTable(path, "model_providers."+id,
-				edit.KV{Path: "name", Value: id},
-				edit.KV{Path: "base_url", Value: at.v1()},
-				edit.KV{Path: "wire_api", Value: "responses"},
-				edit.KV{Path: "experimental_bearer_token", Value: keptBearerToken("model_providers." + id)},
-			); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
 	// takeMirrors points CC Switch's OpenAI mirrors (the official OpenAI on
 	// the ChatGPT sign-in, under an id of its own and with no base_url) at
 	// magpie's ChatGPT backend while Codex's built-in provider goes there
@@ -633,13 +598,9 @@ func codexIn(at place) *Agent {
 	}
 	// takeTables points CC Switch's tables at magpie, each one's own base
 	// URL kept in the stash for giveTables (a table already on magpie's
-	// keeps the one kept for it), and writes the tables threads name that
-	// are gone (putThreadTables), and takes CC Switch's OpenAI mirrors
+	// keeps the one kept for it), and takes CC Switch's OpenAI mirrors
 	// (takeMirrors)
 	takeTables := func() error {
-		if err := putThreadTables(); err != nil {
-			return err
-		}
 		if err := takeMirrors(); err != nil {
 			return err
 		}
@@ -1114,6 +1075,12 @@ func codexIn(at place) *Agent {
 			}
 			dropList()
 			forget(at.key("codex.model"), at.key("codex.effort"), at.key("codex.provider"), at.key("codex.catalog"))
+			// its threads go on without magpie: the compactions magpie made
+			// in them written as Codex's own (a distro's Codex locks its
+			// files where this machine's locks can't reach)
+			if at.spell == nil {
+				portCodexHome(dir, codexPortUnwire)
+			}
 			return settle()
 		},
 		// signed in with ChatGPT, Codex reaches magpie by the base URL with
@@ -1665,7 +1632,7 @@ func codexOwnViaMagpie(model string) string {
 // codexOwnOf is the model of Codex's own a catalog id serves on a ChatGPT
 // account (codexOwnViaMagpie's way back); "" for any other.
 func codexOwnOf(id string) string {
-	if !isMagpie(id) || strings.HasPrefix(id, provider.GroupPrefix) {
+	if !isMagpie(id) || provider.IsGroupRef(id) {
 		return ""
 	}
 	p, model, ok := provider.Resolve(id)
@@ -1869,13 +1836,72 @@ func codexChatGPT(dir string) bool {
 // newest day of it at most — from the log database the Codex app and the
 // TUI share: the address it opened, and whether that was refused (nothing
 // listening there). Zero when none is logged.
+//
+// Every Drift asks it, so it is read again only when the database or its
+// -wal changed, or the day it covers moved past what it found (#1665: a
+// read per ask was ~2,500 opens of logs_2.sqlite in 25s of a start, each
+// one file system work a Windows filter driver adds its own to).
 func codexReached(dir string, since time.Time) (at time.Time, to string, refused bool) {
 	logs, _ := filepath.Glob(filepath.Join(dir, "logs_*.sqlite"))
 	if len(logs) == 0 {
 		return
 	}
 	slices.Sort(logs)
-	db, err := provider.OpenReadOnly(logs[len(logs)-1])
+	path := logs[len(logs)-1]
+	key := reachedKey{path: path, since: since.Unix(), db: stampOf(path), wal: stampOf(path + "-wal")}
+	reachedMu.Lock()
+	if c, ok := reachedMemo[dir]; ok && c.key == key && time.Since(c.read) < reachedFor &&
+		(c.at.IsZero() || time.Since(c.at) < 24*time.Hour) {
+		reachedMu.Unlock()
+		return c.at, c.to, c.refused
+	}
+	reachedMu.Unlock()
+	at, to, refused = codexReachedRead(path, since)
+	reachedMu.Lock()
+	reachedMemo[dir] = reachedRead{key: key, read: time.Now(), at: at, to: to, refused: refused}
+	reachedMu.Unlock()
+	return
+}
+
+// reachedFor is how long a read of Codex's log stands while its files say
+// nothing changed: a file system whose times are coarse can miss a write
+// that kept the size.
+const reachedFor = 15 * time.Second
+
+type reachedKey struct {
+	path    string
+	since   int64
+	db, wal fileStamp
+}
+
+type fileStamp struct{ size, mod int64 }
+
+func stampOf(path string) fileStamp {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return fileStamp{size: -1}
+	}
+	return fileStamp{size: fi.Size(), mod: fi.ModTime().UnixNano()}
+}
+
+type reachedRead struct {
+	key     reachedKey
+	read    time.Time
+	at      time.Time
+	to      string
+	refused bool
+}
+
+var (
+	reachedMu   sync.Mutex
+	reachedMemo = map[string]reachedRead{}
+	// reachedOpens counts the reads of the database, for the tests
+	reachedOpens satomic.Int64
+)
+
+func codexReachedRead(path string, since time.Time) (at time.Time, to string, refused bool) {
+	reachedOpens.Add(1)
+	db, err := provider.OpenReadOnly(path)
 	if err != nil {
 		return
 	}

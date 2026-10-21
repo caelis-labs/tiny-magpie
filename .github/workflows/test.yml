@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           tiny_test_status=0
-          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestTiny.*|TestWindows.*|TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestLoadConcurrentWithSavesAndEdits|TestSaveConcurrent.*|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata|TestCachePartialUpdateMatrix|TestClaudeAsRootEnv|TestStatWaitsOutAReplace|TestMissingProbeStaysShort)$' ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage ./internal/settings ./internal/steady ./internal/gateway ./internal/gui ./internal/update 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-fixtures.log || tiny_test_status=$?
+          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestTiny.*|TestWindows.*|TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestLoadConcurrentWithSavesAndEdits|TestSaveConcurrent.*|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata|TestCachePartialUpdateMatrix|TestClaudeAsRootEnv|TestStatWaitsOutAReplace|TestMissingProbeStaysShort)$' ./internal/agent ./internal/agentplug ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage ./internal/settings ./internal/steady ./internal/gateway ./internal/gui ./internal/update 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-fixtures.log || tiny_test_status=$?
           exit "$tiny_test_status"
       - name: Windows state and proxy stress
         if: runner.os == 'Windows'

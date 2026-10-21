@@ -9,7 +9,7 @@ navHides(); // the pages built-in plugins switched off have, from boot.js
 // from the tray or a reload) first, then the one kept; a page gateway mode
 // leaves out, or one there is no longer, gives way to the first page.
 // the pages the window can open on besides the first (Agents)
-const OPEN_VIEWS = ["providers", "plugins", "settings", ...magpie.pages()];
+const OPEN_VIEWS = ["agents", "providers", "plugins", "settings", ...magpie.pages()];
 function keptView() {
   const asked = params.get("view");
   if (asked === "agents" || OPEN_VIEWS.includes(asked)) return asked;

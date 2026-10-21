@@ -32,7 +32,7 @@ func TestTinyClassifiersAndRetrievalInventory(t *testing.T) {
 
 func TestTinyRetiredSettingsHaveNoAPI(t *testing.T) {
 	h := builtinHome(t)
-	for _, path := range []string{"/api/settings/redact-rules", "/api/settings/redact-rule", "/api/settings/codex-credits", "/api/plugins/builtin"} {
+	for _, path := range []string{"/api/privacy-model", "/api/masking", "/api/settings/redact-rules", "/api/settings/redact-rule", "/api/settings/codex-credits", "/api/plugins/builtin"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, nil))
 		if w.Code != 404 {

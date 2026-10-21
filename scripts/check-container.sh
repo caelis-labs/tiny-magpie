@@ -47,8 +47,13 @@ browser=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.reque
 with browser.open(web+'/?k=tiny-fixture-web-key-32-characters',timeout=10) as r:assert b'Providers' in r.read()
 with browser.open(web+'/api/providers',timeout=10) as r:
     state=json.load(r);assert state['gateway']['mine'] and state['gateway']['running']
-try:browser.open(urllib.request.Request(web+'/api/set',data=b'{}',headers={'Content-Type':'application/json'}),timeout=10)
-except urllib.error.HTTPError as e:assert e.code==404
-else:raise AssertionError('removed management route exists')
+def management_status(path):
+    try:
+        with browser.open(urllib.request.Request(web+path,data=b'{}',headers={'Content-Type':'application/json'}),timeout=10) as r:return r.status
+    except urllib.error.HTTPError as e:return e.code
+assert management_status('/api/set')==400, 'retained Agent model route must validate the request'
+for path in ('/api/agents/install','/api/agents/cli/codex','/api/profile/save'):
+    assert management_status(path)==404, f'removed management route exists: {path}'
+
 print('PASS: Linux container health, named-key auth, discovery, model error, authenticated Web and removed routes')
 PY

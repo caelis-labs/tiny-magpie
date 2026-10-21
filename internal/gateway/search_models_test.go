@@ -64,3 +64,12 @@ func TestCommandCodeSearchesForSomeModels(t *testing.T) {
 	save(map[string]string{"x-cmd-zdr": "1"})
 	run(true)
 }
+
+// A model that searches by itself is offered in Settings' searcher picker
+// and picked by magpie by the same rule that sends it the vendor's search
+// tool (modelSearches), not only a provider whose every model searches:
+// Command Code's searching models searched for themselves, but were left
+// out of the picker, so a model that can't search was searched for by
+// another provider or by none (01huadalang on Discord: the picker named
+// Antigravity alone). Only its models that search are offered, and none
+// under its zero-data-retention header.

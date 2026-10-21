@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/yetone/magpie.git",
-  "base": "d783df46cbac9021e26a6bd71ca0b55544552eb2",
+  "base": "ba319a7587923fc7a4ea3859658244d591261a59",
   "retainedBuiltins": [
     "budget",
     "gateway",

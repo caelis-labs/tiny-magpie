@@ -2,7 +2,7 @@
 
 A smaller Magpie: a multi-provider model gateway with its original protocol adapters, subscription/provider plugins and desktop/Web GUI.
 
-Tiny keeps upstream model routing, direct TypeSafe/Jev classification APIs, Embeddings/Rerank, and token/cost/speed observation and removes Agent management, content libraries, session browsing, sync, intent routing and extra media/search/MCP services. See [the scope](docs/tiny-scope.md) and [upstream maintenance](UPSTREAM.md). It is an experimental fork; validation and remaining acceptance work are recorded in [compatibility](docs/compatibility.md).
+Tiny keeps upstream model routing, direct TypeSafe/Jev classification APIs, Embeddings/Rerank, and token/cost/speed observation and provides a reduced Agents page for connecting local clients and switching models/reasoning levels. Agent installation/updates, Profiles, content libraries, session browsing, sync, intent routing and extra media/search/MCP services remain removed. See [the scope](docs/tiny-scope.md) and [upstream maintenance](UPSTREAM.md). It is an experimental fork; validation and remaining acceptance work are recorded in [compatibility](docs/compatibility.md).
 
 Download from [Releases](https://github.com/caelis-labs/tiny-magpie/releases): macOS Apple Silicon DMG, Windows `.exe` and Linux executables (amd64/arm64). Standalone headless CLI binaries cover those same five platform pairs. macOS artifacts are Developer ID signed and notarized; Windows/Linux are unsigned. Intel macOS and Android downloads are outside this fork's release matrix. Verify `SHA256SUMS` before use. See [installation and platform details](docs/releasing.md).
 

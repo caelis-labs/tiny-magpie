@@ -393,8 +393,11 @@ type settingsJSON struct {
 	// settings, environment, system, off or none
 	ProxyNow    string `json:"proxyNow"`
 	ProxySource string `json:"proxySource"`
-	// whether magpie opens at login: the system's record, not a setting
-	Login bool `json:"login"`
+	// whether magpie opens at login: the system's record, not a setting;
+	// LoginAllow, the record is there but the user switched it off in
+	// System Settings › Login Items, which is where it's allowed again
+	Login      bool `json:"login"`
+	LoginAllow bool `json:"loginAllow,omitempty"`
 	// the model that describes images when Vision names none, and those
 	// that can be named
 	VisionAuto   string     `json:"visionAuto,omitempty"`
@@ -581,6 +584,10 @@ type searchFailedJSON struct {
 	At           time.Time `json:"at"`
 }
 
+// loginState is whether magpie opens at login, as the system will act on
+// it. A var for the tests: the real one asks the user's own system.
+var loginState = autostart.Enabled
+
 func settingsState() settingsJSON {
 	s := settingsJSON{Settings: settings.Load(), Version: Version, Dir: tilde(settings.Dir()), Portable: settings.Portable() != "", Gateway: gateway.URL()}
 	s.AddrEnv = os.Getenv("MAGPIE_ADDR")
@@ -605,7 +612,8 @@ func settingsState() settingsJSON {
 			s.OTelEnv = true
 		}
 	}
-	s.Login = autostart.Enabled()
+	login := loginState()
+	s.Login, s.LoginAllow = login != autostart.Off, login == autostart.NeedsAllowing
 	if s.LAN {
 		s.LANURLs, s.LANContainer = gateway.LANURLs(), gateway.ContainerAddrs()
 	}
@@ -801,29 +809,185 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		keepState(s)
 	})
 
+	mux.HandleFunc("POST /api/set", func(rw http.ResponseWriter, r *http.Request) {
+		var in struct{ Agent, Field, Value string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			fail(rw, err)
+			return
+		}
+		a, err := agent.Find(in.Agent)
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		f := a.Field(in.Field)
+		if f == nil || !tinyAgentField(f) {
+			http.Error(rw, "unknown field", http.StatusBadRequest)
+			return
+		}
+		wired := a.Wired()
+		if err := a.Pick(f.Key, strings.TrimSpace(in.Value)); err != nil {
+			fail(rw, err)
+			return
+		}
+		s := state()
+		if a.Notice != nil && (!f.Live || !wired && a.Wired()) {
+			s.Notice = a.Notice()
+		}
+		writeJSON(rw, s)
+	})
 	// reapply sets again what magpie set on an agent something else
 	// rewrote; keep takes the agent as it is now
 	// what drifted, per agent: cheap enough to ask while the window is up,
 	// so a config rewritten elsewhere shows without a reload
-
+	mux.HandleFunc("GET /api/drift", func(rw http.ResponseWriter, r *http.Request) {
+		out := map[string]*agent.Drift{}
+		for _, a := range agent.Detected() {
+			if d := a.Drift(); d != nil {
+				out[a.ID] = d
+			}
+		}
+		writeJSON(rw, out)
+	})
 	// the agents' CLIs: their versions and the newest (#202), as far as
 	// they're known within a moment — the rest are asked on meanwhile, and
 	// pending says to ask again soon
 	// the Agents page's refresh: looks for the agents on this machine again,
 	// the answers kept a while because asking was slow forgotten (#844)
-
-	// the agents magpie knows that aren't here, with their vendors' install
-	// commands to copy (#727)
-
+	mux.HandleFunc("POST /api/agents/rescan", func(rw http.ResponseWriter, r *http.Request) {
+		agent.Rescan()
+		writeJSON(rw, state())
+	})
 	// Aside's explicit offline model write. Normal model changes require its runtime.
-
+	mux.HandleFunc("POST /api/agents/stage/{id}", func(rw http.ResponseWriter, r *http.Request) {
+		a, err := agent.Find(r.PathValue("id"))
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		var in struct{ Field, Value string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			fail(rw, err)
+			return
+		}
+		if f := a.Field(in.Field); f == nil || !tinyAgentField(f) {
+			http.Error(rw, "unknown field", http.StatusBadRequest)
+			return
+		}
+		if a.Native == nil || a.Native.Stage == nil {
+			fail(rw, fmt.Errorf("this agent does not support staged model settings"))
+			return
+		}
+		value, err := a.Spell(in.Field, in.Value)
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		if err := a.Native.Stage(in.Field, value); err != nil {
+			fail(rw, err)
+			return
+		}
+		writeJSON(rw, state())
+	})
 	// updates one the way it was installed; what it is afterwards comes
 	// back with an error too
-
 	// what disconnecting an agent changes in its files, line by line, for
 	// the dialog asking it (agent.DisconnectPreview); its files when the
 	// preview can't be had
-
+	mux.HandleFunc("GET /api/agents/preview/{id}", func(rw http.ResponseWriter, r *http.Request) {
+		a, err := agent.Find(r.PathValue("id"))
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		exe, err := os.Executable()
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		if a.Native != nil {
+			plan, err := a.Native.Disconnect()
+			if err != nil {
+				writeJSON(rw, map[string]any{"error": err.Error()})
+				return
+			}
+			writeJSON(rw, map[string]any{"changes": plan.Preview(), "revision": plan.Revision(a.ID)})
+			return
+		}
+		changes, err := agent.DisconnectPreview(a, exe)
+		out := map[string]any{"changes": changes}
+		if err != nil {
+			out["error"] = err.Error()
+		}
+		writeJSON(rw, out)
+	})
+	mux.HandleFunc("POST /api/agents/disconnect-offline/{id}", func(rw http.ResponseWriter, r *http.Request) {
+		a, err := agent.Find(r.PathValue("id"))
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		if a.Native == nil || a.Native.ExecuteOffline == nil {
+			fail(rw, fmt.Errorf("this agent does not support offline disconnect"))
+			return
+		}
+		var in struct {
+			Revision string `json:"revision"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			fail(rw, err)
+			return
+		}
+		plan, err := a.Native.Disconnect()
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		if in.Revision == "" || in.Revision != plan.Revision(a.ID) {
+			fail(rw, fmt.Errorf("Disconnect preview changed; preview it again"))
+			return
+		}
+		if err := a.Native.ExecuteOffline(plan); err != nil {
+			fail(rw, err)
+			return
+		}
+		writeJSON(rw, state())
+	})
+	mux.HandleFunc("POST /api/agents/{action}/{id}", func(rw http.ResponseWriter, r *http.Request) {
+		a, err := agent.Find(r.PathValue("id"))
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		var how *agent.Connection
+		switch r.PathValue("action") {
+		case "reapply":
+			err = a.Reapply()
+		case "keep":
+			a.Keep()
+		case "connect":
+			var c agent.Connection
+			c, err = a.ConnectHow()
+			how = &c
+		case "disconnect":
+			err = a.Disconnect()
+		default:
+			http.NotFound(rw, r)
+			return
+		}
+		if err != nil {
+			fail(rw, err)
+			return
+		}
+		s := state()
+		if a.Notice != nil {
+			s.Notice = a.Notice()
+		}
+		s.Connected = how
+		writeJSON(rw, s)
+	})
 	mux.HandleFunc("POST /api/sync", func(rw http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -893,6 +1057,10 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		if _, sent := fields["noAutoDownload"]; !sent {
 			in.NoAutoDownload = cur.NoAutoDownload
 		}
+		// nor how long an image is given to be drawn
+		if _, sent := fields["imageTimeout"]; !sent {
+			in.ImageTimeout = cur.ImageTimeout
+		}
 		in.AgentOrder, in.AgentsHidden, in.AgentsShown = cur.AgentOrder, cur.AgentsHidden, cur.AgentsShown
 		in.Window, in.WindowMaximised = cur.Window, cur.WindowMaximised // the window's own, as it was last resized
 		// and what other pages keep here: which models an agent is shown, and
@@ -922,8 +1090,10 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		in.GitHubToken = cur.GitHubToken                   // set on its own (github-token below), never sent to the page
 		in.RequestArchive = cur.RequestArchive             // the Gateway page's, set on its own
 		in.RequestArchiveMaxMB = cur.RequestArchiveMaxMB   // in settings.json only
+		in.ClaudeRunsMost = cur.ClaudeRunsMost             // magpie claude-code runs, or settings.json (#2956)
 		in.GatewayConversations = cur.GatewayConversations // Sessions' explicit recording consent
 		in.RedactRules = cur.RedactRules                   // the masking rules, set on their own
+		in.RedactModel = cur.RedactModel                   // set on its own (privacy-model)
 		in.DisabledModels = cur.DisabledModels             // set on their own (disabled-models below, #1867)
 		// used or left is the Usage page's toggle as much as Settings', set on its own
 		in.QuotaLeft = cur.QuotaLeft
@@ -1399,6 +1569,7 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		rw.WriteHeader(http.StatusNoContent)
 	})
+	agentModelsAPI(mux)
 	devListen(mux)
 	return noFramedAPI(held(mux))
 }
@@ -1445,14 +1616,57 @@ func held(h http.Handler) http.Handler {
 
 func state() stateJSON {
 	s := stateJSON{Agents: []agentJSON{}, Profiles: []profileJSON{}, Catalog: catalog.Source(), Settings: settings.Load()}
+	// state() is asked for after nearly every click, so the rate — a
+	// network fetch once every TTL — is only worth its rare latency when
+	// cny is actually chosen; usd never looks at it
+	if s.Settings.Currency == "cny" {
+		s.FX = currentFX()
+	}
+	s.Unlisted = unlistedModels()
 	for _, e := range provider.Served() {
 		if e.Group == "" {
 			s.Served++
 		}
 	}
-	s.Unlisted = unlistedModels()
-	if s.Settings.Currency == "cny" {
-		s.FX = currentFX()
+	for _, a := range agent.Clients() {
+		s.Clients = append(s.Clients, clientJSON{ID: a.ID, Name: a.Name, Icon: a.Icon})
+	}
+	detected := agent.Detected()
+	for _, a := range detected {
+		if a.Follow != nil && a.Managed() {
+			_ = a.Follow()
+		}
+		vals := a.Values()
+		aj := agentJSON{ID: a.ID, Name: a.Name, Icon: a.Icon, Path: tilde(a.Path), Fields: agentFields(a, vals)}
+		aj.Models = agentModelCount(a, aj.Fields)
+		aj.Menu = a.ListsModels
+		aj.NoNames = a.NoNames
+		aj.Drift = a.Drift()
+		aj.Wired = a.Wired()
+		if aj.Wired {
+			aj.StaleCopies = a.StaleCopies()
+			aj.Stale = len(aj.StaleCopies)
+			aj.Joined = a.Joined != nil && a.Joined()
+		} else {
+			aj.Source = a.Source()
+			aj.Failover = a.FailingOver != nil && a.FailingOver()
+		}
+		if a.Import != nil {
+			aj.Import = a.Import()
+			if a.Added != nil {
+				added := a.Added()
+				aj.Added = &added
+			}
+		}
+		if a.Launch != nil {
+			aj.Launch = a.Launch()
+		}
+		aj.CLIMissing = a.CLIMissing()
+		if a.Native != nil {
+			native := a.Native.Read()
+			aj.Native = &native
+		}
+		s.Agents = append(s.Agents, aj)
 	}
 	s.Recovered = lastgood.Recovered()
 	return s

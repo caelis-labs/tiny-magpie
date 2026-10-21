@@ -3,6 +3,7 @@ package gateway
 import (
 	"net/http"
 
+	"github.com/yetone/magpie/internal/gwmw"
 	"github.com/yetone/magpie/internal/provider"
 )
 
@@ -49,3 +50,13 @@ func unredactedRoute(p provider.Provider, isGroup bool, ms []provider.Member) bo
 }
 
 func maskedQuery(query string, p *provider.Provider) (string, error) { return query, nil }
+
+func redactedHits(w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), maskHits, error) {
+	return w, body, func() {}, maskHits{}, nil
+}
+func redactedPromptHits(w http.ResponseWriter, prompt string) (http.ResponseWriter, string, func(), maskHits, error) {
+	return w, prompt, func() {}, maskHits{}, nil
+}
+func maskTextHits(s string) (gwmw.Masker, string, maskHits, error) {
+	return nil, s, maskHits{}, nil
+}

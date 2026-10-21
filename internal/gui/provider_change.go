@@ -1,10 +1,7 @@
 package gui
 
-import (
-	"github.com/yetone/magpie/internal/agent"
-	"github.com/yetone/magpie/internal/provider"
-)
+import "github.com/yetone/magpie/internal/agent"
 
-// Provider edits affect this gateway only; agents keep their own configuration.
-func providerChange(change func() error) ([]agent.Move, error) { return nil, change() }
-func renameProvider(from, to string) ([]string, error)         { return nil, provider.Rename(from, to) }
+// Explicit Provider edits keep connected Agents on models the gateway serves.
+func providerChange(change func() error) ([]agent.Move, error) { return agent.Reseat(change) }
+func renameProvider(from, to string) ([]string, error)         { return agent.RenameProvider(from, to) }

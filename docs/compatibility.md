@@ -1,6 +1,6 @@
 # Compatibility and acceptance
 
-This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `d783df46cbac9021e26a6bd71ca0b55544552eb2`. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
+This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `ba319a7587923fc7a4ea3859658244d591261a59` (see `UPSTREAM.json`). Earlier dated gates below describe their original revision. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
 
 ## Reproducible gates
 
@@ -133,3 +133,80 @@ Dev apps, launchers, fixture profiles and credentials are not source artifacts.
 - Verify clean-machine installation and any future Tiny update mechanism. Tiny never self-updates from Magpie's application feed. [The release workflow](releasing.md) gates experimental GitHub releases on exact-source CI, macOS signatures/notarization and asset readback; Windows/Linux remain unsigned. No container registry image is published.
 
 Task-local diagnostic logs are under ignored `.tiny/`: `baseline-tests.log`, `baseline-network-recheck.log`, `tests-final-head.log`, `usage-final.log`, `gui-isolation-tests.log`, `retained-tests-final.log`, `vet-final.log`, `differential-final.log`, `ui-tests-final.log`, `cross-final.log`, `windows-final.log`, `native-run-final.log`, and `docker-build.log`, `container-smoke.log`, `linux-isolation-tests.log`, `linux-gui-final.log` and `rehearsal-differential.log`. Browser screenshots are in ignored `output/playwright/`. CI uploads browser evidence. Logs and generated binaries are not committed.
+
+## Upstream sync and reduced Agent candidate, 2026-10-21
+
+Integrated upstream `ba319a7587923fc7a4ea3859658244d591261a59`, the complete
+203-commit interval after `d783df46cbac9021e26a6bd71ca0b55544552eb2` (#1).
+The merge retains Tiny identity, independent gateway ownership and retired
+products, including upstream's newly added privacy-model product.
+
+Agent wiring uses upstream detection, Pick/ConnectHow, drift, model visibility
+and disconnect/restore. Tiny filters model-write fields on both API and UI;
+installation/updates, Profiles, sign-in, memories and subagent orchestration are
+not exposed. The private disconnect-preview subprocess entry is restored,
+and its fixture verifies the original configuration is unchanged by preview.
+The restored Agent suites use upstream fixtures. The two out-of-scope
+log-based drift tests are removed; catalog and disconnect fixtures establish
+Tiny ownership explicitly and retain their original preservation assertions.
+Model writers remain upstream-derived.
+
+The pinned upstream/Tiny binary differential passes discovery, 67 protocol
+comparisons (HTTP/SSE, tools/screenshots, System One and retrieval APIs), and
+removed endpoint/config-write checks. Chromium and WebKit pass 84 Tiny UI
+cases across five languages and narrow/wide layouts. CUA additionally inspected
+and switched a model in a synthetic local Agent fixture, and inspected the
+folded group editor. These are fixture results, not live-account acceptance.
+
+macOS native compilation is checked without replacing or launching either
+installed app. Windows/Linux native GUI, signing/notarization, clean-machine
+installation and real Agent/account use remain unverified in this candidate.
+
+All 55 retained Go test packages pass across the complete package run plus
+its corrected gateway rerun (282s). The first run stopped gateway compilation
+on a stale test-only import; the corrected package was rerun in full. The CLI
+package is rerun after restoring the preview subprocess dispatch. Focused
+Agent/GUI/CLI race checks and vet also pass. Local native builds retain the
+upstream macOS SDK/deployment-target warnings; no signing or packaging claim
+is made.
+
+Independent PR #12 review found and cut two residual Agent session readers:
+drift no longer asks LastUsed/Reached history callbacks, and Codex model writes
+no longer reconstruct old providers from session databases. It also disabled
+Agent extension discovery for mixed plugins, while preserving their gateway
+entry metadata and original hosts. Three new regression tests failed on the
+reviewed pre-fix source with actual history callbacks, a reconstructed legacy
+provider, and an executed Agent module respectively. Configuration drift,
+manual model switching and restoration remain upstream-derived.
+
+The same review restored upstream `Reseat` and `RenameProvider` at GUI/CLI
+Provider-edit seams: a renamed or disabled Provider must not leave an Agent on
+an unavailable reference. Both regression tests failed before restoration
+(`rename left Agent on "fixture/m"`) and exercise rename, same-model fallback
+and disconnect restoration. This is a response to explicit configuration edits,
+not the removed automatic account-switching service.
+
+The final ownership pass reproduced an unmanaged Codex catalog/config being
+rewritten by SyncCatalog. A Tiny ownership guard now limits automatic sync,
+Follow, rename/reseat and port migration to this Tiny profile's actively wired
+Agents. The existing TestTinyProviderEditLeavesAgentConfig regression is kept
+unchanged; its failure after restoring Reseat exposed the same missing guard.
+Connected-Agent list fixtures explicitly establish Tiny ownership before their
+original catalog-preservation assertions. No live Agent state was inspected
+or modified for these tests.
+
+Final full-suite validation passed every retained package except the inherited
+packed-decoder allocation assertion (880600 bytes/scan). A controlled double
+GC after warmup reproduced the same invalid cache premise (884472 bytes).
+The measurement now uses one P and disables automatic GC within its window,
+restoring both settings afterward. Thresholds and runtime pooling are unchanged.
+Both allocation checks pass 20 rounds under GOGC=1; a fresh-decoder mutation
+still fails at 3330385 bytes/scan, and the complete sessions package passes.
+
+CI also intermittently stalled in a Chromium full-browser-channel click at
+native narrow widths; the screenshot step produced no artifact. The gateway
+suite now uses the same pinned default headless Chromium as the other retained
+suites, and reports bounded failure geometry before screenshots. All 84 cases
+pass locally (42.297s), plus 20 normal-click navigation cycles at native 560px
+with 6x CPU throttling. No timeout, assertion, viewport or product source is
+weakened; this does not attribute the full-browser stall to a product bug.

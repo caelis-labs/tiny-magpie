@@ -22,7 +22,7 @@ func TestSetThenTruncatedRecordReadsAsOff(t *testing.T) {
 	if err := Set(true); err != nil {
 		t.Fatal(err)
 	}
-	if !Enabled() {
+	if Enabled() == Off {
 		t.Fatal("not on after Set(true)")
 	}
 	p := record()
@@ -36,13 +36,13 @@ func TestSetThenTruncatedRecordReadsAsOff(t *testing.T) {
 	if err := os.WriteFile(p, head, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if Enabled() {
+	if Enabled() != Off {
 		t.Errorf("a desktop entry with no Exec reads as on:\n%s", head)
 	}
 	if err := os.WriteFile(p, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if Enabled() {
+	if Enabled() != Off {
 		t.Error("an empty desktop entry reads as on")
 	}
 	// an Exec key with nothing after it names nothing to run either, and the
@@ -50,7 +50,7 @@ func TestSetThenTruncatedRecordReadsAsOff(t *testing.T) {
 	if err := os.WriteFile(p, []byte("[Desktop Entry]\nType=Application\nName=magpie\nExec=\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if Enabled() {
+	if Enabled() != Off {
 		t.Error("a desktop entry with an empty Exec reads as on")
 	}
 }
@@ -64,7 +64,7 @@ func TestTinyAutostartPreservesOriginalMagpie(t *testing.T) {
 	if err := os.WriteFile(original, before, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if Enabled() {
+	if Enabled() != Off {
 		t.Fatal("original entry was mistaken for tiny")
 	}
 	if err := enable("/fixture/tiny-magpie"); err != nil {

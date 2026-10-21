@@ -8,14 +8,14 @@ the original measurements and the reduction.
 
 ## Removed positive suites
 
-- Agent configuration, model switching, installation, disconnect and profiles.
-  The Agent package keeps its sandbox `TestMain` and the source-scanning
-  `TestFolderVarsAreListed` guard; account discovery/authentication tests in
-  Provider remain.
+- Agent installation, CLI updates, profiles, and orchestration/optimization UI.
+  Agent model wiring, effort, catalog sync, stashes and disconnect/restore regressions
+  are restored verbatim from the pinned upstream (including shared fixture suites).
+  The sandbox `TestMain` and `TestFolderVarsAreListed` guard remain.
 - Library instructions, skills and public MCP setup; cloud backup/sync and
   profile bundles; keep-awake, image/video MCP generation, telemetry and
   automatic context tuning. Their positive Go suites are deleted.
-- GUI tests accepting Agent models, Library, session pages/export/resume,
+- GUI tests accepting Library, session pages/export/resume,
   cloud backup/sync, telemetry, intelligent routing and context tuning. Corresponding
   browser tests leave the tree too. Shared GUI sandbox fixtures are kept
   unchanged in `internal/gui/sandbox_test.go`.
@@ -39,6 +39,7 @@ remain model/protocol behavior. Session parsing/accounting helpers remain
 coupled to usage and keep their shared corpus; removing a session page does
 not justify removing accounting coverage.
 
+Tiny fixture tests exercise Agent model switching and configuration restoration.
 Tiny negative tests reject removed endpoints, imported intent/recording
 settings and standalone tool/page/Agent extensions, and verify Provider edits
 leave Agent configuration alone. `scripts/check-scope.py` also rejects the
@@ -49,7 +50,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 66 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 84 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
@@ -93,3 +94,21 @@ New Tiny checks cover explicit classification calls, split retrieval inventory,
 fixed core assembly, visible token/cost/speed/TTFT summaries, unavailable retired settings APIs, old settings remaining
 inert, and real rendered icon bounds. Browser acceptance uses both engines,
 five languages, narrow/wide layouts and isolated native Dev inspection.
+
+The gateway-page matrix uses 1100px and the real 560px native minimum, plus
+440px in the Web phone layout. It keeps the original assertions and action
+timeouts. Failed cases save a screenshot and navigation bounds in the existing
+browser-evidence artifact before closing their browser.
+
+The PR #12 independent review removes `TestDriftBypassed` and
+`TestCodexDriftReached`: both require the retired Agent-log readers. New Tiny
+regressions assert that configuration drift never invokes history callbacks,
+Codex model picks never import session-only providers, and mixed plugins never
+execute their Agent facet. The other restored upstream Agent tests remain.
+
+Automatic Agent updates now require Tiny ownership. The catalog/list fixtures
+explicitly Apply a model first; the multi-account disconnect fixture now
+expects an unmanaged first start to leave Codex alone, while retaining all
+connect/disconnect/reconnect assertions. The unmanaged Agent-config API guard
+is unchanged, and a new catalog regression verifies both foreign-config
+preservation and synchronization after an explicit model pick.

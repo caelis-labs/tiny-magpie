@@ -17,7 +17,7 @@ import (
 func OnGateway() []*Agent {
 	var out []*Agent
 	for _, a := range All() {
-		if len(a.Fields) == 0 || !a.Wired() {
+		if len(a.Fields) == 0 || !a.Managed() {
 			continue
 		}
 		if d := a.Drift(); d != nil && d.Kind == "unwired" {

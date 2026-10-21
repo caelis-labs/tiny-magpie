@@ -20,7 +20,7 @@ for workflow in (root/'.github/workflows').glob('*'):
 assert 'go install ' not in (root/'Makefile').read_text(encoding='utf-8'), 'upstream-named installer resurrected'
 for package in ('backup', 'davsync', 'library', 'profile', 'awake', 'imagemcp', 'otlp', 'tune'):
     assert not list((root/'internal'/package).glob('*_test.go')), f'removed product tests resurrected: {package}'
-assert {p.name for p in (root/'internal/agent').glob('*_test.go')} <= {'main_test.go', 'agentenv_test.go'}, 'Agent management tests resurrected'
+assert {p.name for p in (root/'internal/agent').glob('*_test.go')} <= {'tiny_scope_test.go', 'disconnect_stays_test.go', 'sync_keep_test.go', 'connect_magpie_empty_test.go', 'applied_keep_test.go', 'main_test.go', 'codex_connected_test.go', 'connect_group_test.go', 'codex_route_test.go', 'disconnect_test.go', 'applied_test.go', 'claude_effort_test.go', 'codex_effort_test.go', 'sync_test.go', 'connect_all_hidden_test.go', 'stash_test.go', 'agentenv_test.go', 'alma_test.go', 'astrbot_test.go', 'connect_pick_test.go'}, 'out-of-scope Agent tests resurrected'
 assert {p.name for p in (root/'internal/update').glob('*_test.go')} <= {'main_test.go', 'cli_path_test.go', 'cli_path_first_test.go', 'cli_shim_test.go', 'relink_test.go', 'replaced_test.go', 'aside_test.go', 'update_test.go', 'tiny_update_test.go'}, 'upstream app updater tests resurrected'
 session_tests = re.findall(r'^func (Test\w+)\(', '\n'.join(p.read_text(encoding='utf-8') for p in (root/'internal/sessions').glob('*_test.go')), re.M)
 for name in session_tests:

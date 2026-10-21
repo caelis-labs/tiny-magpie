@@ -34,6 +34,8 @@ var notAnAgent = map[string]string{
 	"MAGPIE_EFFORT_UPDATES": "magpie's own switch for effort updates (#617)",
 	"MAGPIE_SITE_ORIGIN":    "a site origin magpie's Omarchy theme answers, to try the site locally",
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "Claude Code's behaviour flag, not an agent's folder",
+	"GIT_SSH":         "the user's own SSH program for git, which a skill fetched with their git keeps",
+	"GIT_SSH_COMMAND": "the same, as a command",
 }
 
 // TestFolderVarsAreListed says every variable the packages that find an
