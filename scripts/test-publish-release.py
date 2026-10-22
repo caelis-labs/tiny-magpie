@@ -139,6 +139,16 @@ class PublishRecovery(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, 'different channel'):
             self.publisher.main(self.tag)
 
+    def test_release_please_stable_draft_reuses_release_and_verifies_assets(self):
+        # release-please creates an empty stable draft and its tag. The
+        # publisher must attach verified bytes, then publish that same ID.
+        self.exists, self.draft, self.prerelease = True, True, False
+        self.publisher.main(self.tag, stable=True)
+        self.assertEqual((self.creates, self.edits), (0, 1))
+        self.assertEqual(set(self.assets), {'test.zip', 'SHA256SUMS'})
+        self.assertTrue(self.latest)
+        self.assertFalse(self.draft)
+
     def test_preview_version_cannot_be_stable(self):
         with self.assertRaisesRegex(SystemExit, 'prerelease version'):
             self.publisher.main('tiny-v0.2.0-rc.1', stable=True)

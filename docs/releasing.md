@@ -2,11 +2,37 @@
 
 Only `caelis-labs/tiny-magpie` is a release destination. Upstream Magpie release channels remain disabled. The source and modifications remain MIT licensed; retain the original copyright notice and Git history.
 
-Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags. Do not push upstream tags to origin. The tag must identify a clean commit on main, with a green Test tiny-magpie run before tagging. The Release tiny-magpie workflow reruns the full platform, protocol/UI and container gates at the exact tagged source before packaging.
+Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags. Do not push upstream tags to origin. A release version PR must pass all required checks before merging into main. The Release tiny-magpie workflow reruns the full platform, protocol/UI and container gates at the exact tagged source before packaging.
 
-1. Add reviewed notes at `docs/releases/X.Y.Z.md`, verify UPSTREAM.json, and merge through the protected main branch.
+## Routine release with release-please
+
+Merge Conventional Commit PRs (`fix:`, `feat:`) into main. The Release please
+workflow uses the organization `RELEASE_PLEASE_TOKEN`, granted to this repository,
+to open or update a version PR containing `CHANGELOG.md` and
+`.release-please-manifest.json`. Its initial baseline is the published 0.3.0.
+The token must be able to write repository contents and pull requests; the
+default Actions token cannot trigger the version PR's CI or the tag workflow.
+No secret value is copied into this repository.
+
+Review the generated version and notes, wait for all six required checks, then
+merge that PR. release-please creates a draft and its `tiny-v*` tag
+(`component: tiny`, separator `-`, `force-tag-creation: true`). The tag starts
+Release tiny-magpie once. release-please does not publish the empty draft:
+the existing publisher reconciles it by ID, validates all 19 immutable assets
+and only then publishes it as Latest. Signing, notarization, integrity and
+checkpoint recovery stay in the existing workflow. If the main-triggered
+release-please run is interrupted, rerun it or dispatch Release please on main;
+never recreate an existing tag or rebuild existing candidate bytes.
+
+The generated draft contains the reviewed changelog notes; routine releases
+need no hand-written tag or second release dispatch. `docs/releases/` remains
+available for curated notes and manual recovery when no draft exists.
+
+## Packaging and recovery
+
+1. Review the version PR's changelog (or add `docs/releases/X.Y.Z.md` for a manual release), verify UPSTREAM.json, and merge through the protected main branch.
 2. Wait for the six required checks: three OS Go suites/native builds, protocols-and-ui, and two architecture container checks. Do not tag a cancelled or failing head.
-3. Create and push an annotated `tiny-vX.Y.Z` tag at that exact main commit. The tag triggers release. Once candidate artifacts exist, rerun only failed jobs (`gh run rerun RUN_ID --failed`) to reuse their original bytes. A fresh workflow_dispatch rebuilds and signs again; it must not replace existing draft assets or replay an unknown notarization submission.
+3. Normally release-please creates the `tiny-vX.Y.Z` tag at the merged version PR commit. For manual recovery only, create and push an annotated tag at that exact checked main commit. The tag triggers release. Once candidate artifacts exist, rerun only failed jobs (`gh run rerun RUN_ID --failed`) to reuse their original bytes. A fresh workflow_dispatch rebuilds and signs again; it must not replace existing draft assets or replay an unknown notarization submission.
 4. The workflow builds desktop and CLI binaries on five native runners: Apple Silicon macOS, amd64/arm64 Windows and amd64/arm64 Linux. macOS uses shared organization secrets `APPLE_DEVELOPER_ID_P12_BASE64`, `APPLE_DEVELOPER_ID_P12_PASSWORD`, `APPLE_NOTARY_APPLE_ID`, `APPLE_NOTARY_PASSWORD` and organization variable `APPLE_TEAM_ID`. No repository copy of private material is needed. Signing uses a temporary runner keychain, hardened runtime and secure timestamps; no additional entitlements are introduced. Windows/Linux are unsigned.
 5. macOS submits the signed app and CLI together, persists the signed archive and receipt, waits for Accepted, staples and validates the app, checks Gatekeeper and verifies the CLI's online ticket. It then creates a UDZO DMG containing that stapled app, an Applications shortcut and license/source documents, signs and notarizes the DMG, and staples and validates its ticket. The workflow mounts the final image and verifies the app inside it. Signature, team, notarization or ticket failures stop publication. A timeout is unknown: inspect the uploaded notary-receipt artifact, retain its submitted bytes and query its submission ID before resubmitting. Neither signing nor unknown submissions are blindly retried.
 6. Each runner executes both the desktop and CLI `version` command in an empty profile. Packaging checks embedded Go source SHA, clean source and target architecture; `-trimpath` omits linker flags from Go build metadata, so version is checked by execution. Per-platform BUILD evidence records hashes for both binaries and both download assets. The macOS receipt binds its accepted submissions to the final DMG and binary hashes. Publishing checks the exact 19-asset inventory, creates a draft, downloads and verifies every uploaded asset, then publishes it. From 0.2.0, plain versions use `publish-release.py --stable` and become Latest; SemVer suffix versions remain Preview. A retry reads existing draft assets and rejects mismatched bytes or channels; it never overwrites them. A published release is not modified on retry.

@@ -19,6 +19,8 @@ Tiny renders only core appearance/startup/update settings plus gateway network
 configuration. Account discovery and disabled-model controls live on Providers.
 The add-provider footer leaves positive spacing before the subscription card,
 so its sticky gradient does not cover the card's upper border or text.
+The tray's Agents tab opens the Agent list and preserves its selection across
+reloads. When Allowances has no cards, the panel falls back to Agents.
 The tray keeps upstream's conditional Allowances tab: it appears when a quota,
 balance or error card exists. With no such card it is hidden. The six Usage
 totals use three columns, or two in narrow panels, so speed units fit.
