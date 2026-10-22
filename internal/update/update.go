@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,11 +49,16 @@ type Asset struct {
 // of magpie's requests take — Settings' Proxy, else the environment's, else
 // the system's (#294) — on a transport of its own, whatever the process has
 // done to http.DefaultTransport.
-var client = &http.Client{Timeout: 10 * time.Minute, Transport: proxied()}
+// The feed has its own short context deadline. Asset bodies have no total
+// deadline: only a lack of bytes times out, and caller cancellation still wins.
+var client = &http.Client{Transport: &idleTransport{base: proxied(), idle: downloadIdleTimeout}}
 
 func proxied() http.RoundTripper {
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.Proxy = netproxy.Func
+	t.DialContext = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+	t.TLSHandshakeTimeout = 10 * time.Second
+	t.ResponseHeaderTimeout = 30 * time.Second
 	return netproxy.Dispatch(t)
 }
 
@@ -736,7 +742,7 @@ func download(ctx context.Context, a Asset, path string) error {
 		if try > 0 {
 			select {
 			case <-ctx.Done():
-				return err
+				return ctx.Err()
 			case <-time.After(time.Duration(try) * 2 * time.Second):
 			}
 		}
@@ -783,9 +789,15 @@ func fetch(ctx context.Context, a Asset, path string) error {
 		body = &counter{r: res.Body, total: max(total, 0), report: report}
 		report(0, max(total, 0))
 	}
-	_, err = io.Copy(io.MultiWriter(f, h), body)
+	n, err := io.Copy(io.MultiWriter(f, h), body)
 	if cerr := f.Close(); err == nil {
 		err = cerr
+	}
+	if err == nil {
+		err = ctx.Err()
+	}
+	if err == nil && a.Size > 0 && n != a.Size {
+		err = fmt.Errorf("%s has size %d, expected %d", filepath.Base(path), n, a.Size)
 	}
 	if err == nil && !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), a.SHA256) {
 		err = fmt.Errorf("%s does not match its checksum", filepath.Base(path))

@@ -293,8 +293,15 @@ func (u *updater) begin() bool {
 	return true
 }
 
+// Fixtures stand in at the release/staging boundaries without downloading
+// a real release, starting a candidate, or replacing the running executable.
+var (
+	latestUpdate      = update.LatestInChannel
+	stageUpdateBinary = update.StageBinary
+)
+
 func (u *updater) run() {
-	ctx, cancel := context.WithTimeout(backendCtx, 10*time.Minute)
+	ctx, cancel := context.WithCancel(backendCtx)
 	defer cancel()
 	s := settings.Load()
 	u.mu.Lock()
@@ -313,7 +320,7 @@ func (u *updater) run() {
 	if lang == "" {
 		lang = notesLang(trayLang(s.Lang, systemLang))
 	}
-	rel, err := update.LatestInChannel(ctx, lang, channel)
+	rel, err := latestUpdate(ctx, lang, channel)
 	currentChannel := tinyUpdateChannel(settings.Load())
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -383,7 +390,7 @@ func (u *updater) run() {
 	if u.bundle != "" {
 		staged, err = update.Stage(ctx, rel, u.bundle)
 	} else {
-		staged, err = update.StageBinary(ctx, rel)
+		staged, err = stageUpdateBinary(ctx, rel)
 	}
 	currentChannel = tinyUpdateChannel(settings.Load())
 	if currentChannel != channel && staged != "" {

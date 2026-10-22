@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/yetone/magpie/internal/settings"
@@ -220,4 +221,53 @@ func TestTinyChannelChangeDuringCheckRechecksWithClockOff(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("wrong channel after in-flight check: %+v", u.json())
+}
+
+// The GUI must preserve backend cancellation without imposing the old 10m
+// budget on staging. No executable is downloaded, started or replaced here.
+func TestTinyUpdaterLongStagingAndCancellation(t *testing.T) {
+	oldVersion, oldLatest, oldStage, oldBackend := Version, latestUpdate, stageUpdateBinary, backendCtx
+	Version = "1.0.0"
+	t.Cleanup(func() {
+		Version, latestUpdate, stageUpdateBinary, backendCtx = oldVersion, oldLatest, oldStage, oldBackend
+	})
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	latestUpdate = func(context.Context, string, string) (*update.Release, error) {
+		return &update.Release{Version: "2.0.0"}, nil
+	}
+	for _, cancelled := range []bool{false, true} {
+		name := "continuous staging"
+		if cancelled {
+			name = "backend cancellation"
+		}
+		t.Run(name, func(t *testing.T) {
+			staged := filepath.Join(t.TempDir(), "candidate.new")
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				backendCtx = ctx
+				stageUpdateBinary = func(ctx context.Context, _ *update.Release) (string, error) {
+					if cancelled {
+						time.AfterFunc(time.Minute, cancel)
+					}
+					select {
+					case <-ctx.Done():
+						return "", ctx.Err()
+					case <-time.After(11 * time.Minute):
+						return staged, nil
+					}
+				}
+				u := &updater{exe: "fixture-must-never-be-replaced", fetch: true}
+				u.run()
+				got := u.json()
+				if cancelled {
+					if got.State != "error" || !strings.Contains(got.Error, "context canceled") {
+						t.Fatalf("cancellation lost: %+v", got)
+					}
+				} else if got.State != "ready" || u.staged != staged {
+					t.Fatalf("long staging interrupted: %+v", got)
+				}
+			})
+		})
+	}
 }
