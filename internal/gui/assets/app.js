@@ -16408,7 +16408,7 @@ function setPanelTab(tab) {
   // no usage to show, no tab for it (nor for profiles: they open from the
   // foot), nor for a page a built-in plugin switched off (Routing)
   const b = tabs.querySelector(`[data-ptab="${tab}"]`);
-  if (!b || b.hidden || featureHides(b) || tab === "agents") tab = "usage";
+  if (!b || b.hidden || featureHides(b)) tab = "usage";
   closeProfiles();
   if (tab !== "usage") panelPeek = "";
   panelTab = tab;
