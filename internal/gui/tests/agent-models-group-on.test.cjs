@@ -67,7 +67,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
           const errors = [];
           page.on("pageerror", (e) => errors.push(e.message));
           await page.route("**/*", fixture(lang, groupOn));
-          await page.goto("http://magpie.test/");
+          await page.goto("http://magpie.test/?view=agents");
           const row = page.locator('.row.agent[data-id="codex"]');
           await row.locator(".ag-link").click();
           const entry = row.locator(".ag-exp .ag-chips .ag-quiet");

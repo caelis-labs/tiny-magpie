@@ -50,6 +50,7 @@ The merge initially had 118 unmerged paths, including 82 modify/delete conflicts
 - Remove duplicate update-channel declaration and route new release-history reads through Tiny's feed.
 - Admit new model-wiring tests individually. Keep shared fixture helpers without restoring removed installation, masking, session or tool-product suites; mixed tests retain their in-scope assertions.
 - Render configuration diffs safely when an optional previous value is absent.
+- Remove the stale `addressMore` reference that prevented Provider editors from opening. Keep Tiny's folded Advanced layout, extend narrow routing layout into it and wrap time-zone labels. The newly admitted feature tests caught these integration regressions.
 - Preserve Tiny identity for PWA metadata/icons, native Dock geometry and the optional Windows companion launcher.
 - Restore preview-channel validation, failed-download cleanup/declared-size verification, the System One single-port alias and gateway-only Usage heatmap/read-memory handling. Resumed bytes exist only within one bounded download operation and are removed on final failure or cancellation.
 - Keep multi-protocol list deduplication assertions at one ordinary fetch and separately require one Codex metadata fetch; the selected source added the latter without updating three older request-count fixtures.
@@ -68,12 +69,12 @@ Local validation completed. Executed tests use temporary HOME/config/cache roots
 - Scope gate: passed after removing reintroduced endpoints/assets/tests.
 - Complete retained test compilation: passed.
 - Binary differential against the exact source SHA: passed discovery, 67 bidirectional HTTP/SSE comparisons, removed endpoints and no-Agent-config-write checks.
-- Browser matrix: final complete run passed all 84 Chromium/WebKit cases.
+- Browser gate: 84 Tiny core cases plus 182 retained feature cases (266 total) now run by default. Local core/feature checks and focused reruns cover editor opening, model visibility, key plans, rate-limit policy, ordered/dragged rules, speed-first routing and time zones. See the PR's current-head protocol/UI check for the complete combined gate.
 - `go vet -tags nogui ./...`, native macOS arm64 production build (Makefile-equivalent macOS 12 deployment target) and nogui build: passed. Native enum/linker warnings remain; this is not minimum-macOS runtime acceptance.
 - Final binary differential repeated after integration corrections: all 67 comparisons and boundary checks passed.
 - Complete retained Go suite: `go test -tags nogui -timeout 20m ./...` passed; gateway 508.392 seconds, provider 157.422 seconds. Earlier runs exposed the documented corrections; a default 10-minute run exhausted the gateway package budget while still advancing through tests.
 - All Windows amd64 nogui tests cross-compiled with `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go test -exec=/usr/bin/true -tags nogui -run '^$' ./...`; target execution intentionally skipped. Windows amd64 production executable also cross-built.
 - Scope and staged diff checks passed. Upstream unified-diff patch context whitespace is preserved with an exact path attribute exemption.
-- Remote platform CI remains to be run on the proposed PR. Native Windows/WSL runtime, real desktop/account acceptance and distribution/install acceptance are not established by local compilation or fixtures.
+- First integration head `fda9761f` passed all platform and protocol/UI checks in [run 40471220967](https://github.com/caelis-labs/tiny-magpie/actions/runs/40471220967) and both container builds in [run 40471221097](https://github.com/caelis-labs/tiny-magpie/actions/runs/40471221097). Subsequent UI fixes and the expanded gate require the PR's current-head checks; previous-head success is not reused as that evidence. Native Windows/WSL GUI, real account and distribution/install acceptance remain unclaimed.
 
 No merge to the default branch, release, live provider-account acceptance, Windows/WSL GUI acceptance, or production deployment is implied.

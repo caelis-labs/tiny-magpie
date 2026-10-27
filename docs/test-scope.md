@@ -50,7 +50,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 84 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 266 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
@@ -135,3 +135,10 @@ checks invalidation across independent synthetic clocks. PWA names, native
 flap geometry and updater paths use Tiny identity; Bun proxy authentication
 accepts the equivalent explicit default port without relaxing credential or
 request-path checks.
+
+The default `npm run test:ui` gate runs 84 Tiny core cases and 182 retained
+feature cases: Agent model visibility, per-key plans, provider rate-limit
+policy, ordered rule models, drag ordering, speed-first decisions and rule
+time zones. Upstream fixtures use Tiny's explicit page routes and expand its
+Advanced controls; content and save assertions remain. Narrow Advanced
+rules keep their time-zone labels visible in Chromium and WebKit.

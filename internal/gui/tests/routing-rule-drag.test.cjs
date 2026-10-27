@@ -75,6 +75,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await card.waitFor();
       await card.locator("button", { hasText: w.edit }).click();
       const ed = page.locator(".rt-gedit");
+      await ed.locator(".tiny-group-advanced > summary").click();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
       await ed.locator(".rt-rule").first().waitFor();
       const order = () => ed.locator(".rt-rule .rt-then .rt-model").evaluateAll((bs) => bs.map((b) => b.textContent.split(" · ")[0].trim()));
       const rule = (name) => ed.locator(".rt-rule", { has: page.locator(".rt-then .rt-model", { hasText: name }) });

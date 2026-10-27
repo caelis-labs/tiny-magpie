@@ -99,6 +99,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
 
       // the editor: beside each rule's hours, in its row
       await group.locator("button", { hasText: w.edit }).click();
+      await page.locator(".rt-gedit .tiny-group-advanced > summary").click();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
       const rows = page.locator(".rt-gedit .rt-rule");
       await rows.nth(1).waitFor();
       const tag = (i) => rows.nth(i).locator(".rt-zone");
@@ -136,6 +138,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert(said.includes(w.plain1), `the hours alone: ${said}`);
       assert(!said.includes("Asia/Shanghai") && !said.includes("UTC"), `no zone told: ${said}`);
       await group.locator("button", { hasText: w.edit }).click();
+      await page.locator(".rt-gedit .tiny-group-advanced > summary").click();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
       const rows = page.locator(".rt-gedit .rt-rule");
       await rows.nth(1).waitFor();
       for (const i of [0, 1]) assert.equal(await rows.nth(i).locator(".rt-zone").isVisible(), false);

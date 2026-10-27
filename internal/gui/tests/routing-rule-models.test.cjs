@@ -123,6 +123,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
 
         await press(page, group.locator("button", { hasText: w.edit }));
         const ed = page.locator(".rt-gedit");
+        await ed.locator(".tiny-group-advanced > summary").click();
+        await page.waitForFunction(() => document.getAnimations().length === 0);
         const row = ed.locator(".rt-rule").first();
         await row.waitFor();
         assert.deepEqual(await chips(row), ["flash", "mini"]);

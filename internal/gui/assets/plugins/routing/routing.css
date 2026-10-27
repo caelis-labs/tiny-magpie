@@ -552,6 +552,7 @@ button.rt-session { cursor: pointer; }
   body.web .rt-pick { height: auto; min-height: 44px; padding: 8px; font-size: 12.5px; }
   body.web .rt-pick { flex-wrap: wrap; }
   body.web .rt-gedit { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; }
+  body.web .rt-gedit .tiny-group-advanced > .inner { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   body.web .rt-gedit label { text-align: left; padding-top: 8px; }
   body.web .rt-gedit .segs { flex-wrap: wrap; }
   body.web .rt-gedit .fbrow { flex-wrap: wrap; justify-content: normal; }
@@ -575,7 +576,7 @@ button.rt-session { cursor: pointer; }
 /* the groups, in a page 520px wide or less */
 :where(.rt-more.max520) .rt-gsec .row-head .note { display: none; }
 :where(.rt-more.max520) .rt-gsec .rt-gfilter { flex: 1 1 auto; width: auto; }
-:where(.rt-more.max520) .rt-gedit { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+:where(.rt-more.max520) .rt-gedit, :where(.rt-more.max520) .rt-gedit .tiny-group-advanced > .inner { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 :where(.rt-more.max520) .rt-gedit label { text-align: left; padding-top: 8px; }
 :where(.rt-more.max520) .rt-gedit .segs .opt { padding-left: 9px; padding-right: 9px; }
 /* the models and patterns take the column's width and no more: a grid's
@@ -757,6 +758,8 @@ button.rt-session { cursor: pointer; }
 .rt-cond.tm.bad { border-style: solid; border-color: var(--amber, var(--muted)); }
 /* the time zone a rule's hours are in, when the server's clock is another */
 .rt-zone { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Tiny's Advanced wrapper can leave less room beside the time fields. */
+.tiny-group-advanced .rt-c:has(> .rt-zone) { flex-wrap: wrap; }
 .rt-cond[hidden] { display: none; }
 .rt-classifier { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .rt-classifier[hidden] { display: none; }

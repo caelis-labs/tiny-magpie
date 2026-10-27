@@ -124,9 +124,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.deepEqual(errors, []);
       });
 
-      test(`${engine} ${lang} ${width}: one saved not to rest opens unticked with Advanced open, and ticked is saved to rest`, async (t) => {
+      test(`${engine} ${lang} ${width}: one saved not to rest marks Advanced custom, and ticked is saved to rest`, async (t) => {
         const { page, errors, posts, w } = await open(t, "Kept Relay");
-        assert.equal(await adv(page).evaluate((d) => d.open), true, "Advanced opens with it set");
+        assert.equal(await adv(page).evaluate((d) => d.open), false, "Tiny keeps Advanced folded with a custom marker");
+        assert.match(await adv(page).locator("summary").innerText(), / · /);
+        await unfold(page);
         assert.equal(await box(page, w).isChecked(), false);
         await box(page, w).scrollIntoViewIfNeeded();
         await box(page, w).check();
