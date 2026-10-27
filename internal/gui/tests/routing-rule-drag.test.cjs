@@ -165,12 +165,17 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.keyboard.press("Escape");
       await page.locator(".row-menu").waitFor({ state: "hidden" });
       const more = rule("one").locator(".rt-rmore");
+      // Slow this one transition so both the held press and its release
+      // are tested, even though the surrounding state fixture reduces motion.
+      await more.evaluate((b) => b.style.setProperty("transition-duration", "200ms", "important"));
       await more.hover();
       await page.mouse.down();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
       assert.equal(await more.evaluate((b) => b.matches(":active")), true);
       await more.evaluate((b) => { window.testReleaseClick = true; b.click(); });
       await page.mouse.up();
       await page.locator(".row-menu").waitFor();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
       await painted(page);
       assert.equal(await at(), before, "releasing the pressed menu button moved the page");
       await page.locator(".row-menu .rm-item", { hasText: w.down }).click();
