@@ -13,6 +13,8 @@ type Note struct {
 	Version string `json:"version"` // no v
 	Notes   string `json:"notes"`   // markdown, its Install section taken out
 	URL     string `json:"url,omitempty"`
+	// Pending: a release after the one running, up to the update waiting
+	Pending bool `json:"pending,omitempty"`
 }
 
 // NotesFeed shares Tiny's own release API. Inherited notes-feed overrides
@@ -62,8 +64,26 @@ func InLang(md, lang string) string {
 // often, and a long-unopened one would have pages of them.
 const MaxNotes = 40
 
+// Tiny uses the same bounded notes list on stable and preview.
+func MostNotes() int { return MaxNotes }
+
+var BackCounts = []int{10, 20, 50, 100}
+
+// NotesBack reads only Tiny's release API, never the upstream notes feed.
+func NotesBack(ctx context.Context, upto string, count int, lang string) ([]Note, error) {
+ list, err := releaseList(ctx)
+ if err != nil { return nil, err }
+ var notes []Note
+ for _, r := range list {
+  if v := tinyVersion(r); v != "" {
+   notes = append(notes, Note{Version: v, Notes: InLang(r.Body, lang), URL: r.URL})
+  }
+ }
+ return Back(notes, upto, count), nil
+}
+
 // Between keeps the notes of the releases after after up to and including
-// upto, newest first, at most MaxNotes; with after "" only upto's. Each
+// upto, newest first, at most MostNotes; with after "" only upto's. Each
 // one's Install section is taken out, and one left empty is dropped.
 func Between(notes []Note, after, upto string) []Note {
 	var out []Note
@@ -88,8 +108,37 @@ func Between(notes []Note, after, upto string) []Note {
 		out = append(out, n)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return Newer(out[i].Version, out[j].Version) })
-	if len(out) > MaxNotes {
-		out = out[:MaxNotes]
+	if most := MostNotes(); len(out) > most {
+		out = out[:most]
+	}
+	return out
+}
+
+// Back keeps upto and the n releases before it, newest first: n+1
+// releases counted before any is dropped, so a release whose notes are
+// empty once its Install section is out still counts as one. A release
+// newer than upto, or one listed twice, isn't counted.
+func Back(notes []Note, upto string, n int) []Note {
+	var keep []Note
+	seen := map[string]bool{}
+	for _, r := range notes {
+		v := strings.TrimPrefix(strings.TrimSpace(r.Version), "v")
+		if parse(v) == nil || seen[v] || Newer(v, upto) {
+			continue
+		}
+		seen[v] = true
+		r.Version = v
+		keep = append(keep, r)
+	}
+	sort.SliceStable(keep, func(i, j int) bool { return Newer(keep[i].Version, keep[j].Version) })
+	if len(keep) > n+1 {
+		keep = keep[:n+1]
+	}
+	out := []Note{}
+	for _, r := range keep {
+		if r.Notes = StripInstall(r.Notes); strings.TrimSpace(r.Notes) != "" {
+			out = append(out, r)
+		}
 	}
 	return out
 }

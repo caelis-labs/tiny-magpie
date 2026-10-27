@@ -2,12 +2,13 @@ package agent
 
 import (
 	"database/sql"
-	"github.com/yetone/magpie/internal/provider"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/yetone/magpie/internal/provider"
 )
 
 func TestTinyDriftDoesNotReadAgentHistory(t *testing.T) {
@@ -77,5 +78,35 @@ func TestTinyCatalogSyncLeavesUnmanagedAgentAlone(t *testing.T) {
 	got, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(got), "added/new") {
 		t.Fatalf("owned Agent catalog not synchronized: %s %v", got, err)
+	}
+}
+
+// Connecting a model authorizes its config file, never shell startup files.
+func TestTinyAgyPickLeavesShellProfiles(t *testing.T) {
+	home := syncHome(t)
+	for _, wsl := range []bool{false, true} {
+		t.Run(map[bool]string{false: "local", true: "wsl"}[wsl], func(t *testing.T) {
+			root := filepath.Join(home, map[bool]string{false: "local", true: "distro"}[wsl])
+			os.MkdirAll(root, 0700)
+			profile := filepath.Join(root, ".bashrc")
+			const own = "# user's shell startup\nexport KEEP_ME=1\n"
+			os.WriteFile(profile, []byte(own), 0600)
+			a := agy(root)
+			if wsl {
+				a = wslAgent(wslKindOf("agy"), distro{Name: "Fixture", Root: filepath.Dir(root), Home: "/" + filepath.Base(root), Gateway: "172.20.0.1", Running: true})
+			}
+			if err := a.Apply("model", "fake/m1"); err != nil {
+				t.Fatal(err)
+			}
+			if err := a.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			if got, err := os.ReadFile(profile); err != nil || string(got) != own {
+				t.Fatalf("shell profile changed: %q %v", got, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, ".bash_profile")); !os.IsNotExist(err) {
+				t.Fatalf("shell login file created: %v", err)
+			}
+		})
 	}
 }

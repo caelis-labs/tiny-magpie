@@ -9,6 +9,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/gui"
+	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/stats"
 )
 
@@ -48,6 +49,8 @@ func webCmd(args []string) error {
 		_, port, _ := net.SplitHostPort(webAddr)
 		addr = "0.0.0.0:" + port
 	}
+	// Give plugin processes the user's Node installation.
+	proc.UserPath()
 	w, err := gui.StartWeb(addr, version)
 	if err != nil {
 		return err
@@ -163,6 +166,7 @@ func serveCmd(args []string) error {
 			return fmt.Errorf("magpie serve: unknown %q · magpie serve [--web[=host:port]] [--tls-cert <file> --tls-key <file>]", a)
 		}
 	}
+	proc.UserPath() // as magpie web's (#3803)
 	if web == "" {
 		return serve()
 	}

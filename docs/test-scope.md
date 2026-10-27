@@ -112,3 +112,26 @@ expects an unmanaged first start to leave Codex alone, while retaining all
 connect/disconnect/reconnect assertions. The unmanaged Agent-config API guard
 is unchanged, and a new catalog regression verifies both foreign-config
 preservation and synchronization after an explicit model pick.
+
+## 2026-10-27 integration
+
+The [sync decision record](upstream-sync-2026-10-27.md) records the full interval.
+New manual model-wiring/visibility tests are admitted individually. Local HTTP
+fixtures for download retry/Range/checksum behavior and relaunch fallback are
+retained for Tiny's updater; upstream feed/channel tests remain excluded.
+
+New positive Agent-log ingestion cases in `request_cells`, `request_pairs`,
+`request_disk`, `request_disk_map_unix`, `cache_bounds` and `heatmap` are removed
+because they require the history sources Tiny intentionally leaves empty.
+Mixed files retain their pure chunk/parser/accounting tests. The two new
+vision-backed wait cases, masking facts case and Antigravity drawing suite
+likewise require removed execution surfaces; generic wait/cancellation and
+protocol regressions remain. Responses `additional_tools` translation and its
+provider flag are retained client-protocol behavior, not tool execution.
+
+Tiny-specific regression coverage also checks that local/WSL manual agy
+model picks do not write shell startup files. The shared cache regression
+checks invalidation across independent synthetic clocks. PWA names, native
+flap geometry and updater paths use Tiny identity; Bun proxy authentication
+accepts the equivalent explicit default port without relaxing credential or
+request-path checks.

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -55,8 +56,12 @@ func (e *echoing) last() string {
 }
 
 // panicky is a masker that fails, on each way the gateway asks it to
-// mask (a Teller is asked through JSONHits and TextHits).
+// mask (a Teller is asked through JSONHits and TextHits, a ContextTeller
+// through JSONHitsContext and TextHitsContext, which masking.Masker has).
 type panicky struct{ masking.Masker }
+
+func (panicky) JSONHitsContext(context.Context, []byte) ([]byte, []gwmw.Hit) { panic("masker broke") }
+func (panicky) TextHitsContext(context.Context, string) (string, []gwmw.Hit) { panic("masker broke") }
 
 func (panicky) JSON([]byte) ([]byte, int)            { panic("masker broke") }
 func (panicky) JSONHits([]byte) ([]byte, []gwmw.Hit) { panic("masker broke") }

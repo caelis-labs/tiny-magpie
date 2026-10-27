@@ -3,6 +3,7 @@ package gui
 import (
 	"path/filepath"
 	"testing"
+"time"
 
 	"github.com/yetone/magpie/internal/agentenv"
 )
@@ -27,4 +28,14 @@ func sandboxHome(t *testing.T) string {
 	t.Setenv("APPDATA", "")
 	t.Setenv("LOCALAPPDATA", "")
 	return h
+}
+
+func eventually(t *testing.T, what string, ok func() bool) {
+	t.Helper()
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if ok() {
+			return
+		}
+	}
+	t.Fatal(what)
 }

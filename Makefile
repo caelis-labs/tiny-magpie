@@ -70,6 +70,8 @@ icons:
 	@go run build/icon/gen.go app 64 internal/gui/icon.png
 	@go run build/icon/gen.go app 1024 internal/gui/icon-1024.png
 	@go run build/icon/gen.go app 256 internal/gui/icon-256.png
+	@go run build/icon/gen.go app 180 internal/gui/assets/icons/apple-touch-icon.png
+	@go run build/icon/gen.go app 512 internal/gui/assets/icons/icon-512.png
 	@rm -rf build/darwin/magpie.iconset && mkdir -p build/darwin/magpie.iconset
 	@for s in 16 32 128 256 512; do \
 		go run build/icon/gen.go app $$s build/darwin/magpie.iconset/icon_$${s}x$${s}.png; \
@@ -99,7 +101,9 @@ release-cli:
 
 # The desktop app for Windows: the system WebView2 needs no cgo, so both
 # arches cross-compile. Linked as a GUI program (no console window), with
-# the icon, version and a DPI-aware manifest from build/windows.
+# the icon, version and a DPI-aware manifest from build/windows. It carries
+# magpie.com, the console program a terminal runs for `magpie` and waits
+# for, which it writes beside itself (internal/update/com.go, #3737).
 WINVER = $(shell echo $(VERSION) | sed -E 's/^v//; s/[^0-9.].*//')
 WINARCHES ?= amd64 arm64
 release-windows:

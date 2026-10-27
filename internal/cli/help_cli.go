@@ -37,6 +37,9 @@ func helpFor(args []string) string {
 	}
 	switch args[0] {
 	case "model":
+		if len(args) > 1 && (args[1] == "spec" || args[1] == "specs") {
+			return specUsage
+		}
 		return modelUsage
 	case "group", "groups":
 		return groupUsage
@@ -48,6 +51,8 @@ func helpFor(args []string) string {
 		return heapUsage
 	case "cpu":
 		return cpuUsage
+	case "goroutines":
+		return goroutinesUsage
 	case "claude-code":
 		return claudeCodeUsage
 	}
@@ -87,6 +92,7 @@ func agentHelp(a *agent.Agent) string {
 	fmt.Fprintf(&b, "  magpie %s <field> <value>  set another field\n", id)
 	fmt.Fprintf(&b, "  magpie %s default          take magpie out: back on what it had before\n", id)
 	fmt.Fprintf(&b, "  magpie %s <field> default  that field back to its own default\n", id)
+
 	var keys []string
 	for _, f := range a.Fields {
 		keys = append(keys, f.Key)
