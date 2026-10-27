@@ -22777,6 +22777,15 @@ const MOVES = /^(transform|translate|rotate|scale|top|bottom|left|right|inset|ma
 const moving = (a) => a.playState === "running" && (a.transitionProperty ? MOVES.test(a.transitionProperty)
   : !a.effect?.getKeyframes || a.effect.getKeyframes().some((k) => Object.keys(k).some((p) => MOVES.test(p.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())))));
 const atRest = (n) => n.isConnected && n.offsetParent && !n.getAnimations().some(moving);
+// A click may arrive before :active clears. Its pressed scale is not a
+// layout change, even with reduced motion (there is then no animation to
+// notice). Do not record that temporary box, or a descendant's, as an anchor.
+function pressedTransform(n, v) {
+  for (; n && n !== v; n = n.parentElement) {
+    if (n.matches(":active") && getComputedStyle(n).transform !== "none") return true;
+  }
+  return false;
+}
 // The room is an empty block last in the view (padding at its foot would
 // count in its height only a frame later), put back when a redraw of the
 // view takes it out.
@@ -22941,7 +22950,7 @@ addEventListener("click", (e) => {
   const chain = [];
   const from = at.closest?.("[data-unrolls]")?.parentElement || at;
   for (let n = from; n && n !== v; n = n.parentElement) {
-    for (const m of [n, n.previousElementSibling, n.nextElementSibling]) if (m instanceof HTMLElement && m.offsetParent) chain.push([m, onScreen(m, v), pathIn(v, m)]);
+    for (const m of [n, n.previousElementSibling, n.nextElementSibling]) if (m instanceof HTMLElement && m.offsetParent && !pressedTransform(m, v)) chain.push([m, onScreen(m, v), pathIn(v, m)]);
   }
   held = chain.length ? { v, chain, until: performance.now() + 4000, top: v.scrollTop < 1 } : null;
   heldSizes.disconnect();

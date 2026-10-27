@@ -87,6 +87,15 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       page.setDefaultTimeout(5000);
       const errors = [], posts = [];
       page.on("pageerror", (e) => errors.push(e.message));
+      // Deliver one click while the button is still pressed, then suppress
+      // the release's duplicate click. This forces WebKit's click/:active
+      // ordering without depending on runner timing.
+      await page.addInitScript(() => addEventListener("click", (e) => {
+        if (e.isTrusted && window.testReleaseClick) {
+          window.testReleaseClick = false;
+          e.stopImmediatePropagation();
+        }
+      }, true));
       await page.route("**/*", serve(lang, posts));
       await page.goto("http://magpie.test/?view=routing");
       await page.evaluate(() => document.fonts.ready);
@@ -153,6 +162,17 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await rule("one").locator(".rt-rmore").click();
       await painted(page);
       assert.equal(await at(), before, "opening the rule menu moved the page");
+      await page.keyboard.press("Escape");
+      await page.locator(".row-menu").waitFor({ state: "hidden" });
+      const more = rule("one").locator(".rt-rmore");
+      await more.hover();
+      await page.mouse.down();
+      assert.equal(await more.evaluate((b) => b.matches(":active")), true);
+      await more.evaluate((b) => { window.testReleaseClick = true; b.click(); });
+      await page.mouse.up();
+      await page.locator(".row-menu").waitFor();
+      await painted(page);
+      assert.equal(await at(), before, "releasing the pressed menu button moved the page");
       await page.locator(".row-menu .rm-item", { hasText: w.down }).click();
       assert.deepEqual(await order(), ["three", "one", "two"]);
       await painted(page);

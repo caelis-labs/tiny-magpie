@@ -50,6 +50,9 @@ function serve(lang, st) {
       const body = request.request().postDataJSON();
       st.posts.push(body);
       st.keys = st.keys.map((k) => (k.id === body.ref ? { ...k, plan: body.plan || undefined } : k));
+      // The badge paints optimistically. Keep the response pending long
+      // enough to exercise waiting for the saved editor before another pick.
+      await new Promise((resolve) => setTimeout(resolve, 250));
       return json(list());
     }
     if (url.pathname === "/api/gateway/trace") {
@@ -120,13 +123,20 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.equal(await scrolled(page), sc, "a click scrolled");
         const mb = await menu.boundingBox();
         assert.ok(mb.x >= 0 && mb.x + mb.width <= width, `the menu runs off the window: ${JSON.stringify(mb)}`);
+        const beforeSave = await c.elementHandle();
         await menu.locator(".pm-item", { hasText: names.agent }).click();
+        await page.waitForFunction((b) => !b.isConnected, beforeSave);
+        await beforeSave.dispose();
         await page.waitForFunction(() => !document.querySelector(".proto-menu"));
         await row("aaaaaaaaaa").locator("button.proto").filter({ hasText: names.agent }).waitFor();
         assert.deepEqual(st.posts, [{ id: "volc", ref: "aaaaaaaaaa", plan: "agent" }]);
         // the agent key back to the provider's own plan: saved as none
-        await row("cccccccccc").locator("button.proto").filter({ hasText: names.agent }).click();
+        const back = row("cccccccccc").locator("button.proto").filter({ hasText: names.agent });
+        const beforeBack = await back.elementHandle();
+        await back.click();
         await page.locator(".proto-menu .pm-item", { hasText: names.coding }).click();
+        await page.waitForFunction((b) => !b.isConnected, beforeBack);
+        await beforeBack.dispose();
         await row("cccccccccc").locator("button.proto:not(.set)").filter({ hasText: names.coding }).waitFor({ state: "attached" });
         assert.deepEqual(st.posts[1], { id: "volc", ref: "cccccccccc", plan: "" });
         assert.equal(await sideways(page), false, "the page scrolls sideways");
