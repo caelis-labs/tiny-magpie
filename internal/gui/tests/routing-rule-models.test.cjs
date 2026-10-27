@@ -82,17 +82,25 @@ function serve(lang, posts) {
 
 // wheel to a control, as the reader would (the page keeps still for any
 // other scroll), and click it where it is
-async function press(page, loc) {
+async function scrollTo(page, loc) {
   const height = page.viewportSize().height;
-  await page.mouse.move(Math.min(550, (page.viewportSize().width / 2) | 0), 300);
+  const view = await page.locator("#view-routing").boundingBox();
+  const top = Math.max(view.y + 8, 80), bottom = Math.min(view.y + view.height - 8, height - 8);
+  await page.mouse.move(view.x + 10, Math.min(view.y + 200, bottom));
   for (let i = 0; i < 30; i++) {
-    const y = (await loc.boundingBox()).y;
-    if (y > 80 && y < height - 160) break;
-    await page.mouse.wheel(0, y < 80 ? -300 : 300);
+    const b = await loc.boundingBox();
+    if (b.y >= top && b.y + b.height <= bottom) return;
+    const delta = b.y + b.height / 2 - (top + bottom) / 2;
+    await page.mouse.wheel(0, Math.sign(delta) * Math.min(Math.abs(delta), 400));
     await page.waitForTimeout(150);
   }
+  assert.fail("the control could not be wheeled into the routing viewport");
+}
+async function press(page, loc) {
+  await scrollTo(page, loc);
   const b = await loc.boundingBox();
-  await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await loc.click();
 }
 const pick = async (page, label) => {
   const li = page.locator("#list li", { hasText: label });
@@ -109,7 +117,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       test(`${engine} ${lang} ${width}: a rule names several models`, async (t) => {
         const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
         t.after(() => browser.close());
-        const page = await (await browser.newContext({ viewport: { width, height: 1400 } })).newPage();
+        const page = await (await browser.newContext({ viewport: { width, height: 1400 }, reducedMotion: "reduce" })).newPage();
         page.setDefaultTimeout(5000);
         const errors = [], posts = [];
         page.on("pageerror", (e) => errors.push(e.message));
@@ -123,7 +131,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
 
         await press(page, group.locator("button", { hasText: w.edit }));
         const ed = page.locator(".rt-gedit");
-        await ed.locator(".tiny-group-advanced > summary").click();
+        await press(page, ed.locator(".tiny-group-advanced > summary"));
         await page.waitForFunction(() => document.getAnimations().length === 0);
         const row = ed.locator(".rt-rule").first();
         await row.waitFor();
@@ -131,7 +139,9 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.equal(await page.locator("select").count(), 0, "the app menu, not a native select");
 
         // the × takes one out; the last has none
-        await row.locator(".rt-c", { has: page.locator(".rt-model", { hasText: "flash" }) }).hover();
+        const flash = row.locator(".rt-c", { has: page.locator(".rt-model", { hasText: "flash" }) });
+        await scrollTo(page, flash);
+        await flash.hover();
         await press(page, row.locator(`.rt-cx[title="${w.rm}"]`));
         assert.deepEqual(await chips(row), ["mini"]);
         assert.equal(await row.locator(".rt-then .rt-cx").count(), 0, "a rule's one model can't be taken out");
