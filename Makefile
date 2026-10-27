@@ -101,9 +101,9 @@ release-cli:
 
 # The desktop app for Windows: the system WebView2 needs no cgo, so both
 # arches cross-compile. Linked as a GUI program (no console window), with
-# the icon, version and a DPI-aware manifest from build/windows. It carries
-# magpie.com, the console program a terminal runs for `magpie` and waits
-# for, which it writes beside itself (internal/update/com.go, #3737).
+# the icon, version and a DPI-aware manifest from build/windows.
+# Tiny keeps the existing packaging; the optional comlauncher build tag
+# remains disabled pending Windows console acceptance.
 WINVER = $(shell echo $(VERSION) | sed -E 's/^v//; s/[^0-9.].*//')
 WINARCHES ?= amd64 arm64
 release-windows:

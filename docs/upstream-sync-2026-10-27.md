@@ -30,6 +30,7 @@
 | New Agent detection/manual wiring: AionUi, KiroCrew, NewMax, Penguin Harness, ZooCode, WSL agy | Include only model/provider/effort wiring, explicit connection/restoration and visibility. Existing Tiny ownership gate still controls automatic catalog sync. |
 | Download retries, release-history browsing, desktop handover | Include using Tiny's GitHub feed, channels and OS identity. No upstream stable-release selection, remote notes feed, or original Magpie launcher is enabled. |
 | Plugin/provider compatibility: authentication, model schemas, keyless/single-account behavior, Bun host and middleware | Include. Preserve upstream provider and plugin contracts. Pure Agent/tool/page facets remain unsupported. |
+| Windows console `.com` companion (`2afacd7d`) | Defer activation. Shared code uses Tiny names, but existing packaging does not enable `comlauncher`. Dedicated Windows terminal/console acceptance is needed before enabling it. |
 | Codex upstream WebSocket transport (`a2e98cd7`) | Exclude. Current contract keeps HTTP/SSE and the existing 426 fallback; new transport implementation and its positive suite are removed. |
 | Privacy models, masking monitor/rules/confidence controls | Exclude. No masking built-in, navigation, scripts, or APIs. Existing request-mask adapters remain inert; credential scrubbing remains. |
 | Session conversion/migration (`15f0d4cd`), Codex thread relabeling and history ingestion | Exclude. Remove new automatic thread moves and session-database reads used to rewrite other providers. Coupled parser/accounting types remain. |
@@ -62,15 +63,17 @@ The integration makes notification channels lazy: invalidation closes and clears
 
 ## Validation
 
-In progress. All commands use temporary HOME/config/cache roots or repository fixtures; no real Agent/Magpie configuration or provider account was used.
+Local validation completed. Executed tests use temporary HOME/config/cache roots or repository fixtures; no real Agent/Magpie configuration or provider account was used. Cross-compilation does not execute the target binaries.
 
 - Scope gate: passed after removing reintroduced endpoints/assets/tests.
 - Complete retained test compilation: passed.
 - Binary differential against the exact source SHA: passed discovery, 67 bidirectional HTTP/SSE comparisons, removed endpoints and no-Agent-config-write checks.
 - Browser matrix: final complete run passed all 84 Chromium/WebKit cases.
-- `go vet -tags nogui ./...`, native macOS desktop build and nogui build: passed. Native SDK/deployment-target and enum conversion warnings remain; this is not minimum-macOS runtime acceptance.
+- `go vet -tags nogui ./...`, native macOS arm64 production build (Makefile-equivalent macOS 12 deployment target) and nogui build: passed. Native enum/linker warnings remain; this is not minimum-macOS runtime acceptance.
 - Final binary differential repeated after integration corrections: all 67 comparisons and boundary checks passed.
-- Complete Go suite: final run in progress with the repository CI's 20-minute per-package budget. Earlier runs exposed the documented corrections; the default 10-minute run exhausted the gateway package budget while still advancing through tests.
-- Windows/Linux native CI and real-platform acceptance: not yet verified.
+- Complete retained Go suite: `go test -tags nogui -timeout 20m ./...` passed; gateway 508.392 seconds, provider 157.422 seconds. Earlier runs exposed the documented corrections; a default 10-minute run exhausted the gateway package budget while still advancing through tests.
+- All Windows amd64 nogui tests cross-compiled with `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go test -exec=/usr/bin/true -tags nogui -run '^$' ./...`; target execution intentionally skipped. Windows amd64 production executable also cross-built.
+- Scope and staged diff checks passed. Upstream unified-diff patch context whitespace is preserved with an exact path attribute exemption.
+- Remote platform CI remains to be run on the proposed PR. Native Windows/WSL runtime, real desktop/account acceptance and distribution/install acceptance are not established by local compilation or fixtures.
 
 No merge to the default branch, release, live provider-account acceptance, Windows/WSL GUI acceptance, or production deployment is implied.
