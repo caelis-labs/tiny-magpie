@@ -242,6 +242,13 @@ func (a *Account) Lists(model string) bool {
 	if a.plugin != nil {
 		return a.pluginLists(model)
 	}
+	if a.Agent == "claude" {
+		// what the account's Claude Code was told it has: a gated model
+		// (Claude Mythos 5.1) goes to the accounts entitled to it
+		if has, ok := claudeLists(a.User, model); ok {
+			return has
+		}
+	}
 	live, _, ok := catalog.Live(accountModels(a.Agent, a.User))
 	if !ok {
 		return true
@@ -501,6 +508,15 @@ func buildCodexListTag(kind string) string {
 	for _, slug := range off {
 		ms = append(ms, catalog.Model{ID: "-" + slug})
 	}
+	// and the account's own kept to the codex provider's picks, none of
+	// them under Usage only (#2530), so a change of either has Codex ask
+	// for the list again rather than keep the one it has
+	if keep, narrowed := CodexNativePicked(); narrowed {
+		ms = append(ms, catalog.Model{ID: "~picked"})
+		for _, slug := range slices.Sorted(maps.Keys(keep)) {
+			ms = append(ms, catalog.Model{ID: "~picked:" + slug})
+		}
+	}
 	// and those kept out of the lists for routing groups (#1602)
 	all, unlisted := CodexNativeUnlisted()
 	if all {
@@ -524,7 +540,7 @@ func buildCodexListTag(kind string) string {
 		ms = append(ms, catalog.Model{ID: "~compact", Context: n})
 	}
 	// and the model Codex's auto-review runs on (#938)
-	if v := settings.Load().CodexAutoReview; v != "" {
+	if v := codexcat.AutoReviewModel(); v != "" {
 		ms = append(ms, catalog.Model{ID: "~autoreview:" + v})
 	}
 	// and the effort new sessions start at, which magpie's models take as
@@ -544,10 +560,17 @@ func buildCodexListTag(kind string) string {
 //
 // A provider switched off picks nothing, as it serves no agent anything
 // (Provider.Off): its picks are kept for when it is switched on again and
-// are not a narrowing now.
+// are not a narrowing now. Usage only narrows the visible native list to
+// none, as it does the general catalog; codexModels keeps hidden jobs.
 func CodexNativePicked() (map[string]bool, bool) {
 	p, ok := find(All(), "codex")
-	if !ok || p.Off || len(p.Models) == 0 {
+	if !ok || p.Off {
+		return nil, false
+	}
+	if p.ServesNone() {
+		return nil, true
+	}
+	if len(p.Models) == 0 {
 		return nil, false
 	}
 	keep := make(map[string]bool, len(p.Models))
@@ -649,7 +672,7 @@ func codexListed(shown []Entry, members func(id string) []Member, own bool) []ca
 		if CodexOwn(e) && !own {
 			continue
 		}
-		m := catalog.Model{ID: e.ID, Name: labels[i], Efforts: e.Efforts, Images: e.Images || seen, Context: e.Context, AgentsV2: e.AgentsV2}
+		m := catalog.Model{ID: e.ID, Name: labels[i], Efforts: e.Efforts, Images: e.Images || seen, Context: e.Context, AgentsV2: e.AgentsV2, Codex: e.Codex}
 		m.Compact = CompactFor(s, e, find)
 		CodexTiers(&m, e, members)
 		ms = append(ms, m)
@@ -673,11 +696,31 @@ func CodexTiers(m *catalog.Model, e Entry, members func(id string) []Member) {
 		m.Tiers = e.Tiers
 	}
 	if e.Group != "" {
+		fast := false
 		for _, mb := range members(e.ID) {
 			if a := mb.Provider.Account; a != nil && a.Agent == "codex" && strings.HasPrefix(mb.Model, "gpt-") {
 				m.Fast = true
 				break
 			}
+			fast = fast || CanFast(mb.Provider, mb.Model)
 		}
+		// a group with another member that has a fast mode (an OpenAI or
+		// Anthropic key's, a relay's GPT, Cursor's, a plugin's) is offered
+		// Fast too: Codex sends /fast's service_tier only on a model whose
+		// entry lists it, and the gateway asks each member for it in its
+		// vendor's words, or not at all where it has none (cute_lynx_36404
+		// on Discord: /fast did nothing through a group)
+		if !m.Fast && fast {
+			m.Tiers = []string{codexFastTier}
+		}
+		return
+	}
+	// so is a model of its own that has one, which no tier above names
+	// (an Anthropic key's Opus, an OpenAI key's GPT, a Cursor account's)
+	if len(m.Tiers) == 0 && CanFast(e.Provider, e.Model) {
+		m.Tiers = []string{codexFastTier}
 	}
 }
+
+// codexFastTier is Fast's service tier as Codex sends it.
+const codexFastTier = "priority"

@@ -33,6 +33,13 @@ type QuotaWindow struct {
 	ResetsAt  *time.Time `json:"resetsAt,omitempty"`
 	ResetSecs int64      `json:"resetSecs,omitempty"`
 	Display   string     `json:"display,omitempty"`
+	// Text is set on a window that is its Display alone, with no share
+	// to tell: a plugin's row of what an account holds or has done
+	// (AutoClaw's 积分余额 and 每日签到, Cursor's on-demand spend, ZCode's
+	// gift to claim), which plugins send set aside with used 0 and no
+	// count. Its Used is no reading, so it is told as its text, never as
+	// "100% left".
+	Text bool `json:"text,omitempty"`
 	// Amount of Limit is the window's own count in Unit, when the vendor
 	// counts it so (WorkBuddy's credits): Used is Amount as a share of
 	// Limit. The GUI says it as used or left, as it says the share (#659).
@@ -65,6 +72,12 @@ type QuotaWindow struct {
 	Span  time.Duration `json:"-"`
 	Model string        `json:"-"`
 	Aside bool          `json:"-"`
+	// Credits is set on each window of a ChatGPT account that holds
+	// credits (has_credits with a balance left, or unlimited): using the
+	// window up doesn't stop it, the vendor spends the credits instead
+	// (codexGoesOnCredits). Routing reads it (Allowance.OnCredits); kept
+	// with the reading, so one shown from before still says it.
+	Credits bool `json:"credits,omitempty"`
 	// Capped is set, for the GUI only (WithCapped), on a window an
 	// account's usage cap counts: neither Aside nor unlimited. One model's
 	// own counts for that model (CapHeld), so it is marked like the rest.
@@ -161,9 +174,11 @@ type SubscriptionQuota struct {
 	// now (codexHeld): not on a window at 100% alone, which credits get
 	// past.
 	Held bool `json:"held,omitempty"`
-	// Daily is a WorkBuddy account's credits used day by day, as magpie
-	// counted them from its readings (credits_daily.go).
-	Daily *DailyCredits `json:"daily,omitempty"`
+	// Daily is the account's credits used day by day, as magpie counted
+	// them from its readings (credits_daily.go): its first credits
+	// window's, and MoreDaily its other pools', each apart.
+	Daily     *DailyCredits   `json:"daily,omitempty"`
+	MoreDaily []*DailyCredits `json:"moreDaily,omitempty"`
 	// Checkins is set on a WorkBuddy (China) or Trae CN account whose
 	// daily check-in is pressed for, CheckinBy whose ("" WorkBuddy's,
 	// "trae" Trae CN's), and Checkin is how its last one went, nil before
@@ -555,7 +570,7 @@ func accountJSON(ctx context.Context, url, token string, headers map[string]stri
 	defer res.Body.Close()
 	b, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		e := &accountStatusError{status: res.StatusCode}
+		e := &accountStatusError{status: res.StatusCode, body: b[:min(len(b), 4<<10)]}
 		if secs, err := strconv.Atoi(res.Header.Get("Retry-After")); err == nil && secs > 0 {
 			e.retryAfter = time.Duration(secs) * time.Second
 		}
@@ -567,6 +582,7 @@ func accountJSON(ctx context.Context, url, token string, headers map[string]stri
 type accountStatusError struct {
 	status     int
 	retryAfter time.Duration // what the vendor asked to wait, when it said
+	body       []byte        // the start of what it answered (accountJSON)
 }
 
 func (e *accountStatusError) Error() string { return http.StatusText(e.status) }
@@ -897,7 +913,10 @@ func codexSubscriptionUsage(ctx context.Context, dir string) SubscriptionQuota {
 		q.Error = err.Error()
 		return q
 	}
-	q.Plan, q.Windows, q.Resets, q.Balance, q.Held, err = codexWindows(ctx, token, accountID)
+	renew := func(ctx context.Context, stale string) (string, string, error) {
+		return codexTokenRenewing(ctx, dir, stale)
+	}
+	q.Plan, q.Windows, q.Resets, q.Balance, q.Held, err = codexWindowsRenewing(ctx, token, accountID, renew)
 	if b, _, rerr := readCodexLogin(dir, false); rerr == nil {
 		q.Until = codexUntil(b, time.Now())
 	}
@@ -949,7 +968,31 @@ func codexWindows(ctx context.Context, token, accountID string) (plan string, ou
 	if data.RateLimit.Secondary != nil {
 		out = append(out, data.RateLimit.Secondary.window())
 	}
+	if codexGoesOnCredits(data) {
+		for i := range out {
+			out[i].Credits = true
+		}
+	}
 	return data.PlanType, out, resets, credits, codexHeld(data), nil
+}
+
+// codexGoesOnCredits reports whether the ChatGPT account goes on past its
+// allowance on credits, as the Codex app reads it (codexHeld): it has
+// them (has_credits) or they are unlimited. A balance said and spent (0
+// or less) is none left, whatever has_credits says.
+func codexGoesOnCredits(u codexUsage) bool {
+	c := u.Credits
+	if c == nil {
+		return false
+	}
+	if c.Unlimited {
+		return true
+	}
+	if !c.Has {
+		return false
+	}
+	n, err := strconv.ParseFloat(strings.TrimSpace(c.Balance), 64)
+	return err != nil || n > 0
 }
 
 // codexUsage is what /wham/usage tells of a ChatGPT account.

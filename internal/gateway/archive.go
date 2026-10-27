@@ -3,7 +3,9 @@ package gateway
 // The request archive: with it on (settings' RequestArchive), each call the
 // gateway serves is kept — the headers and bodies both ways, every secret
 // taken out first — in the user's own S3 bucket, the one sync keeps its
-// backup in, at <prefix>/magpie/archive/<date>/<id>.json: the call's date,
+// backup in, at <prefix>/magpie/archive/<date>/<id>.json, or, while sync
+// has no bucket and RequestArchiveLocal is on, in the same file on this
+// computer (archive_local.go): the call's date,
 // in UTC, and an id of its own, sent back on the response as
 // X-Magpie-Archive-Id. The call, and its rows in the usage log, carry
 // "<date>/<id>", for the Gateway and Usage pages to read it back by.
@@ -39,6 +41,7 @@ type Putter interface {
 
 // ArchiveBucket is the bucket the archive goes to, and false when there is
 // none (sync is off, or to a WebDAV folder): set by main to the S3 sync's.
+// With none, the archive is this computer's (archiveDest).
 var ArchiveBucket func() (Putter, bool)
 
 // ArchiveHeader carries a call's archive id on its response.

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/yetone/magpie/internal/gwmw"
@@ -9,13 +10,13 @@ import (
 
 // Tiny keeps upstream call sites without request-content masking.
 // Credential scrubbing in logs is a separate retained security boundary.
-func redacted(w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), error) {
+func redacted(ctx context.Context, w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), error) {
 	return w, body, func() {}, nil
 }
-func redactedPrompt(w http.ResponseWriter, prompt string) (http.ResponseWriter, string, func(), error) {
+func redactedPrompt(ctx context.Context, w http.ResponseWriter, prompt string) (http.ResponseWriter, string, func(), error) {
 	return w, prompt, func() {}, nil
 }
-func maskedText(s string) (string, int, error)                      { return s, 0, nil }
+func maskedText(ctx context.Context, s string) (string, int, error) { return s, 0, nil }
 func restored(s string, escaped bool) string                        { return s }
 func restoring(w http.ResponseWriter) (http.ResponseWriter, func()) { return w, func() {} }
 func redactionWanted() bool                                         { return false }
@@ -49,14 +50,18 @@ func unredactedRoute(p provider.Provider, isGroup bool, ms []provider.Member) bo
 	return true
 }
 
-func maskedQuery(query string, p *provider.Provider) (string, error) { return query, nil }
+func maskedQuery(ctx context.Context, query string, p *provider.Provider) (string, error) {
+	return query, nil
+}
 
-func redactedHits(w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), maskHits, error) {
+func redactedHits(ctx context.Context, w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), maskHits, error) {
 	return w, body, func() {}, maskHits{}, nil
 }
-func redactedPromptHits(w http.ResponseWriter, prompt string) (http.ResponseWriter, string, func(), maskHits, error) {
+func redactedPromptHits(ctx context.Context, w http.ResponseWriter, prompt string) (http.ResponseWriter, string, func(), maskHits, error) {
 	return w, prompt, func() {}, maskHits{}, nil
 }
-func maskTextHits(s string) (gwmw.Masker, string, maskHits, error) {
+func maskTextHits(ctx context.Context, s string) (gwmw.Masker, string, maskHits, error) {
 	return nil, s, maskHits{}, nil
 }
+
+func maskStatus(err error) int { return http.StatusServiceUnavailable }

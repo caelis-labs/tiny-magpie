@@ -195,6 +195,7 @@ func entriesAt(ms []catalog.Model, after int, effort string) []any {
 	own := CacheEntries()
 	v1 := V1()
 	work := settings.Load()
+	autoReview := AutoReviewModel()
 	var entries []any
 	for i, m := range ms {
 		if raw, ok := own[strings.TrimPrefix(m.ID, "codex/")]; ok && strings.HasPrefix(m.ID, "codex/") {
@@ -206,7 +207,11 @@ func entriesAt(ms []catalog.Model, after int, effort string) []any {
 			if v1 {
 				Stamp(e)
 			}
-			AutoReview(e)
+			AutoReview(e, autoReview)
+			entries = append(entries, e)
+			continue
+		}
+		if e, ok := listedEntry(m, after+i+1, work, autoReview, v1, effort); ok {
 			entries = append(entries, e)
 			continue
 		}
@@ -216,14 +221,17 @@ func entriesAt(ms []catalog.Model, after int, effort string) []any {
 			Shell: "unified_exec", Visibility: "list", InAPI: true, Priority: after + i + 1,
 			ApplyPatch: "freeform", Tools: []string{}, Modalities: []string{"text"},
 			Tiers: []tier{}, SearchTool: true, Parallel: true,
-			AutoReview: work.CodexAutoReview,
+			AutoReview: autoReview,
+		}
+		if e.AutoReview == settings.CodexAutoReviewSession {
+			e.AutoReview = m.ID
 		}
 		// Fast mode: a ChatGPT account's GPT model Codex has no entry for,
 		// or a group one is in, gets the tier Codex's own catalog gives its
 		// GPT models
 		if slug, ok := strings.CutPrefix(m.ID, "codex/"); m.Fast || ok && strings.HasPrefix(slug, "gpt-") {
 			e.Tiers = append(e.Tiers, fastTier)
-		} else if m.OwnTier {
+		} else if m.OwnTier && (len(m.Tiers) == 0 || len(ownTiers(own, m)) > 0) {
 			e.Tiers = ownTiers(own, m)
 		} else if len(m.Tiers) > 0 {
 			// another magpie's model: the tiers it offers its own Codex
@@ -608,14 +616,39 @@ func unstamp(e map[string]any, was string) {
 // place) runs on the auto_review_model_override of the conversation's
 // model's entry, else on codex-auto-review when the list has it, else on the
 // conversation's model at low effort (#938). With settings.CodexAutoReview
-// every entry magpie hands Codex names that model.
+// every entry magpie hands Codex names that model; set to
+// settings.CodexAutoReviewSession, each of magpie's names itself and Codex's
+// own are left as OpenAI gave them, so the review runs on the session's
+// model.
 
-// AutoReview has one of Codex's own entries name the auto-review model the
-// user picked. With none picked, one magpie put there before — a magpie id,
+// SignInPlan is the plan of the ChatGPT account this machine's Codex is
+// signed in to, as its ID token names it ("free", "plus", "pro" …), ""
+// when it is unknown or Codex isn't signed in (provider.CodexSignInPlan).
+var SignInPlan func() string
+
+// AutoReviewModel is the auto-review setting in effect:
+// settings.CodexAutoReview, but with nothing picked and Codex signed in
+// to a Free ChatGPT plan, the session's (settings.CodexAutoReviewSession).
+// Left to Codex the review runs on codex-auto-review, kept as the default
+// for being free on a ChatGPT sign-in (#1593, from a paid account); on a
+// Free plan it is not (cybercaius on Discord measured it spending the
+// plan's allowance), so there it follows the session as Codex's other
+// side calls do. A plan magpie can't read keeps Codex's pick.
+func AutoReviewModel() string {
+	v := settings.Load().CodexAutoReview
+	if v == "" && SignInPlan != nil && strings.EqualFold(strings.TrimSpace(SignInPlan()), "free") {
+		return settings.CodexAutoReviewSession
+	}
+	return v
+}
+
+// AutoReview has one of Codex's own entries name the auto-review model in
+// effect, v (AutoReviewModel, read once for a whole list: it reads Codex's
+// sign-in). With none picked, one magpie put there before — a magpie id,
 // which has a "/" where OpenAI's slugs have none, kept in Codex's cache — is
 // taken out, and one OpenAI gave it is left.
-func AutoReview(e map[string]any) {
-	if v := settings.Load().CodexAutoReview; v != "" {
+func AutoReview(e map[string]any, v string) {
+	if v != "" && v != settings.CodexAutoReviewSession {
 		e["auto_review_model_override"] = v
 	} else if was, _ := e["auto_review_model_override"].(string); strings.Contains(was, "/") {
 		delete(e, "auto_review_model_override")
@@ -689,6 +722,90 @@ func ownEntry(raw map[string]any, id, name string, priority int) map[string]any 
 		e["base_instructions"] = Prompt
 	}
 	return e
+}
+
+// listedEntry is the entry m's vendor lists it under in Codex's own shape
+// (catalog.Model.Codex, a sub2api's), under magpie's id: as the vendor
+// gave it — its instructions, tools, truncation, tiers and the rest, which
+// magpie neither guesses nor rewrites — but for what the user set. A
+// window, compaction or levels the user gave the model, its images
+// switched, and the auto-review model picked in magpie, are said as the
+// entries magpie makes say them; with none of them it is the vendor's
+// entry, its description ending " via magpie" so it is told from Codex's
+// own (catalog.MagpieAdded). False when m has none, or one magpie can't
+// read, which is then made as any other model's.
+func listedEntry(m catalog.Model, priority int, work settings.Settings, autoReview string, v1 bool, effort string) (map[string]any, bool) {
+	var raw map[string]any
+	if len(m.Codex) == 0 || json.Unmarshal(m.Codex, &raw) != nil || raw == nil {
+		return nil, false
+	}
+	e := ownEntry(raw, m.ID, m.Name, priority)
+	desc, _ := e["description"].(string)
+	e["description"] = cmp.Or(strings.TrimSpace(desc), m.Name) + " via magpie"
+	if c := m.Context; c > 0 {
+		// the window magpie resolves (the user's, else this entry's own),
+		// and where the user has Codex compact it, theirs alone: not
+		// magpie's default working window, as the vendor said its own
+		Window(e, c, 0)
+		w := c
+		if m.Compact > 0 {
+			w = min(c, m.Compact)
+		} else if work.CompactAt > 0 {
+			w = work.Working(c)
+		}
+		if w < c {
+			e["context_window"] = w
+		}
+	}
+	// the levels, where the user's differ from the vendor's: those the
+	// vendor lists kept as it wrote them, with their descriptions
+	listed, _ := e["supported_reasoning_levels"].([]any)
+	byEffort := map[string]any{}
+	var had []string
+	for _, l := range listed {
+		o, _ := l.(map[string]any)
+		if ef, _ := o["effort"].(string); ef != "" {
+			byEffort[ef] = l
+			had = append(had, ef)
+		}
+	}
+	if !slices.Equal(had, m.Efforts) {
+		levels := []any{}
+		for _, ef := range m.Efforts {
+			l, ok := byEffort[ef]
+			if !ok {
+				l = map[string]any{"effort": ef}
+			}
+			levels = append(levels, l)
+		}
+		e["supported_reasoning_levels"] = levels
+		if d, _ := e["default_reasoning_level"].(string); !slices.Contains(m.Efforts, d) {
+			if len(m.Efforts) == 0 {
+				e["default_reasoning_level"] = nil
+			} else {
+				e["default_reasoning_level"] = ModelDefault(m.Efforts, effort)
+			}
+		}
+	}
+	// images, where the user's say (or magpie describing them) differs
+	if in, ok := e["input_modalities"].([]any); ok {
+		has := slices.Contains(in, any("image"))
+		if m.Images && !has {
+			e["input_modalities"] = append(slices.Clone(in), "image")
+		} else if !m.Images && has {
+			e["input_modalities"] = slices.DeleteFunc(slices.Clone(in), func(x any) bool { return x == "image" })
+		}
+	}
+	if v1 && m.Fast {
+		Stamp(e)
+	} else if _, ok := e["multi_agent_version"]; !ok && m.AgentsV2 {
+		e["multi_agent_version"] = "v2"
+	}
+	AutoReview(e, autoReview)
+	if autoReview == settings.CodexAutoReviewSession {
+		e["auto_review_model_override"] = m.ID
+	}
+	return e, true
 }
 
 // Window has one of Codex's own entries say a context window of n tokens

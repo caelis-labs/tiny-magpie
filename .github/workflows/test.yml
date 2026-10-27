@@ -121,6 +121,7 @@ jobs:
           fi
   protocols-and-ui:
     runs-on: macos-latest
+    timeout-minutes: 20
     env:
       GOWORK: off
     steps:
@@ -152,7 +153,7 @@ jobs:
           python3 scripts/test-notarization-stapler.py
           python3 scripts/test-release-resume.py
       - run: npm ci
-      - run: npx playwright install chromium webkit
+      - run: npx playwright install --only-shell chromium webkit
       - run: npm run test:ui
         env:
           ARTIFACT_DIR: output/playwright

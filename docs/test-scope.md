@@ -50,7 +50,7 @@ test in a retired suite requires scope review, rather than automatic adoption.
 
 | Event | Linux/macOS | Windows | Protocol/UI and containers |
 | --- | --- | --- | --- |
-| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 84 Chromium/WebKit cases; amd64/arm64 container smoke |
+| PR | vet, complete retained Go suite, native desktop build | vet, compile every test, native desktop build, focused paths/state/storage/plugin/removed-surface checks; five-count account/proxy stress | 67 upstream differential comparisons, 204 Chromium/WebKit cases; amd64/arm64 container smoke |
 | Main push | no duplicate matrix | no duplicate matrix | no duplicate matrix |
 | Release tag | complete retained suite on the exact release source | same focused native gate | protocol/UI/container checks before five native packages |
 | Weekly, Monday 03:00 UTC | complete retained suite | additionally complete retained suite and twenty-count stress | protocol/UI fixture gates |
@@ -112,3 +112,68 @@ expects an unmanaged first start to leave Codex alone, while retaining all
 connect/disconnect/reconnect assertions. The unmanaged Agent-config API guard
 is unchanged, and a new catalog regression verifies both foreign-config
 preservation and synchronization after an explicit model pick.
+
+## 2026-10-27 integration
+
+The [sync decision record](upstream-sync-2026-10-27.md) records the full interval.
+New manual model-wiring/visibility tests are admitted individually. Local HTTP
+fixtures for download retry/Range/checksum behavior and relaunch fallback are
+retained for Tiny's updater; upstream feed/channel tests remain excluded.
+
+New positive Agent-log ingestion cases in `request_cells`, `request_pairs`,
+`request_disk`, `request_disk_map_unix`, `cache_bounds` and `heatmap` are removed
+because they require the history sources Tiny intentionally leaves empty.
+Mixed files retain their pure chunk/parser/accounting tests. The two new
+vision-backed wait cases, masking facts case and Antigravity drawing suite
+likewise require removed execution surfaces; generic wait/cancellation and
+protocol regressions remain. Responses `additional_tools` translation and its
+provider flag are retained client-protocol behavior, not tool execution.
+
+Tiny-specific regression coverage also checks that local/WSL manual agy
+model picks do not write shell startup files. The shared cache regression
+checks invalidation across independent synthetic clocks. PWA names, native
+flap geometry and updater paths use Tiny identity; Bun proxy authentication
+accepts the equivalent explicit default port without relaxing credential or
+request-path checks.
+
+The default `npm run test:ui` gate runs 52 Tiny core cases and 152 retained
+feature cases: Agent model visibility, per-key plans, provider rate-limit
+policy, ordered rule models, drag ordering, speed-first decisions and rule
+time zones. Upstream fixtures use Tiny's explicit page routes and expand its
+Advanced controls; content and save assertions remain. Narrow Advanced
+rules keep their time-zone labels visible in Chromium and WebKit.
+
+
+### Browser cost and removed product fixtures (PR #17 follow-up)
+
+`make test-ui` now delegates to the same explicit npm gate as CI instead of
+expanding all 811 upstream browser files. The default matrix drops 62 redundant
+wide-window locale combinations: every language still runs at narrow width,
+English also runs wide, and Gateway retains the native 560px boundary. The complete own-served and rule-editor matrices plus the de/1000 delayed-save
+regression remain, covering all previous CI failure points. Both
+engines, distinct themes and behavior branches remain; the previously failing
+Chromium Traditional Chinese 390px case is retained.
+
+A test file shares its engine processes, while each case creates and closes a
+fresh isolated context. Diagnostics and closure share one `try/finally` after
+hook: Node stops subsequent hooks after a diagnostic error. This lowers browser launches from 266 to at most 24
+for the default gate. All retained suites use the same pinned Chromium
+headless shell as Tiny core; CI no longer downloads the extra full Chromium.
+Unasserted successful screenshots are removed. The rule-editor fixture waits
+for fonts and its entrance animation before clicking Advanced, and retains a
+trace for the previously failing combination. These harness changes do not
+prove the root cause of the historical full-Chromium stalls.
+
+Twenty-one positive browser suites for removed products are deleted and
+listed explicitly in `scripts/check-scope.py` to prevent resurrection:
+memories/subagent settings, saved Tiny-excluded Profiles, Library installation,
+font selection, content masking, warm-up/check-in, image services and public
+vision MCP. These files were outside the npm gate; their removal reduces tree
+and accidental glob cost, not the previous CI runtime. In particular,
+`omp-profile-connect` is retained: it tests an Agent configuration ID, not the
+removed saved-Profile product. Account display masking and plugin check-in
+contract fixtures are not mistaken for removed content masking/background jobs.
+
+No retained Go protocol, plugin, credentials, streaming, cancellation or
+concurrency coverage is removed. The complete Linux/macOS Go gates and the
+67-case upstream differential gate stay in place.

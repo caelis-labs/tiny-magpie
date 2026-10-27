@@ -124,13 +124,17 @@ func TestFetchUnionsProtocolListsWithoutChat(t *testing.T) {
 		t.Setenv(v, "")
 	}
 
-	var responsesHits, anthropicHits atomic.Int32
+	var responsesHits, anthropicHits, codexHits atomic.Int32
 	responses := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/models" {
 			http.NotFound(w, r)
 			return
 		}
-		responsesHits.Add(1)
+		if r.URL.Query().Get("client_version") != "" {
+			codexHits.Add(1)
+		} else {
+			responsesHits.Add(1)
+		}
 		w.Write([]byte(`{"data":[{"id":"gpt-a"}]}`))
 	}))
 	defer responses.Close()
@@ -163,6 +167,9 @@ func TestFetchUnionsProtocolListsWithoutChat(t *testing.T) {
 	}
 	if len(ms) != 2 || ms[0].ID != "gpt-a" || ms[1].ID != "claude-b" {
 		t.Fatalf("listed %v, want gpt-a then claude-b", ms)
+	}
+	if codexHits.Load() != 1 {
+		t.Errorf("Codex metadata fetched %d times, want once", codexHits.Load())
 	}
 	if responsesHits.Load() != 1 || anthropicHits.Load() != 1 {
 		t.Errorf("asked responses %d times, anthropic %d", responsesHits.Load(), anthropicHits.Load())
@@ -296,13 +303,17 @@ func TestFetchAsksASharedBaseOnce(t *testing.T) {
 		t.Setenv(v, "")
 	}
 
-	var hits atomic.Int32
+	var hits, codexHits atomic.Int32
 	shared := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/models" {
 			http.NotFound(w, r)
 			return
 		}
-		hits.Add(1)
+		if r.URL.Query().Get("client_version") != "" {
+			codexHits.Add(1)
+		} else {
+			hits.Add(1)
+		}
 		w.Write([]byte(`{"data":[{"id":"gpt-a"}]}`))
 	}))
 	defer shared.Close()
@@ -322,6 +333,9 @@ func TestFetchAsksASharedBaseOnce(t *testing.T) {
 	}
 	if ms, err := q.Fetch(context.Background()); err != nil || len(ms) != 1 {
 		t.Fatalf("%v %v", ms, err)
+	}
+	if codexHits.Load() != 1 {
+		t.Errorf("Codex metadata fetched %d times, want once", codexHits.Load())
 	}
 	if hits.Load() != 1 {
 		t.Errorf("asked %d times, want once", hits.Load())

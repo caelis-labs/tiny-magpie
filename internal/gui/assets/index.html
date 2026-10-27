@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>tiny-magpie</title>
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<!-- added to a phone's home screen, magpie web opens as an app of its own,
+     with no browser bars (ninja_s6114 on Discord); webGuard serves these
+     few files without the key, as a home screen may ask for them without
+     the page's cookie.
+     The theme colours are the window's in standalone alone, so a browser's
+     tab and the app's own windows look as they did -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="tiny-magpie">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" media="(display-mode: standalone) and (prefers-color-scheme: light)" content="#f4f4f6">
+<meta name="theme-color" media="(display-mode: standalone) and (prefers-color-scheme: dark)" content="#1a1a1e">
 <script src="boot.js"></script>
 <script src="theme.js"></script>
 <script src="omarchy.js"></script>
@@ -298,7 +312,7 @@
     <div class="warm-panes" data-feature="warmups">
     <div class="list prefs" id="codexWarmList" role="tabpanel" aria-labelledby="warmTab-codex" data-feature="tiny-removed">
       <div class="row pref">
-        <div class="who"><div class="name" data-t>Warm up on reset</div><div class="sub" id="warmSub"></div></div>
+        <div class="who"><div class="name" data-t>Warm up on reset</div><div class="sub" id="warmSub" title="Nothing is sent while the computer sleeps: a window that resets then starts when it wakes, and counts from then." data-tt></div></div>
         <div id="warmSegs"></div>
       </div>
       <div class="row pref">
@@ -308,7 +322,7 @@
     </div>
     <div class="list prefs" id="claudeWarmList" role="tabpanel" aria-labelledby="warmTab-claude" data-feature="tiny-removed">
       <div class="row pref">
-        <div class="who"><div class="name" data-t>Warm up on reset</div><div class="sub" id="claudeWarmSub"></div></div>
+        <div class="who"><div class="name" data-t>Warm up on reset</div><div class="sub" id="claudeWarmSub" title="Nothing is sent while the computer sleeps: a window that resets then starts when it wakes, and counts from then." data-tt></div></div>
         <div id="claudeWarmSegs"></div>
       </div>
       <div class="row pref">
@@ -379,6 +393,12 @@
     <div class="list prefs" id="redactList"></div>
     <div class="row-head"><span class="label" data-t>How it's found</span></div>
     <div class="list prefs" id="findList"></div>
+    <div class="row-head"><span class="label" data-t>What to mask</span></div>
+    <div class="list prefs" id="redactList"></div>
+    <div class="row-head"><span class="label" data-t>When a value is found</span></div>
+    <div class="list prefs" id="maskActList"></div>
+    <div class="row-head"><span class="label" data-t>Try it</span></div>
+    <div class="list prefs" id="maskTryList"></div>
     <div class="row-head"><span class="label" data-t>Sharing</span></div>
     <div class="list prefs" id="shareList"></div>
     <div class="row-head"><span class="label" data-t>Agents' sign-ins</span></div>
@@ -433,6 +453,10 @@
   <div class="row pref" id="codexAgentsV1Row">
     <div class="who"><div class="name" data-t>Codex subagents on any model</div><div class="sub" data-t>A GPT lead spawns subagents on magpie’s other models. New threads only; Codex’s own multi_agent_v2 still wins</div><div class="sub err" id="codexAgentsV1Warn" hidden></div></div>
     <div id="codexAgentsV1Segs"></div>
+  </div>
+  <div class="row pref" id="codexSubagentModelRow" data-feature="tiny-removed" hidden>
+    <div class="who"><div class="name" data-t>Codex subagent model</div></div>
+    <div class="val" id="codexSubagentModelPick"></div>
   </div>
   <div class="row pref" id="fullContextRow">
     <div class="who"><div class="name" data-t>Long conversations</div><div class="sub" data-t>Codex and Claude Code compact at 272K (non-Claude [1m] too) or the size typed; full window: slower, costlier</div></div>

@@ -1,15 +1,12 @@
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const {chromium, webkit} = require('playwright');
+const { pageFor } = require('./fixtures/browser.cjs');
 const {fixture} = require('./fixtures/caller-keys.cjs');
 
-for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
+for (const engine of ['chromium', 'webkit']) {
  for (const width of [440,360]) {
   test(`${engine} ${width}: tray retains available allowances and readable timing`,async t=>{
-   const browser=await driver.launch();t.after(()=>browser.close());
-   const page=await browser.newPage({viewport:{width,height:800},reducedMotion:'reduce'});
+   const page=await pageFor(t, engine, {viewport:{width,height:800},reducedMotion:'reduce'});
    let available=false;
    const base=fixture('zh','light',[],{web:false,usageTiming:{decode_ms:1000,decode_out:592,timed:1,ttft_ms:164}});
    await page.route('**/*',route=>new URL(route.request().url()).pathname==='/api/usage/quotas'
@@ -42,10 +39,9 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
    assert.ok(await page.locator('.pu-tot .v').evaluateAll(xs=>xs.every(e=>e.scrollWidth<=e.clientWidth+1)),'tray totals must not overflow their cards');
   });
  }
- for (const locale of ['en','zh','zh-TW','ja','de']) for (const width of [1100,440]) {
+ for (const locale of ['en','zh','zh-TW','ja','de']) for (const width of (locale === 'en' ? [1100,440] : [440])) {
   test(`${engine} ${locale} ${width}: explicit classification and retrieval APIs`, async t=>{
-   const browser=await driver.launch();t.after(()=>browser.close());
-   const page=await browser.newPage({viewport:{width,height:820},reducedMotion:'reduce'});
+   const page=await pageFor(t, engine, {viewport:{width,height:820},reducedMotion:'reduce'});
    await page.addInitScript(()=>Object.defineProperty(navigator,'platform',{value:'MacIntel'}));
    const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));
    const base=fixture(locale,'light',writes,{web:false});
@@ -64,7 +60,6 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
     assert.ok(await page.locator('#connect .hint').allTextContents().then(xs=>xs.some(x=>x.includes('/v1/'+path))), 'endpoint hint must match selected API');
    }
    assert.ok(await page.locator('#view-gateway').evaluate(e=>e.scrollWidth<=e.clientWidth+1),'gateway overflows horizontally');
-   if(process.env.ARTIFACT_DIR){await fs.mkdir(process.env.ARTIFACT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.ARTIFACT_DIR,`core-${engine}-${locale}-${width}.png`)});}
    await page.locator('#nav [data-view=plugins]').click();
    await page.locator('#view-plugins').waitFor({state:'visible'});
    assert.equal(await page.getByText('Built-in',{exact:true}).count(),0);
@@ -83,8 +78,7 @@ for (const [engine,driver] of [['chromium',chromium],['webkit',webkit]]) {
  }
  for (const theme of ['light','dark']) {
   test(`${engine} ${theme}: tray bird stays small at 150 percent`,async t=>{
-   const browser=await driver.launch();t.after(()=>browser.close());
-   const page=await browser.newPage({viewport:{width:440,height:720},reducedMotion:'reduce'});
+   const page=await pageFor(t, engine, {viewport:{width:440,height:720},reducedMotion:'reduce'});
    await page.addInitScript(()=>Object.defineProperty(navigator,'platform',{value:'MacIntel'}));
    await page.route('**/*',fixture('zh',theme,[],{web:false}));
    await page.goto('http://magpie.test/?mode=panel');

@@ -109,8 +109,10 @@ func dshPacked(t testing.TB, dir string, size int) (string, int64) {
 	return p, last
 }
 
-// allocated is the bytes fn allocates a call, on average over n calls
-// after a first one.
+// allocated is the bytes fn allocates a call, the least of n calls after
+// a first one. TotalAlloc counts every goroutine in the process, so
+// another test's leftover work lands on whichever call it overlaps; a
+// decoder made anew lands on every call, and the least still shows it.
 func allocated(n int, fn func()) uint64 {
 	// Measure warm reuse on one P with its pool intact. sync.Pool may
 	// discard idle entries at GC, and each P has its own private entry.
@@ -120,13 +122,15 @@ func allocated(n int, fn func()) uint64 {
 	defer debug.SetGCPercent(gc)
 	runtime.GC()
 	fn()
-	var a, b runtime.MemStats
-	runtime.ReadMemStats(&a)
+	least := ^uint64(0)
 	for i := 0; i < n; i++ {
+		var a, b runtime.MemStats
+		runtime.ReadMemStats(&a)
 		fn()
+		runtime.ReadMemStats(&b)
+		least = min(least, b.TotalAlloc-a.TotalAlloc)
 	}
-	runtime.ReadMemStats(&b)
-	return (b.TotalAlloc - a.TotalAlloc) / uint64(n)
+	return least
 }
 
 func scanPacked(t testing.TB, p string) int {

@@ -2,7 +2,9 @@
   "name": "tiny-magpie-checks",
   "private": true,
   "scripts": {
-    "test:ui": "node --test --test-concurrency=2 internal/gui/tests/tiny-core.test.cjs internal/gui/tests/tiny-gateway.test.cjs internal/gui/tests/tiny-update.test.cjs internal/gui/tests/tiny-agents.test.cjs"
+    "test:ui": "npm run test:ui:core && npm run test:ui:features",
+    "test:ui:core": "node --test --test-concurrency=2 internal/gui/tests/tiny-core.test.cjs internal/gui/tests/tiny-gateway.test.cjs internal/gui/tests/tiny-update.test.cjs internal/gui/tests/tiny-agents.test.cjs",
+    "test:ui:features": "node --test --test-concurrency=2 internal/gui/tests/agent-models-group-on.test.cjs internal/gui/tests/agent-models-own-served.test.cjs internal/gui/tests/key-plan.test.cjs internal/gui/tests/provider-limit-rest.test.cjs internal/gui/tests/routing-rule-models.test.cjs internal/gui/tests/routing-rule-drag.test.cjs internal/gui/tests/routing-speed-first.test.cjs internal/gui/tests/routing-time-zone.test.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"

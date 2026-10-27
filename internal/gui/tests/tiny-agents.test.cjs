@@ -1,11 +1,10 @@
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
-const {chromium, webkit} = require('playwright');
+const { pageFor } = require('./fixtures/browser.cjs');
 const {fixture} = require('./fixtures/caller-keys.cjs');
-for (const [name,engine] of [['chromium',chromium],['webkit',webkit]]) for (const width of [1100,440]) {
+for (const name of ['chromium','webkit']) for (const width of [1100,440]) {
  test(`${name} ${width}: Agent model picks and trimmed details`,async t=>{
-  const browser=await engine.launch();t.after(()=>browser.close());
-  const page=await browser.newPage({viewport:{width,height:820},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
+  const page=await pageFor(t, name, {viewport:{width,height:820},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
   const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));
   const a={id:'codex',name:'Codex',icon:'generic',path:'~/.codex/config.toml',wired:true,fields:[
    {key:'model',label:'model',value:'relay/m',options:[{value:'relay/m',label:'Model A',ref:'relay/m'},{value:'relay/b',label:'Model B',ref:'relay/b'}]},

@@ -19,3 +19,4 @@ __pycache__/
 
 # Finder metadata from native installer checks
 .DS_Store
+/internal/update/launcher-*.com

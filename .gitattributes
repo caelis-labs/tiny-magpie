@@ -4,3 +4,6 @@
 # checkout with autocrlf on gave them CRLF and four went red (#1827).
 # internal/agent/testdata/.gitattributes keeps its real CRLF bytes.
 * text=auto eol=lf
+
+# Unified-diff context records require a space on otherwise empty lines.
+native/privacy-filter/patches/*.patch -whitespace

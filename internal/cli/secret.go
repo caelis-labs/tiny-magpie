@@ -6,14 +6,30 @@ import (
 	"golang.org/x/term"
 	"os"
 	"strings"
+	"sync"
 )
 
-var stdin = bufio.NewReader(os.Stdin)
+var (
+	stdinMu   sync.Mutex
+	stdinFile *os.File
+	stdinBuf  *bufio.Reader
+)
+
+func stdin() *bufio.Reader {
+	stdinMu.Lock()
+	defer stdinMu.Unlock()
+	if stdinBuf == nil || stdinFile != os.Stdin {
+		stdinFile, stdinBuf = os.Stdin, bufio.NewReader(os.Stdin)
+	}
+	return stdinBuf
+}
+
+
 
 func secret(what, prompt string, confirm bool) (string, error) {
 	fd := int(os.Stdin.Fd())
 	if !term.IsTerminal(fd) {
-		line, err := stdin.ReadString('\n')
+		line, err := stdin().ReadString('\n')
 		line = strings.TrimRight(line, "\r\n")
 		if line == "" {
 			if err != nil {

@@ -44,7 +44,7 @@ const usage = `tiny-magpie — multi-provider model gateway
   tiny-magpie quota [--json]
   tiny-magpie gateway-key list|add|rotate|remove|limit|models ...
   tiny-magpie claude-code [install|remove]
-  tiny-magpie sync|import|healthcheck|heap|cpu|version
+  tiny-magpie sync|import|healthcheck|heap|cpu|goroutines|version
 
 Model APIs: Chat Completions, Responses, Anthropic Messages, Gemini,
 Embeddings and Rerank. Existing MAGPIE_* gateway options are supported.
@@ -116,7 +116,7 @@ func run(args []string) error {
 
 	if len(args) > 0 {
 		switch args[0] {
-		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":
+		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "goroutines", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":
 		default:
 			return fmt.Errorf("unknown tiny-magpie command %q; run tiny-magpie --help", args[0])
 		}
@@ -146,6 +146,8 @@ func run(args []string) error {
 			return heapCmd(args[1:])
 		case "cpu":
 			return cpuCmd(args[1:])
+		case "goroutines":
+			return goroutinesCmd(args[1:])
 		}
 	}
 	makeDirs()
@@ -343,6 +345,27 @@ func disconnect(a *agent.Agent) error {
 	return nil
 }
 
+// goneDefault says what `magpie <id> default` did for the agent of a
+// plugin that is gone.
+func goneDefault(id string, g agent.Gone, err error) error {
+	for _, p := range g.Put {
+		fmt.Println(green.Render("✓"), bold.Render(id), muted.Render(p))
+	}
+	for _, p := range g.Off {
+		fmt.Println(green.Render("✓"), bold.Render(id), muted.Render(p+": magpie was out of it already"))
+	}
+	if len(g.Put) > 0 {
+		fmt.Println(muted.Render("  its plugin is gone; disconnected from magpie, back to what it had before"))
+	}
+	if g.PluginOff != "" {
+		fmt.Println(green.Render("✓"), bold.Render(g.PluginOff), muted.Render("is not on magpie: its plugin is off, and magpie put back what it had when the plugin was turned off"))
+	}
+	if err != nil {
+		return fmt.Errorf("%s's plugin is gone, and magpie couldn't put its config back: %w", id, err)
+	}
+	return nil
+}
+
 func fieldForValue(a *agent.Agent, v string) *agent.Field {
 	vals := a.Values()
 	// the agent's suffix after a model (omp's ":max") aside: a role on the
@@ -426,7 +449,13 @@ func list(agents []*agent.Agent, detectedOnly bool, dimFrom int) error {
 				r.vals += label.Render("  ·  " + said)
 			}
 			if a.Import != nil {
-				if a.Added != nil && a.Added() {
+				// unknown reads as not added here: the line only offers the
+				// command, never says magpie is missing
+				added := false
+				if a.Added != nil {
+					added, _ = a.Added()
+				}
+				if added {
 					r.vals = value.Render("magpie added")
 				} else {
 					r.vals = label.Render("magpie "+a.ID+" add") + faint.Render("  to add magpie")

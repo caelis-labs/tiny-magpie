@@ -43,15 +43,9 @@ cli:
 test:
 	go vet -tags "$(TAGS)" ./... && go test -tags "$(TAGS)" ./...
 
-# The browser regressions under internal/gui/tests: the real pages in
-# Playwright's Chromium and WebKit; see internal/gui/tests/README.md.
-UI_TESTS = $(wildcard internal/gui/tests/*.test.cjs)
-# Files are independent and run in parallel; 1 diagnoses a flaky one.
-UI_TEST_CONCURRENCY ?= 2
-
+# Tiny's retained browser contracts; do not glob upstream-only product tests.
 test-ui:
-	@test -n "$(UI_TESTS)" || { echo "no GUI tests found under internal/gui/tests" >&2; exit 1; }
-	node --test --test-concurrency=$(UI_TEST_CONCURRENCY) $(UI_TESTS)
+	npm run test:ui
 
 # macOS bundle: menu bar app with no Dock icon (LSUIElement).
 app: build
@@ -70,6 +64,8 @@ icons:
 	@go run build/icon/gen.go app 64 internal/gui/icon.png
 	@go run build/icon/gen.go app 1024 internal/gui/icon-1024.png
 	@go run build/icon/gen.go app 256 internal/gui/icon-256.png
+	@go run build/icon/gen.go app 180 internal/gui/assets/icons/apple-touch-icon.png
+	@go run build/icon/gen.go app 512 internal/gui/assets/icons/icon-512.png
 	@rm -rf build/darwin/magpie.iconset && mkdir -p build/darwin/magpie.iconset
 	@for s in 16 32 128 256 512; do \
 		go run build/icon/gen.go app $$s build/darwin/magpie.iconset/icon_$${s}x$${s}.png; \
@@ -100,6 +96,8 @@ release-cli:
 # The desktop app for Windows: the system WebView2 needs no cgo, so both
 # arches cross-compile. Linked as a GUI program (no console window), with
 # the icon, version and a DPI-aware manifest from build/windows.
+# Tiny keeps the existing packaging; the optional comlauncher build tag
+# remains disabled pending Windows console acceptance.
 WINVER = $(shell echo $(VERSION) | sed -E 's/^v//; s/[^0-9.].*//')
 WINARCHES ?= amd64 arm64
 release-windows:

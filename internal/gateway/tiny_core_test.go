@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"io"
+"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -46,7 +47,7 @@ func TestTinyOldRedactionDoesNotTransformRequests(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	body := []byte(`{"input":"fixture-value person@example.test"}`)
-	got, masked, done, err := redacted(w, body)
+	got, masked, done, err := redacted(context.Background(), w, body)
 	done()
 	if err != nil || got != w || string(masked) != string(body) {
 		t.Fatalf("request changed: %s %v", masked, err)
