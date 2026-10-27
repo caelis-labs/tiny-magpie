@@ -59,6 +59,20 @@ function serve(lang, posts) {
   };
 }
 
+// WebKit can finish a wheel after mouse.wheel resolves. Take the baseline
+// after it rests, beyond the page's 250ms reader-scroll window.
+async function settledPosition(page, at) {
+  let position = await at(), since = Date.now();
+  const deadline = since + 5000;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(50);
+    const next = await at();
+    if (next !== position) { position = next; since = Date.now(); }
+    else if (Date.now() - since >= 500) return position;
+  }
+  assert.fail("the routing viewport did not settle after wheeling");
+}
+
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of Object.keys(words)) {
     const w = words[lang];
@@ -71,6 +85,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       page.on("pageerror", (e) => errors.push(e.message));
       await page.route("**/*", serve(lang, posts));
       await page.goto("http://magpie.test/?view=routing");
+      await page.evaluate(() => document.fonts.ready);
       const card = page.locator(".rt-group").first();
       await card.waitFor();
       await card.locator("button", { hasText: w.edit }).click();
@@ -103,9 +118,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.mouse.wheel(0, Math.sign(d) * Math.min(Math.abs(d), 300));
         await page.waitForTimeout(60);
       }
-      await page.waitForTimeout(200);
       const at = () => page.evaluate(() => [...document.querySelectorAll("*")].filter((e) => e.scrollTop).map((e) => [e.id || e.className, e.scrollTop]).join(";") + "|" + Math.round(document.querySelector(".rt-gedit").getBoundingClientRect().top));
-      const before = await at();
+      const before = await settledPosition(page, at);
       // drag "three" above "one"
       const hb = await handle("three").boundingBox(), top = await rule("one").boundingBox();
       await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
@@ -115,6 +129,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.deepEqual(await order(), ["three", "one", "two"], "the drag moved it");
       assert.equal(await page.locator(".pop:not([hidden]), .row-menu").count(), 0, "the drag's click opened something");
       assert.deepEqual(await ed.locator(".rt-rule .rt-rhandle").allTextContents(), ["1", "2", "3"], "numbered again");
+
+      assert.equal(await at(), before, "the drag moved the page");
 
       // Alt+↓ from the keyboard, which stays on the moved rule's handle
       await handle("three").focus();
@@ -126,6 +142,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.deepEqual(await order(), ["one", "two", "three"]);
       await page.keyboard.press("Alt+ArrowUp");
       assert.deepEqual(await order(), ["one", "three", "two"]);
+      assert.equal(await at(), before, "keyboard reordering moved the page");
       // the ⋯'s Move down still moves it a step
       await rule("one").locator(".rt-rmore").click();
       await page.locator(".row-menu .rm-item", { hasText: w.down }).click();
