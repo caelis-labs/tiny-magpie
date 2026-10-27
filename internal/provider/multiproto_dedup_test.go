@@ -111,7 +111,11 @@ func TestFetchAsksOneListOnceForTwoBasesOfIt(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		mu.Lock()
-		asked[r.URL.Path]++
+		list := r.URL.Path
+		if r.URL.Query().Get("client_version") != "" {
+			list += "?codex"
+		}
+		asked[list]++
 		mu.Unlock()
 		if r.URL.Path != "/v1/models" {
 			http.NotFound(w, r)
@@ -162,6 +166,9 @@ func TestFetchAsksOneListOnceForTwoBasesOfIt(t *testing.T) {
 	defer mu.Unlock()
 	if asked["/v1/models"] != 1 {
 		t.Errorf("chat and responses fetched the list %d times, want once", asked["/v1/models"])
+	}
+	if asked["/v1/models?codex"] != 1 {
+		t.Errorf("Codex metadata fetched %d times, want once", asked["/v1/models?codex"])
 	}
 }
 
