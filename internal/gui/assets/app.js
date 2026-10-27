@@ -22776,7 +22776,7 @@ const onScreen = (n, v) => n.getBoundingClientRect().top - v.getBoundingClientRe
 const MOVES = /^(transform|translate|rotate|scale|top|bottom|left|right|inset|margin|offset-|position)/;
 const moving = (a) => a.playState === "running" && (a.transitionProperty ? MOVES.test(a.transitionProperty)
   : !a.effect?.getKeyframes || a.effect.getKeyframes().some((k) => Object.keys(k).some((p) => MOVES.test(p.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())))));
-const atRest = (n) => n.isConnected && n.offsetParent && !n.getAnimations().some(moving);
+const atRest = (n) => n.isConnected && n.offsetParent && !n.getAnimations().some(moving) && !pressedTransform(n);
 // A click may arrive before :active clears. Its pressed scale is not a
 // layout change, even with reduced motion (there is then no animation to
 // notice). Do not record that temporary box, or a descendant's, as an anchor.
