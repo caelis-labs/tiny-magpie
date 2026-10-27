@@ -59,6 +59,10 @@ function serve(lang, posts) {
   };
 }
 
+// The click guard restores a briefly shortened view before paint. DOM
+// reads immediately after a menu redraw can precede its layout observer.
+const painted = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
 // WebKit can finish a wheel after mouse.wheel resolves. Take the baseline
 // after it rests, beyond the page's 250ms reader-scroll window.
 async function settledPosition(page, at) {
@@ -130,6 +134,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.equal(await page.locator(".pop:not([hidden]), .row-menu").count(), 0, "the drag's click opened something");
       assert.deepEqual(await ed.locator(".rt-rule .rt-rhandle").allTextContents(), ["1", "2", "3"], "numbered again");
 
+      await painted(page);
       assert.equal(await at(), before, "the drag moved the page");
 
       // Alt+↓ from the keyboard, which stays on the moved rule's handle
@@ -142,11 +147,15 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.deepEqual(await order(), ["one", "two", "three"]);
       await page.keyboard.press("Alt+ArrowUp");
       assert.deepEqual(await order(), ["one", "three", "two"]);
+      await painted(page);
       assert.equal(await at(), before, "keyboard reordering moved the page");
       // the ⋯'s Move down still moves it a step
       await rule("one").locator(".rt-rmore").click();
+      await painted(page);
+      assert.equal(await at(), before, "opening the rule menu moved the page");
       await page.locator(".row-menu .rm-item", { hasText: w.down }).click();
       assert.deepEqual(await order(), ["three", "one", "two"]);
+      await painted(page);
       assert.equal(await at(), before, "a click or drag moved the page");
 
       const b = ed.locator("button.primary", { hasText: w.save });
