@@ -11,7 +11,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 const models = [
@@ -71,9 +71,7 @@ function serve(lang, clock, posts) {
 }
 
 async function open(t, engine, lang, clock, width) {
-  const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-  t.after(() => browser.close());
-  const page = await (await browser.newContext({ viewport: { width, height: 1200 }, timezoneId: "Asia/Shanghai", reducedMotion: "reduce" })).newPage();
+  const page = await pageFor(t, engine, { viewport: { width, height: 1200 }, timezoneId: "Asia/Shanghai", reducedMotion: "reduce" });
   page.setDefaultTimeout(5000);
   const errors = [], posts = [];
   page.on("pageerror", (e) => errors.push(e.message));

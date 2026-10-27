@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(process.env.ASSETS || path.join(__dirname, "../assets"));
 const models = [
@@ -81,9 +81,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
   for (const lang of Object.keys(words)) {
     const w = words[lang];
     test(`${engine} ${lang}: a group's rules are dragged into order`, async (t) => {
-      const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-      t.after(() => browser.close());
-      const page = await (await browser.newContext({ viewport: { width: 1100, height: 1400 }, reducedMotion: "reduce" })).newPage();
+      const page = await pageFor(t, engine, { viewport: { width: 1100, height: 1400 }, reducedMotion: "reduce" });
       page.setDefaultTimeout(5000);
       const errors = [], posts = [];
       page.on("pageerror", (e) => errors.push(e.message));

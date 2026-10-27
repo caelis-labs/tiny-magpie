@@ -29,7 +29,31 @@ for path in (root/'internal/gui').glob('*_test.go'):
     if path.name in ('sessions_stats_cap_test.go', 'agent_models_codex_group_test.go'):
         continue  # shared usage statistics cache, not the removed session page
     assert not path.name.startswith(('agent_model', 'archive', 'backup', 'davsync_', 'library_', 'sessions_')), f'removed GUI test resurrected: {path.name}'
+removed_browser_tests = {
+    'codex-memories.test.cjs',
+    'codex-memories-settings.test.cjs',
+    'codex-subagent-model.test.cjs',
+    'codex-subagents-lead.test.cjs',
+    'subagent-effort.test.cjs',
+    'profile-confirm.test.cjs',
+    'profile-details.test.cjs',
+    'profile-in-use.test.cjs',
+    'panel-profiles.test.cjs',
+    'skill-install-agents-all.test.cjs',
+    'skill-install-skip.test.cjs',
+    'font-cascade.test.cjs',
+    'provider-unmasked.test.cjs',
+    'warm-at-own.test.cjs',
+    'warm-at-times.test.cjs',
+    'checkin-account.test.cjs',
+    'usage-checkin.test.cjs',
+    'vision-mcp.test.cjs',
+    'image-timeout-setting.test.cjs',
+    'images-library-way.test.cjs',
+    'privacy-model.test.cjs',
+}
 for path in (root/'internal/gui/tests').glob('*.test.cjs'):
+    assert path.name not in removed_browser_tests, f'removed product browser test resurrected: {path.name}'
     if path.name in ('agent-models-group-on.test.cjs', 'agent-models-own-served.test.cjs'):
         continue  # retained manual model visibility; no Agent management
     assert not path.name.startswith(('agents-', 'agent-connect', 'agent-disconnect', 'agent-model', 'library', 'sessions', 'session-', 'backup', 'archive', 'sync-', 'intent', 'systemone', 'warmup', 'searcher-', 'redact-')), f'removed page test resurrected: {path.name}'

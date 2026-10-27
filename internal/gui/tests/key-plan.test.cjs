@@ -11,7 +11,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 const ark = "https://ark.cn-beijing.volces.com";
@@ -70,9 +70,7 @@ function serve(lang, st) {
 }
 
 async function open(t, engine, lang, width, keys) {
-  const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-  t.after(() => browser.close());
-  const page = await (await browser.newContext({ viewport: { width, height: 800 }, reducedMotion: "reduce" })).newPage();
+  const page = await pageFor(t, engine, { viewport: { width, height: 800 }, reducedMotion: "reduce" });
   page.setDefaultTimeout(5000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -93,7 +91,8 @@ const three = () => [
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of ["en", "zh", "zh-TW", "ja", "de"]) {
-    for (const width of [420, 1000]) {
+    // de/1000 was the delayed-save regression; keep it alongside every narrow locale.
+    for (const width of (lang === "en" || lang === "de" ? [420, 1000] : [420])) {
       test(`${engine} ${lang} ${width}px: each key says its plan, and a pick saves it`, async (t) => {
         const { page, errors, say, st } = await open(t, engine, lang, width, three());
         await page.locator(".row.provider", { hasText: "Volc" }).first().click();

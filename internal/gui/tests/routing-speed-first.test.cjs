@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 const now = new Date();
@@ -55,9 +55,7 @@ function serve(lang, scene) {
 }
 
 async function open(t, engine, lang, scene, width = 1100) {
-  const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-  t.after(() => browser.close());
-  const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
+  const page = await pageFor(t, engine, { viewport: { width, height: 900 }, reducedMotion: "reduce" });
   page.setDefaultTimeout(5000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));

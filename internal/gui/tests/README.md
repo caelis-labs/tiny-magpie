@@ -1,4 +1,9 @@
-# Dropdown browser regression
+# Tiny browser regression
+
+The default gate and isolation policy are described below and in
+[`docs/test-scope.md`](../../../docs/test-scope.md). The upstream catalogue that
+follows also describes manually selectable fixtures; it does not make removed
+products part of Tiny or claim that every catalogue entry is currently runnable.
 
 `plugin-gateway.test.cjs` checks gateway-only plugin identification, the existing
 JSON options editor and aggregate diagnostics in all five languages on Chromium
@@ -16,17 +21,6 @@ before loading into the fields, masked addresses/status, clearing
 authentication, Tab and Escape, mode switches, and narrow windows in all
 five languages on Chromium and WebKit.
 ## Installed desktop fonts
-
-`fonts.test.cjs` exercises the interface/code font controls with installed
-family/style fixtures: independent traits, literal names, search and keyboard
-selection, rapid queued saves and rollback, reload, unavailable faces,
-discovery failure and refresh, empty collections, platform fallback,
-Omarchy precedence and browser-mode isolation. It checks narrow windows and
-no scroll on click in Chromium and WebKit, in English and Chinese.
-`ARTIFACT_DIR` retains screenshots; `MAGPIE_FONT_ASSETS` can point to an older
-asset directory to verify that the test fails on the missing picker.
-`font-cascade.test.cjs` checks that a reset restores the original weights
-under bold parents, while explicit component emphasis survives a choice.
 
 ```sh
 node --test internal/gui/tests/fonts.test.cjs internal/gui/tests/font-cascade.test.cjs internal/gui/tests/win-fonts.test.cjs
@@ -414,27 +408,6 @@ named "same as model" (「同主模型」), its picker opens on "Same as model" 
 the model beside it, and picked it names the model it is on. OpenCode's
 small model, which doesn't follow the model, stays a picker.
 
-`subagent-effort.test.cjs` draws Codex's subagent effort (#469) in Chromium
-and WebKit, English and Chinese: a square beside the subagents' one, not a
-third picker; unset, its label says what that means (the session's effort, or
-the subagent model's own default; 「跟随当前会话的推理强度…」), a click opens
-the effort slider without scrolling the page, Default its first stop, and a
-level picked is posted for `subagent_effort` alone and lights the square.
-Claude Code's subagents (#468) get no square until it runs through magpie
-(nothing to pick), and one that says "same as model" once it does.
-
-`codex-subagents-lead.test.cjs` draws Codex's subagents square (willz on
-Discord) in Chromium and WebKit, in English, Chinese, Traditional Chinese,
-Japanese and German, at 1100px and 560px. Codex's lead may name a model in
-spawn_agent, and that overrides `default_subagent_model`. So the unset square
-reads "the lead's pick, else same as model" (「由主代理自选，未指定时同主模型」)
-and its title says how to make every subagent use one model. This holds on
-the local row and on a WSL row. The picker opens on "Lead's pick", with the
-model and "unless the lead names another" beside it. Picking a model posts
-`subagent`, and the square still carries the hint. Clicking the first entry
-unsets it again. A click doesn't scroll the page. Claude Code's subagents
-still say "same as model".
-
 `desktop-subagent-model.test.cjs` checks Claude Desktop's gateway-applied
 subagent model in its row opened from the agent link: one square, hidden
 when unwired with no options or value, opening the app's model picker (no
@@ -695,30 +668,6 @@ where magpie knows how the CLI was installed, the rows' height kept, an
 update clicked with the view scrolled (busy, then the new version, the page
 left where it was), a failed one giving its reason and the pill back, and
 the words in Chinese. Nothing is installed.
-
-`panel-profiles.test.cjs` saves a profile in the tray panel with the list
-scrolled to its end: "＋ Save current" opens the name field beside it, the
-list not moving, field and button in sight, one focus ring; the button then
-reads Save and a click on it saves, as Enter does; an empty name keeps the
-field; Escape closes it; in English and Chinese.
-
-`profile-details.test.cjs` (#467) clicks a saved profile's chip, in the
-window and in the tray panel with its list scrolled to its end: the details
-open, applying nothing and leaving the chip where it was on the screen; they
-list each agent by name, its fields under their labels (an empty one as the
-agent's default, one that reads as a key as dots, all four of Claude Code's
-tiers, one left empty as following the main model and which that is, #480)
-and what the Library gives it; a second click closes them; their Apply applies the profile, once; ↻ and
-× stay on the chip. In Chromium and WebKit, English and Chinese:
-
-`profile-confirm.test.cjs` (#478), in the window and in the tray panel: a
-chip's ↻ and × change nothing on a first click, reading "Overwrite?" and
-"Delete?" instead, and act on a second; the question goes on Escape or when
-left alone. The details' × closes them, the chip staying where it is; Escape
-closes the details, then the panel's list, and only then hides the panel;
-the list closed with the details open opens again on the chips alone; Apply
-closes the details, the tray's list opening again on the chips, and their ×
-closes them after it (#489). In Chromium and WebKit, English and Chinese:
 
 ```sh
 node --test --test-concurrency=1 internal/gui/tests/profile-details.test.cjs internal/gui/tests/panel-profiles.test.cjs internal/gui/tests/profile-confirm.test.cjs
@@ -2006,29 +1955,28 @@ Enter) enlarging the plot and another taking it back without moving the
 page, no curve for a key of one reading, and the allowances' Off taking it
 away, in Chinese and English, light and dark.
 
-With Node.js and Playwright available, `make test-ui` manually runs the whole suite:
-every `internal/gui/tests/*.test.cjs`, discovered automatically. Files are
-independent and run a few at a time (`UI_TEST_CONCURRENCY`, default 2); set
-`UI_TEST_CONCURRENCY=1` to run one at a time when diagnosing a flaky file.
+## Tiny's default gate
 
-```sh
-make test-ui
-```
+`make test-ui` and `npm run test:ui` run the same 12 explicitly retained suites
+listed in `package.json`, with two files at a time. Do not run a directory glob:
+the remaining upstream catalogue is not a declaration of Tiny product scope.
+For a single-file investigation use `node --test path/to/file.test.cjs`.
 
-If Playwright is installed outside the repository, set `NODE_PATH` to the
-directory containing its package. The suite uses Playwright's Chromium and
-WebKit binaries (`playwright install chromium webkit`). No frontend dependency
-is needed by the app itself. Tested with Playwright 1.62.1.
+Install the pinned dependency with `npm ci`, then
+`npx playwright install --only-shell chromium webkit`. When dependencies live
+outside this checkout, set `NODE_PATH` to their `node_modules` directory.
+The app itself needs no frontend runtime dependency.
 
-For the callback test, `PLAYWRIGHT_CHANNEL=chrome` uses an installed Chrome
-instead of Playwright's Chromium.
+Each retained file shares at most one Chromium headless shell and one WebKit
+process. Each case gets a new browser context; cookies, storage, routes and
+pages never carry across cases, and cleanup runs even when a case fails.
+Every locale exercises narrow layout; English also covers wide layout and
+the native minimum width. Distinct state, theme and motion regressions remain.
 
-Set `BROWSER=chromium` or `BROWSER=webkit` for one engine. Set `ARTIFACT_DIR` to
-an external directory to retain screenshots and Playwright traces, including
-failed assertions. These browser checks run through `make test-ui`, separately
-from `make test` (which is Go only) and from the UI preview workflow (which
-only records screenshots).
-The Test workflow does not run this suite.
+Set `ARTIFACT_DIR` to an external directory for failure evidence. The previous
+Chromium zh-TW 390px rule-editor failure retains a Playwright trace on failure.
+Successful screenshots with no image assertion are not collected. The Test
+workflow runs this gate separately from Go and upstream protocol comparisons.
 
 `usage-stale-answer.test.cjs` and `providers-fetching-retry.test.cjs` use Node's
 VM and need no browser. Set `MAGPIE_APP_JS` to another revision's `app.js` to

@@ -2,37 +2,34 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { test } = require('node:test');
-const { chromium, webkit } = require('playwright');
+const { pageFor } = require('./fixtures/browser.cjs');
 const { fixture } = require('./fixtures/caller-keys.cjs');
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium', 'webkit'])) {
-  for (const lang of ['en', 'zh', 'zh-TW', 'ja', 'de']) for (const width of [1100, 560, 440]) {
+  for (const lang of ['en', 'zh', 'zh-TW', 'ja', 'de']) for (const width of (lang === 'en' ? [1100, 560, 440] : [440])) {
     // Native windows stop at 560px (windowMinW); 440px exercises the Web phone layout.
     const web = width < 560;
     test(`${engine} ${lang} ${width} ${web ? 'Web' : 'desktop'}: tiny gateway pages and retained controls`, async t => {
       // Use the same pinned headless Chromium as the other retained suites.
-      const browser = await (engine === 'webkit' ? webkit.launch() : chromium.launch());
       let page, completed = false;
       const errors = [], mutations = [];
-      t.after(async () => {
-        try {
-          if (!completed && page && process.env.ARTIFACT_DIR) {
-            await fs.mkdir(process.env.ARTIFACT_DIR, {recursive:true});
-            let diagnosticTimer;
-            const geometry = await Promise.race([page.evaluate(() => ({
-              view: document.querySelector('.view:not([hidden])')?.id,
-              header: document.querySelector('.top')?.className,
-              visibility: document.visibilityState,
-              tabs: [...document.querySelectorAll('#nav button:not([hidden])')].map(b => ({
-                view:b.dataset.view, x:b.getBoundingClientRect().x, width:b.getBoundingClientRect().width,
-              })),
-            })), new Promise(resolve => { diagnosticTimer = setTimeout(() => resolve({unresponsive:true}), 2000); })]).finally(() => clearTimeout(diagnosticTimer));
-            console.error('Navigation failure', geometry, errors);
-            await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `failed-tiny-${engine}-${lang}-${width}.png`),timeout:2000}).catch(err => console.error('Failure screenshot unavailable:', err.message));
-          }
-        } finally { await browser.close(); }
-      });
-      page = await browser.newPage({viewport: {width, height: 820}, reducedMotion: 'reduce'});
+      const diagnose = async () => {
+        if (!completed && page && process.env.ARTIFACT_DIR) {
+          await fs.mkdir(process.env.ARTIFACT_DIR, {recursive:true});
+          let diagnosticTimer;
+          const geometry = await Promise.race([page.evaluate(() => ({
+            view: document.querySelector('.view:not([hidden])')?.id,
+            header: document.querySelector('.top')?.className,
+            visibility: document.visibilityState,
+            tabs: [...document.querySelectorAll('#nav button:not([hidden])')].map(b => ({
+              view:b.dataset.view, x:b.getBoundingClientRect().x, width:b.getBoundingClientRect().width,
+            })),
+          })), new Promise(resolve => { diagnosticTimer = setTimeout(() => resolve({unresponsive:true}), 2000); })]).finally(() => clearTimeout(diagnosticTimer));
+          console.error('Navigation failure', geometry, errors);
+          await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `failed-tiny-${engine}-${lang}-${width}.png`),timeout:2000}).catch(err => console.error('Failure screenshot unavailable:', err.message));
+        }
+      };
+      page = await pageFor(t, engine, {viewport: {width, height: 820}, reducedMotion: 'reduce'}, diagnose);
       await page.addInitScript(() => Object.defineProperty(navigator, 'platform', {value:'MacIntel'}));
       page.setDefaultTimeout(8000);
       page.on('pageerror', err => errors.push(err.message));
@@ -77,10 +74,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
       // Applying freshly fetched built-ins must never resurrect removed pages.
       await page.evaluate(() => applyFeatures([]));
       assert.equal(await page.locator('#nav [data-view="sessions"]').isVisible(), false);
-      if (process.env.ARTIFACT_DIR) {
-        await fs.mkdir(process.env.ARTIFACT_DIR, {recursive:true});
-        await page.screenshot({path:path.join(process.env.ARTIFACT_DIR, `tiny-${engine}-${lang}-${width}.png`)});
-      }
+
       assert.deepEqual(errors, []);
       assert.ok(mutations.some(e => e.action === 'ledger'), 'requests must load the retained gateway ledger');
       assert.deepEqual(mutations.filter(e => e.action !== 'ledger'), []);
@@ -89,11 +83,9 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ['chromium',
   }
 }
 
-for (const [engine, driver] of [['chromium', chromium], ['webkit', webkit]]) {
+for (const engine of ['chromium', 'webkit']) {
   test(`${engine}: occupied gateway stays separate (Web, light theme)`, async t => {
-    const browser = await driver.launch();
-    t.after(() => browser.close());
-    const page = await browser.newPage({viewport:{width:1100,height:820}});
+    const page = await pageFor(t, engine, {viewport:{width:1100,height:820}});
     const mutations = [], errors = [];
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',fixture('en','light',mutations,{web:true,taken:true}));

@@ -9,7 +9,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 const codex = ["gpt-6.1-sol", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2", "gpt-5.2-codex", "gpt-5.1", "gpt-5.1-codex", "gpt-5"];
@@ -59,36 +59,31 @@ function fixture(lang, groupOn) {
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of ["en", "zh"]) {
     for (const groupOn of [false, true]) {
-      test(`${engine} ${lang}: Codex's 10 stay open with a routing group ${groupOn ? "on" : "off"}`, async () => {
-        const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-        try {
-          const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
-          page.setDefaultTimeout(5000);
-          const errors = [];
-          page.on("pageerror", (e) => errors.push(e.message));
-          await page.route("**/*", fixture(lang, groupOn));
-          await page.goto("http://magpie.test/?view=agents");
-          const row = page.locator('.row.agent[data-id="codex"]');
-          await row.locator(".ag-link").click();
-          const entry = row.locator(".ag-exp .ag-chips .ag-quiet");
-          await entry.waitFor();
-          await page.waitForFunction(() => document.getAnimations().length === 0);
-          await entry.click();
-          const pop = page.locator(".am-pop:not(.leaving)");
-          await pop.waitFor();
-          const names = await pop.locator(".am-fold .gn").allInnerTexts();
-          assert.deepEqual(names, groupOn ? [lang === "zh" ? "路由组" : "Routing groups", "Codex"] : ["Codex"]);
-          const sec = pop.locator(".am-g").last();
-          assert.equal(await sec.locator(".am-mr").count(), 10, "every Codex model is on the screen");
-          assert.equal(await sec.locator(".am-fold").getAttribute("aria-expanded"), "true");
-          if (groupOn) {
-            // and the group itself is there to pick
-            assert.equal(await pop.locator(".am-g").first().locator(".am-mr", { hasText: "MyGPT" }).count(), 1);
-          }
-          assert.deepEqual(errors, []);
-        } finally {
-          await browser.close();
+      test(`${engine} ${lang}: Codex's 10 stay open with a routing group ${groupOn ? "on" : "off"}`, async (t) => {
+        const page = await pageFor(t, engine, { viewport: { width: 1000, height: 700 } });
+        page.setDefaultTimeout(5000);
+        const errors = [];
+        page.on("pageerror", (e) => errors.push(e.message));
+        await page.route("**/*", fixture(lang, groupOn));
+        await page.goto("http://magpie.test/?view=agents");
+        const row = page.locator('.row.agent[data-id="codex"]');
+        await row.locator(".ag-link").click();
+        const entry = row.locator(".ag-exp .ag-chips .ag-quiet");
+        await entry.waitFor();
+        await page.waitForFunction(() => document.getAnimations().length === 0);
+        await entry.click();
+        const pop = page.locator(".am-pop:not(.leaving)");
+        await pop.waitFor();
+        const names = await pop.locator(".am-fold .gn").allInnerTexts();
+        assert.deepEqual(names, groupOn ? [lang === "zh" ? "路由组" : "Routing groups", "Codex"] : ["Codex"]);
+        const sec = pop.locator(".am-g").last();
+        assert.equal(await sec.locator(".am-mr").count(), 10, "every Codex model is on the screen");
+        assert.equal(await sec.locator(".am-fold").getAttribute("aria-expanded"), "true");
+        if (groupOn) {
+          // and the group itself is there to pick
+          assert.equal(await pop.locator(".am-g").first().locator(".am-mr", { hasText: "MyGPT" }).count(), 1);
         }
+        assert.deepEqual(errors, []);
       });
     }
   }

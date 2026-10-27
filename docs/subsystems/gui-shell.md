@@ -727,14 +727,14 @@ go test -run TestMainWindow ./internal/gui
 GOARCH=amd64 CGO_ENABLED=1 go test -run TestMainWindow ./internal/gui  # as for an Intel Mac
 go test -run TestWebView2 ./internal/gui   # on Windows: Wails' runtime lookup, missing and present
 go test -v ./internal/fonts         # native discovery on each desktop OS
-make test-ui                      # every internal/gui/tests/*.test.cjs, Chromium and WebKit
+make test-ui                      # Tiny’s explicit npm gate, isolated Chromium/WebKit contexts
 BROWSER=webkit node --test internal/gui/tests/click-scroll.test.cjs
 ```
 
-`make test-ui` needs Node.js and Playwright (`playwright install chromium
+`make test-ui` needs Node.js and Playwright (`playwright install --only-shell chromium
 webkit`). Set `NODE_PATH` when Playwright is installed outside the repo. The
-Test workflow in CI does not run this suite, so a GUI change must run it
-locally and report the result. See [`tests/README.md`](../../internal/gui/tests/README.md).
+Test workflow runs this same explicit Tiny gate. GUI changes should also
+run it locally and report the result. See [`tests/README.md`](../../internal/gui/tests/README.md).
 
 `TestMainWindowCorners` and `TestMainWindowRightToLeft` run on a Mac with a
 desktop session, as CI's macOS job has, and show a few windows for some

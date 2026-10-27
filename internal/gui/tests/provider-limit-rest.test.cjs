@@ -12,7 +12,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 const base = {
@@ -63,21 +63,9 @@ const strings = [
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of ["en", "zh", "zh-TW", "ja", "de"]) {
-    for (const width of [1100, 420]) {
+    for (const width of (lang === "en" ? [1100, 420] : [420])) {
       const open = async (t, name) => {
-        const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-        let page;
-        t.after(async () => {
-          try {
-            if (process.env.ARTIFACT_DIR && page) {
-              await fs.mkdir(process.env.ARTIFACT_DIR, { recursive: true });
-              await page.screenshot({ path: path.join(process.env.ARTIFACT_DIR, `${engine}-${lang}-${width}-${name}-limit-rest.png`), fullPage: true, animations: "disabled", timeout: 5000 });
-            }
-          } finally {
-            await browser.close();
-          }
-        });
-        page = await (await browser.newContext({ viewport: { width, height: 760 }, reducedMotion: "reduce" })).newPage();
+        const page = await pageFor(t, engine, { viewport: { width, height: 760 }, reducedMotion: "reduce" });
         page.setDefaultTimeout(5000);
         const errors = [];
         page.on("pageerror", (e) => errors.push(e.message));

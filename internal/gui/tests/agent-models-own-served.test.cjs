@@ -11,7 +11,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(__dirname, "../assets");
 
@@ -81,21 +81,10 @@ const row = '.row.agent[data-id="codex"]';
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of Object.keys(W)) {
+    // Keep zh/1100 too: an earlier CI actionability failure occurred there.
     for (const width of [420, 1100]) {
       test(`${engine} ${lang} ${width}: Codex's served models stay with its own switched off`, async (t) => {
-        const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-        let page;
-        t.after(async () => {
-          try {
-            if (process.env.ARTIFACT_DIR && page) {
-              await fs.mkdir(process.env.ARTIFACT_DIR, { recursive: true });
-              await page.screenshot({ path: path.join(process.env.ARTIFACT_DIR, `${engine}-${lang}-${width}-own-served.png`), animations: "disabled", timeout: 5000 });
-            }
-          } finally {
-            await browser.close();
-          }
-        });
-        page = await browser.newPage({ viewport: { width, height: 760 }, reducedMotion: "reduce" });
+        const page = await pageFor(t, engine, { viewport: { width, height: 760 }, reducedMotion: "reduce" });
         page.setDefaultTimeout(5000);
         const errors = [];
         page.on("pageerror", (e) => errors.push(e.message));

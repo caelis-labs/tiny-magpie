@@ -13,7 +13,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
-const { chromium, webkit } = require("playwright");
+const { pageFor } = require('./fixtures/browser.cjs');
 
 const assets = path.resolve(process.env.ASSETS || path.join(__dirname, "../assets"));
 const models = [
@@ -113,68 +113,83 @@ const saves = (posts) => posts.filter((p) => p.path === "/api/groups/save");
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of Object.keys(words)) {
     const w = words[lang];
+    // Keep this complete matrix: several locales/widths failed during the sync.
     for (const width of [1100, 390]) {
       test(`${engine} ${lang} ${width}: a rule names several models`, async (t) => {
-        const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-        t.after(() => browser.close());
-        const page = await (await browser.newContext({ viewport: { width, height: 1400 }, reducedMotion: "reduce" })).newPage();
+        const page = await pageFor(t, engine, { viewport: { width, height: 1400 }, reducedMotion: "reduce" });
         page.setDefaultTimeout(5000);
-        const errors = [], posts = [];
-        page.on("pageerror", (e) => errors.push(e.message));
-        await page.route("**/*", serve(lang, posts));
-        await page.goto("http://magpie.test/?view=routing");
-        const group = page.locator(".rt-group").first();
-        await group.waitFor();
+        const context = page.context();
+        const trace = process.env.ARTIFACT_DIR && engine === "chromium" && lang === "zh-TW" && width === 390;
+        if (trace) await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+        let completed = false;
+        try {
+          const errors = [], posts = [];
+          page.on("pageerror", (e) => errors.push(e.message));
+          await page.route("**/*", serve(lang, posts));
+          await page.goto("http://magpie.test/?view=routing");
+          await page.evaluate(() => document.fonts.ready);
+          const group = page.locator(".rt-group").first();
+          await group.waitFor();
 
-        // the trace: the rule's next went first
-        await page.waitForFunction((s) => document.documentElement.innerText.includes(s), w.why);
+          // the trace: the rule's next went first
+          await page.waitForFunction((s) => document.documentElement.innerText.includes(s), w.why);
 
-        await press(page, group.locator("button", { hasText: w.edit }));
-        const ed = page.locator(".rt-gedit");
-        await press(page, ed.locator(".tiny-group-advanced > summary"));
-        await page.waitForFunction(() => document.getAnimations().length === 0);
-        const row = ed.locator(".rt-rule").first();
-        await row.waitFor();
-        assert.deepEqual(await chips(row), ["flash", "mini"]);
-        assert.equal(await page.locator("select").count(), 0, "the app menu, not a native select");
+          await press(page, group.locator("button", { hasText: w.edit }));
+          const ed = page.locator(".rt-gedit");
+          // Measure and click after the editor entrance has finished, not after
+          // opening Advanced. The drag suite separately exercises moving controls.
+          await page.waitForFunction(() => document.getAnimations().length === 0);
+          await press(page, ed.locator(".tiny-group-advanced > summary"));
+          await page.waitForFunction(() => document.getAnimations().length === 0);
+          const row = ed.locator(".rt-rule").first();
+          await row.waitFor();
+          assert.deepEqual(await chips(row), ["flash", "mini"]);
+          assert.equal(await page.locator("select").count(), 0, "the app menu, not a native select");
 
-        // the × takes one out; the last has none
-        const flash = row.locator(".rt-c", { has: page.locator(".rt-model", { hasText: "flash" }) });
-        await scrollTo(page, flash);
-        await flash.hover();
-        await press(page, row.locator(`.rt-cx[title="${w.rm}"]`));
-        assert.deepEqual(await chips(row), ["mini"]);
-        assert.equal(await row.locator(".rt-then .rt-cx").count(), 0, "a rule's one model can't be taken out");
+          // the × takes one out; the last has none
+          const flash = row.locator(".rt-c", { has: page.locator(".rt-model", { hasText: "flash" }) });
+          await scrollTo(page, flash);
+          await flash.hover();
+          await press(page, row.locator(`.rt-cx[title="${w.rm}"]`));
+          assert.deepEqual(await chips(row), ["mini"]);
+          assert.equal(await row.locator(".rt-then .rt-cx").count(), 0, "a rule's one model can't be taken out");
 
-        // the + adds the next, from those it doesn't name
-        const add = row.locator(".rt-adduse");
-        assert.equal(await add.getAttribute("title"), w.add);
-        await press(page, add);
-        assert.equal(await page.locator("#list li").count(), 2);
-        await pick(page, "flash");
-        assert.deepEqual(await chips(row), ["mini", "flash"]);
-        await press(page, row.locator(".rt-adduse"));
-        await pick(page, "opus");
-        assert.deepEqual(await chips(row), ["mini", "flash", "opus"]);
-        assert.equal(await row.locator(".rt-adduse").count(), 0, "no + once it names every model");
+          // the + adds the next, from those it doesn't name
+          const add = row.locator(".rt-adduse");
+          assert.equal(await add.getAttribute("title"), w.add);
+          await press(page, add);
+          assert.equal(await page.locator("#list li").count(), 2);
+          await pick(page, "flash");
+          assert.deepEqual(await chips(row), ["mini", "flash"]);
+          await press(page, row.locator(".rt-adduse"));
+          await pick(page, "opus");
+          assert.deepEqual(await chips(row), ["mini", "flash", "opus"]);
+          assert.equal(await row.locator(".rt-adduse").count(), 0, "no + once it names every model");
 
-        // a chip picks another in its place, none named twice
-        await press(page, row.locator(".rt-model").first());
-        assert.equal(await page.locator("#list li").count(), 1);
-        await pick(page, "mini");
-        // nothing past the editor's side, nor a sideways scroll
-        const over = await page.evaluate(() => {
-          const e = document.querySelector(".rt-gedit").getBoundingClientRect();
-          return [...document.querySelectorAll(".rt-rule, .rt-rule *")].filter((x) => x.offsetParent && x.getBoundingClientRect().right > e.right + 1).map((x) => x.className || x.tagName);
-        });
-        assert.deepEqual(over, []);
-        assert(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no sideways scroll");
+          // a chip picks another in its place, none named twice
+          await press(page, row.locator(".rt-model").first());
+          assert.equal(await page.locator("#list li").count(), 1);
+          await pick(page, "mini");
+          // nothing past the editor's side, nor a sideways scroll
+          const over = await page.evaluate(() => {
+            const e = document.querySelector(".rt-gedit").getBoundingClientRect();
+            return [...document.querySelectorAll(".rt-rule, .rt-rule *")].filter((x) => x.offsetParent && x.getBoundingClientRect().right > e.right + 1).map((x) => x.className || x.tagName);
+          });
+          assert.deepEqual(over, []);
+          assert(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no sideways scroll");
 
-        await press(page, ed.locator("button.primary", { hasText: w.save }));
-        await page.waitForFunction(() => !document.querySelector(".rt-gedit"));
-        const saved = saves(posts).at(-1).body.rules[0];
-        assert.deepEqual([saved.use, saved.more], ["c/mini", ["b/flash", "a/opus"]]);
-        assert.deepEqual(errors, []);
+          await press(page, ed.locator("button.primary", { hasText: w.save }));
+          await page.waitForFunction(() => !document.querySelector(".rt-gedit"));
+          const saved = saves(posts).at(-1).body.rules[0];
+          assert.deepEqual([saved.use, saved.more], ["c/mini", ["b/flash", "a/opus"]]);
+          assert.deepEqual(errors, []);
+          completed = true;
+        } finally {
+          if (trace) {
+            await fs.mkdir(process.env.ARTIFACT_DIR, { recursive: true });
+            await context.tracing.stop({ path: completed ? undefined : path.join(process.env.ARTIFACT_DIR, "routing-rule-models-chromium-zh-TW-390.zip") });
+          }
+        }
       });
     }
   }

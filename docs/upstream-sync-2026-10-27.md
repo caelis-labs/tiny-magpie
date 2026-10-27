@@ -69,7 +69,7 @@ Local validation completed. Executed tests use temporary HOME/config/cache roots
 - Scope gate: passed after removing reintroduced endpoints/assets/tests.
 - Complete retained test compilation: passed.
 - Binary differential against the exact source SHA: passed discovery, 67 bidirectional HTTP/SSE comparisons, removed endpoints and no-Agent-config-write checks.
-- Browser gate: 84 Tiny core cases plus 182 retained feature cases (266 total) now run by default. Local core/feature checks and focused reruns cover editor opening, model visibility, key plans, rate-limit policy, ordered/dragged rules, speed-first routing and time zones. See the PR's current-head protocol/UI check for the complete combined gate.
+- Initial browser gate: 84 Tiny core cases plus 182 retained feature cases (266 total); the follow-up below reduces the default gate. Local core/feature checks and focused reruns cover editor opening, model visibility, key plans, rate-limit policy, ordered/dragged rules, speed-first routing and time zones. See the PR's current-head protocol/UI check for the complete combined gate.
 - `go vet -tags nogui ./...`, native macOS arm64 production build (Makefile-equivalent macOS 12 deployment target) and nogui build: passed. Native enum/linker warnings remain; this is not minimum-macOS runtime acceptance.
 - Final binary differential repeated after integration corrections: all 67 comparisons and boundary checks passed.
 - Complete retained Go suite: `go test -tags nogui -timeout 20m ./...` passed; gateway 508.392 seconds, provider 157.422 seconds. Earlier runs exposed the documented corrections; a default 10-minute run exhausted the gateway package budget while still advancing through tests.
@@ -97,3 +97,48 @@ The first full local pass of the forced-press regression passed 263/266 and caug
 The next combined run passed 264/266 and exposed the release phase in Chromium. Instrumentation captured `:active=false` with a 0.9 scale and a running transform transition; after release the same anchor requested a -1.3px correction. A deliberately extended release transition reproduces it deterministically. The shared rest predicate now checks geometric animations on ancestors as well as pressed transforms, at both capture and hold, and the regression explicitly exercises that release phase.
 
 After the release-phase correction, the complete local Node 22 browser gate passed **266/266**, with two workers and screenshots (202.3 seconds). The forced release probe also changed from failure to pass. Current remote validation is tracked in PR #17; earlier-head successes are not substituted for it.
+
+
+## Resumed CI and test-cost follow-up
+
+The paused head `671bea6c` passed five checks but failed its browser gate
+265/266: Chromium zh-TW 390px timed out clicking Advanced. That exact scenario
+remains in the gate. Its fixture now waits for fonts and the editor's entrance
+before measuring/clicking; on failure it saves a trace. The feature fixtures
+also use the same pinned Chromium headless shell as Tiny core, instead of a
+second Chromium headless mode. Historical full-Chromium actionability stalls
+remain unexplained; later success is not evidence of their root cause.
+
+The test-cost changes are limited to the harness and removed product fixtures:
+
+- The 811-file `make test-ui` wildcard was inconsistent with CI. It now invokes
+  the same 12 explicitly retained npm suites.
+- The browser gate has 204 cases (52 core, 152 features), down from 266 by
+  removing repeated wide-window locale combinations. Every locale still runs
+  narrow; English additionally covers wide and the native minimum width.
+  Engines, themes, distinct behaviors and forced motion regressions remain.
+  Complete own-served/rule-editor matrices and the de/1000 key-plan case stay,
+  giving twelve extra engine cases beyond the first reduced local run.
+- Each file reuses at most two browser processes, with a fresh isolated
+  context per case: at most 24 launches instead of 266. Successful screenshots
+  without image assertions are no longer written, and CI installs only the
+  Chromium headless shell plus WebKit.
+- Twenty-one suites testing excluded products are deleted, with a resurrection
+  guard. Their removal affects the tree and accidental wildcard runs, not the
+  old npm CI gate. See `docs/test-scope.md` for the scope decisions.
+- Retained Go and upstream differential protocol gates are unchanged.
+
+The first complete reduced local run passed 192/192 in 100.4 seconds (core
+23.1, features 77.3), compared with the earlier 202.3-second 266-case local
+run. These are observations on this machine, not a promised CI speedup.
+The separate routing/model/drag run passed 22/22.
+
+An isolation/error-injection probe then found that Node skips subsequent
+`after` hooks when a diagnostic hook throws. A single hook now wraps artifact
+diagnostics and context closure in `try/finally`. The probe checks process
+reuse, empty cookies/storage, independent routing and cleanup after both an
+assertion error and an artifact error. Before the correction it had two
+unexpected cleanup failures; afterward its six checks pass and only the two
+intentional injected failures remain. The complete 192-case gate passed again after this correction in 102.1
+seconds (22.2 core, 79.9 features). The expanded historical-failure matrices
+passed all 44 cases in 51.6 seconds; current remote results are recorded in PR #17.
