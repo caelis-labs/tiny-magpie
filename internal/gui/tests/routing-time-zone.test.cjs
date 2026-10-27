@@ -73,12 +73,13 @@ function serve(lang, clock, posts) {
 async function open(t, engine, lang, clock, width) {
   const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
   t.after(() => browser.close());
-  const page = await (await browser.newContext({ viewport: { width, height: 1200 }, timezoneId: "Asia/Shanghai" })).newPage();
+  const page = await (await browser.newContext({ viewport: { width, height: 1200 }, timezoneId: "Asia/Shanghai", reducedMotion: "reduce" })).newPage();
   page.setDefaultTimeout(5000);
   const errors = [], posts = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/*", serve(lang, clock, posts));
   await page.goto("http://magpie.test/?view=routing");
+  await page.evaluate(() => document.fonts.ready);
   const group = page.locator(".rt-group").first();
   await group.waitFor();
   const titles = () => group.evaluate((g) => [...g.querySelectorAll("[title]")].map((e) => e.title).join("\n"));
