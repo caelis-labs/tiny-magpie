@@ -177,3 +177,12 @@ contract fixtures are not mistaken for removed content masking/background jobs.
 No retained Go protocol, plugin, credentials, streaming, cancellation or
 concurrency coverage is removed. The complete Linux/macOS Go gates and the
 67-case upstream differential gate stay in place.
+
+
+The 0.3.2 release validation exposed a wall-clock phase dependency in
+`TestUsageReadAfterAppendHashesNothingOnAFineClock`: truncating change time to
+whole seconds while adding 150ms to wall time could make the stamp more than
+one second old. A controlled 1.1-second stamp age reproduced the CI failure.
+The fixture now anchors the read clock 150ms after the observed change stamp,
+so fine/coarse settlement branches and their original hash-count assertions
+are deterministic. Production cache code and settling thresholds are unchanged.
