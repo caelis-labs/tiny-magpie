@@ -88,8 +88,10 @@ func Forget() {
 	mu.Lock()
 	gen++
 	gens.Store(gen)
-	close(written)
-	written = make(chan struct{})
+	if written != nil {
+		close(written)
+		written = nil
+	}
 	mu.Unlock()
 }
 
@@ -98,13 +100,16 @@ func Forget() {
 // disk tells.
 func wake() {
 	mu.Lock()
-	close(written)
-	written = make(chan struct{})
+	if written != nil {
+		close(written)
+		written = nil
+	}
 	mu.Unlock()
 }
 
-// written is closed, and made anew, by every Forget.
-var written = make(chan struct{})
+// written exists only while a consumer has subscribed. A write clears it;
+// the next subscriber owns creation of the next notification generation.
+var written chan struct{}
 
 // Written is closed by the next write magpie makes (Forget), or by
 // another process's that Watch is told of: a loop that follows magpie's
@@ -115,6 +120,9 @@ var written = make(chan struct{})
 func Written() <-chan struct{} {
 	mu.Lock()
 	defer mu.Unlock()
+	if written == nil {
+		written = make(chan struct{})
+	}
 	return written
 }
 
