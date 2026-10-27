@@ -68,11 +68,14 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
         let page;
         t.after(async () => {
-          if (process.env.ARTIFACT_DIR && page) {
-            await fs.mkdir(process.env.ARTIFACT_DIR, { recursive: true });
-            await page.screenshot({ path: path.join(process.env.ARTIFACT_DIR, `${engine}-${lang}-${width}-${name}-limit-rest.png`), fullPage: true });
+          try {
+            if (process.env.ARTIFACT_DIR && page) {
+              await fs.mkdir(process.env.ARTIFACT_DIR, { recursive: true });
+              await page.screenshot({ path: path.join(process.env.ARTIFACT_DIR, `${engine}-${lang}-${width}-${name}-limit-rest.png`), fullPage: true, animations: "disabled", timeout: 5000 });
+            }
+          } finally {
+            await browser.close();
           }
-          await browser.close();
         });
         page = await (await browser.newContext({ viewport: { width, height: 760 }, reducedMotion: "reduce" })).newPage();
         page.setDefaultTimeout(5000);

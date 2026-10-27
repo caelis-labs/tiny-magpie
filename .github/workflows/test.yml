@@ -121,6 +121,7 @@ jobs:
           fi
   protocols-and-ui:
     runs-on: macos-latest
+    timeout-minutes: 20
     env:
       GOWORK: off
     steps:
