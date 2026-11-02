@@ -14,6 +14,8 @@ three.
 The header bird is 18x18 CSS pixels in both the main window and tray panel,
 with explicit SVG dimensions, a fixed CSS box and currentColor. Browser tests
 check rendered bounds, zoom, themes and the actual macOS header context.
+The `tiny-magpie` wordmark stays on one line; the sidebar's existing fit
+logic hides the whole name when it does not fit, keeping the bird.
 
 Tiny renders only core appearance/startup/update settings plus gateway network
 configuration. Account discovery and disabled-model controls live on Providers.
