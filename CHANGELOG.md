@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.3...tiny-v0.3.4) (2026-11-02)
+
+
+### Bug Fixes
+
+* keep Tiny wordmark on one line ([337e3a4](https://github.com/caelis-labs/tiny-magpie/commit/337e3a48726152d65d3f5ffc34fd1e298bb00dc6))
+* keep Tiny wordmark on one line and define release completion ([c13b9b4](https://github.com/caelis-labs/tiny-magpie/commit/c13b9b465c5014cf05dfb0ec4f01485bdd0b84d5))
+
 ## [0.3.3](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.2...tiny-v0.3.3) (2026-11-02)
 
 ### Fixes
