@@ -5,6 +5,13 @@ if [[ $# != 1 || ! "$1" =~ ^[0-9a-f]{40}$ ]]; then echo "usage: $0 <full-upstrea
 if [[ -n "$(git status --porcelain)" ]]; then echo 'Commit or stash changes before integrating upstream.' >&2; exit 1; fi
 git fetch upstream main
 git merge-base --is-ancestor "$1" upstream/main
-git merge --no-commit --no-ff "$1"
+merge_status=0
+git merge --no-commit --no-ff "$1" || merge_status=$?
+rm -rf -- site
+python3 scripts/prune-upstream-tests.py --apply
+if [[ "$merge_status" != 0 ]]; then
+  echo "Resolve source conflicts against docs/tiny-scope.md; inherited tests have been removed."
+  exit "$merge_status"
+fi
 python3 scripts/check-scope.py
 printf '%s\n' 'Review the merge against docs/tiny-scope.md; run compatibility checks before updating UPSTREAM.json and committing.'

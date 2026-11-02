@@ -54,6 +54,7 @@ app: build
 	@cp tiny-magpie tiny-magpie.app/Contents/MacOS/tiny-magpie
 	@cp build/darwin/magpie.icns tiny-magpie.app/Contents/Resources/magpie.icns
 	@cp build/darwin/Assets.car tiny-magpie.app/Contents/Resources/Assets.car
+	@cp THIRD_PARTY_NOTICES tiny-magpie.app/Contents/Resources/THIRD_PARTY_NOTICES
 	@sed 's/@VERSION@/$(VERSION)/' build/darwin/Info.plist > tiny-magpie.app/Contents/Info.plist
 	@echo "  tiny-magpie.app"
 
@@ -61,7 +62,12 @@ icons:
 	@for s in 16 32 48 64 128 256; do go run build/icon/gen.go app $$s build/windows/icon-$$s.png; done
 	@go run build/icon/gen.go tray internal/gui/tray.png
 	@go run build/icon/gen.go tray-flap internal/gui/trayflap
-	@go run build/icon/gen.go app 64 internal/gui/icon.png
+	@# Windows draws an app's icon to the edges of its square: the exe's
+	@# icon group (build/windows/winres.json) and the tray's .ico
+	@for s in 16 20 24 32 40 48 64 128 256; do \
+		go run build/icon/gen.go win $$s build/windows/icon-$$s.png; \
+	done
+	@go run build/icon/gen.go win-ico internal/gui/icon-windows.ico
 	@go run build/icon/gen.go app 1024 internal/gui/icon-1024.png
 	@go run build/icon/gen.go app 256 internal/gui/icon-256.png
 	@go run build/icon/gen.go app 180 internal/gui/assets/icons/apple-touch-icon.png

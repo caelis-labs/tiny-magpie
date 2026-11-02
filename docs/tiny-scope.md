@@ -4,18 +4,18 @@ This file is the product contract. Subsystem references elsewhere in this tree r
 
 ## Kept
 
-- Model discovery and detail, Chat Completions, Responses HTTP/SSE, Anthropic Messages/count_tokens, Gemini generate/stream/count, Embeddings, Rerank, direct System One classification calls (TypeSafe/Jev and compatible Providers), and model-related Codex compatibility routes. Existing Magpie IDs, headers, authentication, aliases, error shapes and conversion rules remain upstream's. Upstream's 426 WebSocket-to-HTTP fallback is retained; this is not a new WebSocket implementation.
+- Model discovery and detail, Chat Completions, Responses HTTP/SSE/WebSocket, Anthropic Messages/count_tokens, Gemini generate/stream/count, Embeddings, Rerank, direct System One classification calls (TypeSafe/Jev and compatible Providers), and model-related Codex compatibility routes. Existing Magpie IDs, headers, authentication, aliases, error shapes and conversion rules remain upstream's. Upstream's Responses WebSocket transport and HTTP fallback are retained with Tiny's authentication and product cuts.
 - All existing API-key/custom/local Providers, built-in subscriptions and community Provider plugins, including their authentication, refresh and quota logic. Claude's real CLI and its private MCP callback are necessary subscription internals.
 - Conventional groups (nested groups included), original scheduling, affinity, keys/accounts, quota/cost accounting, budgets, fallback, cancellation and concurrency. No classifier or intent inference is performed. Imported intent groups fail explicitly until their classifier/intent settings are removed.
 - Provider auth/model/fetch plugins, gateway middleware, asynchronous hooks, routing strategies and usage callbacks. Bun, moejs and upstream manifest/wire formats stay intact. Pure tool/page/agent extensions are unsupported; mixed packages retain their gateway facets.
 - Core built-ins (budget, gateway, groups, middleware, rotation, routing, usage) are fixed on; upstream runtime, schemas and community-plugin controls are retained. There is no Built-in switchboard in the GUI.
-- Three-platform desktop/tray and Web GUI. Providers is the default page; Agents, Gateway, Routing, Plugins, Usage (quotas, token/cost accounting, output tok/s, TTFT and errors) and Settings remain. Existing visual style, translations, accessibility and keyboard conventions are reused.
+- Three-platform desktop/tray and Web GUI. Optional global shortcut for the tray panel defaults to unbound. Desktop browser access defaults off and reuses upstream run-key/network guards. Providers is the default page; Agents, Gateway, Routing, Plugins, Usage (quotas, token/cost accounting, output tok/s, TTFT and errors) and Settings remain. Existing visual style, translations, accessibility and keyboard conventions are reused.
 
 - Agent detection, gateway connection/disconnection with upstream configuration restoration, manual model and reasoning picks, Claude tier models, and per-Agent model visibility/order. These reuse upstream writers and pickers. Sign-in/account management, memories, subagent orchestration and Agent-specific optimization settings are not exposed. Catalog changes use upstream synchronization only for actively wired Agents this Tiny profile explicitly configured. Compatible Magpie ids alone never authorize automatic takeover.
 
 ## Removed from the product
 
-Agent installation/updates/Profiles and automatic account switching in other apps; TUI; Library; session browsing/resume and Agent-log ingestion; full conversation recording; cloud backup/sync; public MCP and extra search/vision/tool execution; image/video/audio services; intent-based intelligent routing; request-content redaction and its custom rules; installed font selection; warm-up, rate-limit reset spending, automatic credit spending and check-in; keep-awake; telemetry/cooperation promotions; application updates from the upstream channel.
+Agent installation/updates/Profiles and automatic account switching in other apps; TUI; Library; session browsing/resume and Agent-log ingestion; full conversation recording; cloud backup/sync; public MCP and extra search/vision/tool execution; image/video/audio services; intent-based intelligent routing; request-content redaction and its custom rules; installed font selection; warm-up, rate-limit reset spending, automatic credit spending and check-in; keep-awake; telemetry/cooperation promotions; application updates from the upstream channel; key-holder self-service `/me` and `/v1/magpie/me` pages.
 
 Images/tool screenshots and client-owned tool calls remain model input. A provider's native search/tool feature is still forwarded. Removing public MCP does not remove Claude's private subscription bridge. Usage storage and pricing needed by routing/key budgets remain; no replacement ledger is introduced.
 
@@ -25,9 +25,9 @@ Config/cache paths are `~/.config/tiny-magpie` and `~/.cache/tiny-magpie`, respe
 
 The default model port is 3425. If occupied, stop its owner or set `MAGPIE_ADDR`; tiny never offers to terminate the original gateway. The Web management interface retains its own run-key authentication and network guards. No real credentials are copied for tests.
 
-Some upstream implementation and test helpers remain in coupled packages (Agent identity, credential discovery, sessions data types and accounting); keeping them does not expose their old management APIs. Remove a coupled helper only with a proven replacement-free dependency cut. Do not claim removal of Wails, SQLite, Bun or all Agent-related source.
+Some upstream implementation and sandbox helpers remain in coupled packages (Agent identity, credential discovery, sessions data types and accounting); keeping them does not expose their old management APIs. Remove a coupled helper only with a proven replacement-free dependency cut. Do not claim removal of Wails, SQLite, Bun or all Agent-related source.
 
-The automatic acceptance gate is model-protocol equivalence plus absence of removed operations. [Compatibility evidence](compatibility.md) distinguishes fixtures, native builds, platform GUI and real-account use.
+The automatic acceptance gate is Tiny boundary regression checks, absence of removed operations and platform builds; unchanged retained implementations rely on the pinned upstream CI. [Compatibility evidence](compatibility.md) distinguishes fixtures, native builds, platform GUI and real-account use.
 
 ## Confirmed gateway boundary, 2026-10-19
 

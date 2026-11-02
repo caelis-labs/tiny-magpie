@@ -10,6 +10,7 @@ import (
 // trayZh is the tray menu in Chinese; the page has its own words
 // (i18n.js), and these few are all the menu shows (#301).
 var trayZh = map[string]string{
+	"Update available: %s":                 "发现新版本：%s",
 	"Open magpie":                          "打开 magpie",
 	"Version %s":                           "版本 %s",
 	"Restart to Update":                    "重启以更新",
@@ -21,6 +22,7 @@ var trayZh = map[string]string{
 
 // trayZhTW is the tray menu in Traditional Chinese, with Taiwan's words.
 var trayZhTW = map[string]string{
+	"Update available: %s":                 "發現新版本：%s",
 	"Open magpie":                          "開啟 magpie",
 	"Version %s":                           "版本 %s",
 	"Restart to Update":                    "重新啟動以更新",
@@ -32,6 +34,7 @@ var trayZhTW = map[string]string{
 
 // trayJa is the tray menu in Japanese.
 var trayJa = map[string]string{
+	"Update available: %s":                 "更新があります：%s",
 	"Open magpie":                          "magpie を開く",
 	"Version %s":                           "バージョン %s",
 	"Restart to Update":                    "再起動してアップデート",
@@ -43,6 +46,7 @@ var trayJa = map[string]string{
 
 // trayDe is the tray menu in German.
 var trayDe = map[string]string{
+	"Update available: %s":                 "Update verfügbar: %s",
 	"Open magpie":                          "magpie öffnen",
 	"Version %s":                           "Version %s",
 	"Restart to Update":                    "Zum Aktualisieren neu starten",

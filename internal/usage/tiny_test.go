@@ -1,14 +1,19 @@
 package usage
 
 import (
-	"github.com/yetone/magpie/internal/sessions"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/yetone/magpie/internal/sessions"
+	"github.com/yetone/magpie/internal/settings"
 )
 
 func TestTinyUsageCountsGatewayWithoutImportingAgentLogs(t *testing.T) {
 	pageHome(t)
+	if err := settings.Save(settings.Settings{SessionReads: &settings.SessionReads{Asked: true, All: true}}); err != nil {
+		t.Fatal(err)
+	}
 	before := LogCalls
 	LogCalls = nil
 	t.Cleanup(func() { LogCalls = before })

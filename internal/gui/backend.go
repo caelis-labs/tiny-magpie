@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/catalog"
+	"github.com/yetone/magpie/internal/filememo"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
 	"github.com/yetone/magpie/internal/usage"
 )
 
@@ -37,18 +37,19 @@ func stopServing() {
 // running from before an update, a magpie serve in a terminal), and the
 // model lists kept warm.
 func startBackend() (gw *gateway.Server) {
-	updates.start()
 	gateway.Window = true // the routing this process serves is shown on its page
 	gw = serveGateway()
 	go watchGateway(backendCtx, gatewayWatch)
 	// the usage log parsed now, not when the tray panel first asks for
 	// today's calls (CyberCaius)
-	go usage.ReadAhead()
-	// Codex's background app-server, restarted when it has the list from
-	// before a change and no codex session is on it (luci)
+	go func() {
+		// its files looked at once a second, as the warm-up's (#1665)
+		defer filememo.Hold()()
+		usage.ReadAhead()
+	}()
 	// Model lists are fetched, never compiled in: whatever the agents can see
 	// comes from the models.dev catalog plus each vendor's own /models answer.
-	// Keep both halves warm without making the user click anything.
+	// Refresh vendor metadata without making the user click anything.
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		if catalog.Stale() {
@@ -84,7 +85,9 @@ func watchGateway(ctx context.Context, every time.Duration) {
 		case <-t.C:
 		}
 		gatewayMu.Lock()
-		if ctx.Err() == nil && served.Load() == nil && !gateway.Running() {
+		if ctx.Err() == nil && served.Load() == nil {
+			// gone, or an older copy of the app done with its requests
+			// (otherServes): served here; else looked at again next time
 			serveGatewayLocked()
 		}
 		gatewayMu.Unlock()
@@ -122,10 +125,6 @@ func serveGatewayLocked() *gateway.Server {
 	if !gateway.Handover && !gateway.Inherited() {
 		if o := gateway.ServedBy(); o.Running {
 			log.Printf("tiny-magpie: gateway port %s is occupied; stop its owner or set MAGPIE_ADDR", gateway.Port())
-			if update.Newer(gateway.Version, o.Version) {
-				log.Printf("gateway: magpie %s serves %s, older than this one (%s); agents' requests go through it until it quits", o.Version, gateway.URL(), gateway.Version)
-			}
-			return nil
 		}
 		// a magpie too busy to answer the question in time (a small
 		// server, one starting), or another program, has the port: a
@@ -139,6 +138,7 @@ func serveGatewayLocked() *gateway.Server {
 		}
 	}
 	takenSaid.Store(false)
+	gatewayOther.Store(nil)
 	gw := gateway.New()
 	served.Store(gw)
 	serving.Add(1)

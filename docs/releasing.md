@@ -2,7 +2,7 @@
 
 Only `caelis-labs/tiny-magpie` is a release destination. Upstream Magpie release channels remain disabled. The source and modifications remain MIT licensed; retain the original copyright notice and Git history.
 
-Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags. Do not push upstream tags to origin. A release version PR must pass all required checks before merging into main. The Release tiny-magpie workflow reruns the full platform, protocol/UI and container gates at the exact tagged source before packaging.
+Tiny tags use `tiny-vX.Y.Z` so they do not collide with inherited upstream tags. Do not push upstream tags to origin. A release version PR must pass all required checks before merging into main. The Release tiny-magpie workflow reruns the Tiny boundary/native-build, UI and container gates at the exact tagged source before packaging.
 
 ## Routine release with release-please
 
@@ -48,7 +48,7 @@ If the app/CLI submission is Accepted but ticket validation fails before DMG cre
 
 The maintainer accepted the gateway-core Dev for the first stable release, 0.2.0. Release notes must retain the [acceptance limits](compatibility.md#before-a-stable-release): fixtures and cross-platform CI do not prove every vendor account or native Windows/Linux interaction. The application checks Tiny releases through its own GitHub API channel; see [the updater contract](subsystems/gui-shell.md#tiny-installation-identity-and-self-update). Registry/container publication is outside this workflow.
 
-PR validation runs once per reviewed branch; release tags run the [retained matrix](test-scope.md#ci-execution) again on the actual source. Main pushes do not repeat it. Routine Windows validation compiles every test and executes the native regression gate; the complete Windows corpus runs weekly.
+PR validation runs once per reviewed branch; release tags run the [Tiny boundary matrix](test-scope.md) again on the actual source. Main pushes do not repeat it. Unchanged retained modules rely on the pinned upstream CI; retired-product and duplicate upstream suites are not ported. All three OS jobs run the same small Tiny boundary suite plus native builds.
 
 ## Artifact formats from 0.1.2
 

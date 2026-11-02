@@ -12,7 +12,7 @@
 /tiny-magpie
 /tiny-magpie.exe
 /tiny-magpie.app/
-/node_modules/
+/node_modules
 /output/
 
 __pycache__/

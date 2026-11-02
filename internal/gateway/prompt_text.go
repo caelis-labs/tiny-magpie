@@ -5,6 +5,7 @@ package gateway
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"slices"
 	"strconv"
@@ -29,11 +30,24 @@ type keptBody struct {
 	id   int64
 	from provider.Protocol
 	body []byte
+	// plain: body went unmasked, and is masked when its text is read
+	plain bool
 }
 
 // keepBody preserves the upstream call sites without retaining request text.
-func (t *trace) keepBody(id int64, from provider.Protocol, body []byte) {
+func (t *trace) keepBody(id int64, from provider.Protocol, body []byte, plain bool) {
 	// Tiny has no context-text product; do not retain whole request bodies.
+}
+
+// maskedBody puts body, masked, in place of route id's plain kept body.
+func (t *trace) maskedBody(id int64, body []byte) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for i := range t.bodies {
+		if t.bodies[i].id == id && t.bodies[i].plain {
+			t.bodies[i].body, t.bodies[i].plain = body, false
+		}
+	}
 }
 
 // keptBodyOf is a route's kept body; false when it isn't kept.
@@ -80,6 +94,14 @@ func (s *Server) PromptText(id int64, kind string, withText bool) (PromptText, b
 	kb, ok := s.trace.keptBodyOf(id)
 	if !ok || !slices.Contains(partOrder, kind) {
 		return PromptText{}, false
+	}
+	if kb.plain {
+		// masked here, not on the request's way (#3973); kept masked for
+		// the next read
+		if kb.body = maskedCopy(context.Background(), kb.body); kb.body == nil {
+			return PromptText{}, false
+		}
+		s.trace.maskedBody(id, kb.body)
 	}
 	b, ok := promptPieces(kb.from, kb.body)
 	if !ok {
