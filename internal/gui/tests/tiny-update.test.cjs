@@ -78,3 +78,41 @@ for (const engine of ['chromium', 'webkit']) {
   });
  }
 }
+
+// Startup checks finish after the window's first snapshot. Both surfaces
+// must notice without a click; polling reads only the local cached state.
+for (const engine of ['chromium', 'webkit']) for (const view of ['providers', 'settings']) {
+ test(`${engine} ${view}: automatic discovery refreshes the badge and settings`, {timeout:30000}, async t => {
+  const page = await pageFor(t, engine, {viewport:{width:1100,height:820}, reducedMotion:'reduce'});
+  page.setDefaultTimeout(10000);
+  const pref={lang:'en', theme:'light', version:'1.0.0', updateChannel:'stable'};
+  const base=fixture('en','light',[],{web:false});
+  let state='latest'; const reads=[], posts=[], errors=[];
+  page.on('pageerror',e=>{if(!/^ResizeObserver loop/.test(e.message))errors.push(e.message);});
+  await page.route('**/*',async route=>{
+   const req=route.request(), u=new URL(req.url());
+   if(u.pathname==='/api/settings')return route.fulfill({json:pref});
+   if(u.pathname==='/api/state')return route.fulfill({json:{agents:[],profiles:[],settings:pref}});
+   if(u.pathname==='/api/update'){
+    reads.push(u.search);
+    return route.fulfill({json:{state,current:'1.0.0',latest:state==='found'?'2.0.0':undefined,url:'https://github.com/caelis-labs/tiny-magpie/releases/tag/tiny-v2.0.0'}});
+   }
+   if(u.pathname.startsWith('/api/update/') && req.method()==='POST')posts.push(u.pathname);
+   return base(route);
+  });
+  await page.clock.install({time:new Date('2026-11-02T00:00:00Z')});
+  await page.goto(`http://tiny.test/?view=${view}`);
+  await page.locator(`#view-${view}`).waitFor({state:'visible'});
+  if(view==='settings')await page.locator('#tinyUpdates').getByText('Up to date',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('#update')?.hidden===true);
+  const initial=reads.length;
+  state='found';
+  await page.clock.runFor(31000);
+  await page.locator('#update').waitFor({state:'visible'});
+  if(view==='settings')await page.locator('#tinyUpdates').getByRole('button',{name:'Download update',exact:true}).waitFor();
+  assert(reads.length>initial,'the window never read the new snapshot');
+  assert(reads.slice(initial).every(q=>!new URLSearchParams(q).has('fresh')),'a snapshot poll asked the release feed again');
+  assert.deepEqual(posts,[],'automatic discovery downloaded or restarted');
+  assert.deepEqual(errors,[]);
+ });
+}

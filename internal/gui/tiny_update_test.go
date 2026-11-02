@@ -3,11 +3,13 @@ package gui
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -270,4 +272,82 @@ func TestTinyUpdaterLongStagingAndCancellation(t *testing.T) {
 			})
 		})
 	}
+}
+
+// A failed startup request recovers while the app is open. The timer only
+// checks the release feed: finding an update never stages it or restarts.
+func TestTinyUpdaterRecoversFromFeedFailures(t *testing.T) {
+	oldVersion, oldLatest := Version, latestUpdate
+	Version = "1.0.0"
+	t.Cleanup(func() { Version, latestUpdate = oldVersion, oldLatest })
+	if err := settings.Save(settings.Settings{}); err != nil {
+		t.Fatal(err)
+	}
+	synctest.Test(t, func(t *testing.T) {
+		started := time.Now()
+		var callsMu sync.Mutex
+		var calls []time.Duration
+		latestUpdate = func(ctx context.Context, lang, channel string) (*update.Release, error) {
+			callsMu.Lock()
+			calls = append(calls, time.Since(started))
+			n := len(calls)
+			callsMu.Unlock()
+			if n <= 4 {
+				return nil, fmt.Errorf("fixture release feed unavailable")
+			}
+			return &update.Release{Version: "2.0.0", URL: update.ReleasePage("2.0.0")}, nil
+		}
+		var notices atomic.Int32
+		u := &updater{exe: "fixture-must-not-be-replaced"}
+		u.onChange = func(state, version string) {
+			if state == "found" {
+				// The callback must run after unlocking: native menus read this too.
+				if j := u.json(); j.State != "found" || version != "2.0.0" {
+					t.Fatalf("notice: %+v %s", j, version)
+				}
+				notices.Add(1)
+			}
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		done := make(chan struct{})
+		go func() { defer close(done); u.watch(ctx, 5*time.Second, time.Minute) }()
+		advance := func(d time.Duration, want int) {
+			t.Helper()
+			time.Sleep(d)
+			synctest.Wait()
+			callsMu.Lock()
+			seen := append([]time.Duration(nil), calls...)
+			callsMu.Unlock()
+			if len(seen) != want {
+				t.Fatalf("after %s: feed calls %v, want %d", time.Since(started), seen, want)
+			}
+		}
+		advance(5*time.Second, 1)
+		advance(time.Minute, 2)
+		advance(4*time.Minute, 2)
+		advance(time.Minute, 3)
+		advance(14*time.Minute, 3)
+		advance(time.Minute, 4)
+		advance(15*time.Minute, 5)
+		u.mu.Lock()
+		staged, failures := u.staged, u.checkFailures
+		u.mu.Unlock()
+		if notices.Load() != 1 || staged != "" || failures != 0 {
+			t.Fatalf("recovery: notices=%d staged=%q failures=%d", notices.Load(), staged, failures)
+		}
+		advance(359*time.Minute, 5)
+		advance(time.Minute, 6)
+		if err := settings.Save(settings.Settings{NoAutoUpdate: true}); err != nil {
+			t.Fatal(err)
+		}
+		advance(6*time.Hour, 6)
+		cancel()
+		synctest.Wait()
+		select {
+		case <-done:
+		default:
+			t.Fatal("update clock outlived shutdown")
+		}
+	})
 }

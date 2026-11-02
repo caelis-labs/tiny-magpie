@@ -22,6 +22,13 @@ func TestTinyRemovedSurface(t *testing.T) {
 			t.Errorf("%s: %d %s", path, w.Code, w.Body)
 		}
 	}
+	for _, path := range []string{"/me", "/v1/magpie/me"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != http.StatusNotFound {
+			t.Errorf("rejected key page %s: %d", path, w.Code)
+		}
+	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
 	for _, removed := range []string{"images/", "audio/", "/mcp/"} {

@@ -41,20 +41,25 @@
   <div class="side-foot">
     <button type="button" class="side-gw" id="sideGw" data-feature="gateway" hidden><i></i><span></span></button>
   </div>
-  <!-- its edge, dragged to make it wider or narrower (app.js sideDrag) -->
-  <div class="side-edge" id="sideEdge" role="separator" aria-orientation="vertical" tabindex="0" style="--wails-draggable:no-drag"></div>
+  <!-- its edge, dragged to make it wider or narrower (app.js sideDrag).
+       Out of Tab's reach, as a Mac split view's divider is: a Mac window
+       shown has WebKit focus the first stop Tab reaches, and its ring
+       showed on every open (ysm119) -->
+  <div class="side-edge" id="sideEdge" role="separator" aria-orientation="vertical" tabindex="-1" style="--wails-draggable:no-drag"></div>
 </aside>
 <header class="top" style="--wails-draggable:drag">
+  <!-- the sidebar shown or the header's tabs, the reader's own (app.js
+       toggleSideNav); the left pane filled while the sidebar shows. First
+       in the title bar, so it is in one place in both layouts (app.js
+       layoutNav moves it with the brand) -->
+  <button type="button" class="icon side-toggle" id="sideToggle" hidden style="--wails-draggable:no-drag">
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect class="st-pane" x="2.5" y="3.5" width="4" height="9" rx="1"/><g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.25"/><path d="M6.75 2.75v10.5"/></g></svg>
+  </button>
   <div class="brand">
     <span class="logo" aria-hidden="true"><svg viewBox="0 0 44 44" width="18" height="18" aria-hidden="true"><defs><path id="bird" fill="currentColor" fill-rule="evenodd" d="M4 35C8 31 11 26 14 21C17 17 21 16 25 17C24 13 26 9 30 8C34 7 37 10 37 14L42 17L36 19C36 24 34 29 30 32C26 35 21 35 17 32L8 38L10 33L4 36Z M17 21C21 18 27 18 31 20C27 21 22 24 18 28C16 30 14 30 12 31C14 27 15 24 17 21Z M33 22C33 27 29 31 24 32C21 33 19 32 18 31C24 29 29 26 33 22Z"/><clipPath id="bird-body"><path clip-rule="evenodd" d="M0 0L44 0L44 44L0 44Z M0 26L18 26L18 44L0 44Z M12 18L33 18L33 31L12 31Z"/></clipPath><clipPath id="bird-tail"><path d="M0 26L18 26L18 44L0 44Z"/></clipPath><clipPath id="bird-wing"><path d="M12 18L33 18L33 31L12 31Z"/></clipPath></defs><g class="bird"><use class="whole" href="#bird"/><g class="parts"><use href="#bird" clip-path="url(#bird-body)"/><g class="tail"><use href="#bird" clip-path="url(#bird-tail)"/></g><g class="wing"><use href="#bird" clip-path="url(#bird-wing)"/></g></g></g></svg></span>
     <span>tiny-magpie</span>
   </div>
   <h1 class="sr-only" id="pageTitle" data-t>Agents</h1>
-  <!-- the sidebar shown or the header's tabs, the reader's own (app.js
-       toggleSideNav); the left pane filled while the sidebar shows -->
-  <button type="button" class="icon side-toggle" id="sideToggle" hidden style="--wails-draggable:no-drag">
-    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect class="st-pane" x="2.5" y="3.5" width="4" height="9" rx="1"/><g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.25"/><path d="M6.75 2.75v10.5"/></g></svg>
-  </button>
   <div class="crumb" id="crumb" aria-hidden="true" hidden></div>
   <nav class="seg" id="nav" aria-label="Main navigation" data-ta style="--wails-draggable:no-drag">
     <span class="nav-gl" data-t>Work</span>
@@ -122,7 +127,7 @@
     <div class="who" role="status" aria-live="polite"><b id="providerDiscoveryCount"></b><span id="providerDiscoverySources"></span></div>
     <div class="actions"><button class="text primary" id="reviewProviderDiscovery">Review and import…</button><button class="text" id="dismissProviderDiscovery" data-t data-tt="Hide these configurations until they change">Ignore</button></div>
   </aside>
-  <div class="pv-head" id="pvHead" hidden><input class="sess-filter pv-q" id="pvQ" type="search" spellcheck="false" autocomplete="off" placeholder="Find a provider" aria-label="Find a provider" data-tp></div>
+  <div class="pv-head" id="pvHead" hidden><input class="sess-filter pv-q" id="pvQ" type="search" spellcheck="false" autocomplete="off" placeholder="Find a provider" aria-label="Find a provider" data-tp><button class="text rt-mask" id="pvMask" aria-pressed="false" data-tt="Mask the accounts on this page — email addresses and account names — for a screenshot to share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.5 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/></svg><span data-t>Hide accounts</span></button></div>
   <p class="set-none pv-none" id="pvNone" role="status" hidden></p>
   <div class="list" id="providers"></div>
   <div class="row-head off-head" id="offHead" hidden><button class="fold" id="foldOff" aria-expanded="false" aria-controls="offProviders"><span class="label" data-t>Turned off</span><span class="note" id="offCount"></span></button></div>
@@ -168,6 +173,14 @@
         <div class="who"><div class="name" data-t>Colorblind mode</div></div>
         <div id="colorblindSegs"></div>
       </div>
+      <div class="row pref" id="reduceMotionRow">
+        <div class="who"><div class="name" data-t>Reduce motion</div></div>
+        <div id="reduceMotionSegs"></div>
+      </div>
+      <div class="row pref" id="birdRow">
+        <div class="who"><div class="name" data-t>Loading bird</div></div>
+        <div id="birdSegs"></div>
+      </div>
       <div class="row pref">
         <div class="who"><div class="name" data-t>Language</div></div>
         <button type="button" id="langPick" class="sess-pick pref-pick" aria-label="Language" aria-haspopup="menu" aria-expanded="false"></button>
@@ -176,7 +189,7 @@
         <div class="who"><div class="name" data-t>Gateway mode</div><div class="sub" id="gatewayModeSub"></div></div>
         <div id="gatewayModeSegs"></div>
       </div>
-      <div class="row pref" id="textSizeRow">
+      <div class="row pref app-only" id="textSizeRow">
         <div class="who"><div class="name" data-t>Text size</div></div>
         <div id="textSizeSegs"></div>
       </div>
@@ -196,9 +209,13 @@
           <div class="font-preview">Aa 0123 · 中文</div>
         </div>
       </div>
-      <div class="row pref">
+      <div class="row pref app-only">
         <div class="who"><div class="name" data-t>Click the tray icon to</div></div>
         <div id="traySegs"></div>
+      </div>
+      <div class="row pref app-only" id="panelKeyRow">
+        <div class="who"><div class="name" data-t>Quick panel shortcut</div><div class="sub" hidden></div></div>
+        <div id="panelKey"></div>
       </div>
       <div data-feature="tiny-removed" class="row pref" id="barIconRow" hidden>
         <div class="who"><div class="name" data-t>Bar icon</div><div class="sub" data-t>magpie’s icon beside Omarchy’s own in the bar; right-click opens the window</div></div>
@@ -210,7 +227,7 @@
       </div>
       <!-- Codex's and Claude Code's own settings are on the Agents page (AGENT_PREFS); while searching, a row here says where -->
       <div id="agentPrefLinks"></div>
-      <div class="row pref" id="loginRow">
+      <div class="row pref app-only" id="loginRow">
         <div class="who"><div class="name" data-t>Open at login</div></div>
         <div id="loginSegs"></div>
       </div>
@@ -237,12 +254,18 @@
     </div>
     <div class="row-head" data-t>Tiny updates</div>
     <div class="list prefs" id="tinyUpdates"></div>
+    <div class="row-head"><span class="label" data-t>Sign-in pages</span></div>
+    <div class="list prefs" id="signInOpenList"></div>
   </section>
   <section class="set-page" data-feature="tiny-removed" id="setPage-usage" role="tabpanel" aria-labelledby="setTab-usage">
     <div class="list prefs">
-      <div class="row pref" id="trayUsageRow">
+      <div class="row pref app-only" id="trayUsageRow">
         <div class="who"><div class="name" data-t>Allowances in the menu bar</div><div class="sub" id="trayUsageSub"></div></div>
         <div id="trayUsagePick"></div>
+      </div>
+      <div class="row pref" id="trayWindowsRow" hidden>
+        <div class="who"><div class="name" data-t>Menu bar windows</div><div class="sub" data-t>Which of a subscription's windows its card shows, such as 5 hours or 7 days alone; every window unless you pick, and every window again when those picked are gone</div></div>
+        <div id="trayWindowsPick" class="tray-windows"></div>
       </div>
       <div class="row pref" id="trayEveryRow" hidden>
         <div class="who"><div class="name" data-t>Menu bar refresh</div><div class="sub" data-t>How often the allowances beside the icon are asked for again</div></div>
@@ -263,6 +286,10 @@
       <div class="row pref" id="trayCostRow">
         <div class="who"><div class="name" data-t>Menu bar cost</div><div class="sub" data-t>What magpie's requests cost, beside their tokens in the menu bar and its tooltip; off, the tokens alone</div></div>
         <div id="trayCostSegs"></div>
+      </div>
+      <div class="row pref" id="trayNumberRow" hidden>
+        <div class="who"><div class="name" data-t>Tray icon number</div><div class="sub" data-t>The first allowance's figure as magpie's tray icon, used or left as Allowance display has it, every one when pointing at it; off, magpie's icon</div></div>
+        <div id="trayNumberSegs"></div>
       </div>
       <div class="row pref">
         <div class="who"><div class="name" data-t>Allowance display</div><div class="sub" data-t>How much of each window is used, or how much is left, on the Usage page, the panel and the menu bar</div></div>
@@ -295,6 +322,10 @@
       <div class="row pref" id="codexAutoResetRow" hidden data-feature="tiny-removed">
         <div class="who"><div class="name" data-t>Codex: auto-use resets</div><div class="sub wraps" data-t>A ChatGPT account uses one of its resets by itself when its week is used up and no other account can answer, or before one expires unused. Off until turned on, account by account; each account's card on the Usage page has the same switch.</div></div>
       </div>
+      <div class="row pref" id="codexResetLeadRow" hidden>
+        <div class="who"><div class="name" data-t>Codex: how early before one expires</div><div class="sub wraps" data-t>For every account with "before one expires" on: the reset about to run out unused is used this long before it does. Earlier loses what the account's windows have left then; the default is half an hour.</div></div>
+        <div id="codexResetLeadPick"></div>
+      </div>
       <div class="row pref" id="turnDoneRow">
         <div class="who"><div class="name" data-t>Task done alert</div><div class="sub" id="turnDoneSub"></div></div>
         <div id="turnDoneSegs"></div>
@@ -319,6 +350,10 @@
         <div class="who"><div class="name" data-t>Daily warm-up</div><div class="sub" id="warmAtSub"></div></div>
         <div id="warmAtSegs" class="warm-at"></div>
       </div>
+      <div class="row pref warm-now" id="warmNowRow" hidden>
+        <div class="who"><div class="name" data-t>Warm up now</div><div class="sub" id="warmNowSub"></div></div>
+        <div id="warmNowBox"></div>
+      </div>
     </div>
     <div class="list prefs" id="claudeWarmList" role="tabpanel" aria-labelledby="warmTab-claude" data-feature="tiny-removed">
       <div class="row pref">
@@ -328,6 +363,10 @@
       <div class="row pref">
         <div class="who"><div class="name" data-t>Daily warm-up</div><div class="sub" id="claudeWarmAtSub"></div></div>
         <div id="claudeWarmAtSegs" class="warm-at"></div>
+      </div>
+      <div class="row pref warm-now" id="claudeWarmNowRow" hidden>
+        <div class="who"><div class="name" data-t>Warm up now</div><div class="sub" id="claudeWarmNowSub"></div></div>
+        <div id="claudeWarmNowBox"></div>
       </div>
     </div>
     <div class="list prefs" id="wbList" role="tabpanel" aria-labelledby="warmTab-wb" data-feature="tiny-removed">
@@ -373,12 +412,18 @@
         <div class="who"><div class="name" data-t>Model ids without the provider</div><div class="sub" data-t>The gateway’s model list also names each model by its own id, as gpt-5.6-sol beside codex/gpt-5.6-sol, for apps moved from another proxy. One that several providers serve goes to them in the Providers order</div></div>
         <div id="bareIdsSegs"></div>
       </div>
+      <div class="row pref" id="busyLoadRow">
+        <div class="who"><div class="name" data-t>Busy models last</div><div class="sub" data-t>A model its plugin says is busier than this goes after the others a request could go to, as its vendor makes it wait. One with no load reported in the last 5 minutes keeps its place</div></div>
+        <div id="busyLoadSegs"></div>
+      </div>
     </div>
     <div class="row-head"><span class="label" data-t>Local network</span></div>
     <div class="list prefs" id="lanList"></div>
     <div class="list prefs" id="allowList"></div>
     <div class="row-head"><span class="label" data-t>Web pages</span></div>
     <div class="list prefs" id="corsList"></div>
+    <div class="row-head" id="webPageHead"><span class="label" data-t>Browser access</span></div>
+    <div class="list prefs" id="webPageList"></div>
   </section>
   <section class="set-page" data-feature="tiny-removed" id="setPage-models" role="tabpanel" aria-labelledby="setTab-models">
     <div class="row-head"><span class="label" data-t>Images</span></div>
@@ -423,7 +468,6 @@
   <span id="pqAge" class="pq-age" hidden></span>
   <span id="status" class="status" role="status" aria-atomic="true"></span>
   <span class="grow"></span>
-  <button class="text" id="openMain" data-t>Open magpie</button>
   <button class="text" id="quit" data-t>Quit</button>
 </footer>
 
@@ -455,11 +499,11 @@
     <div id="codexAgentsV1Segs"></div>
   </div>
   <div class="row pref" id="codexSubagentModelRow" data-feature="tiny-removed" hidden>
-    <div class="who"><div class="name" data-t>Codex subagent model</div></div>
+    <div class="who"><div class="name" data-t>Codex subagent model</div><div class="sub"></div></div>
     <div class="val" id="codexSubagentModelPick"></div>
   </div>
   <div class="row pref" id="fullContextRow">
-    <div class="who"><div class="name" data-t>Long conversations</div><div class="sub" data-t>Codex and Claude Code compact at 272K (non-Claude [1m] too) or the size typed; full window: slower, costlier</div></div>
+    <div class="who"><div class="name" data-t>Long conversations</div><div class="sub" data-t>Codex, Claude Code and Grok Build compact at 272K (non-Claude [1m] too) or the size typed, on magpie's models only; a subscription's own models keep their own window and compaction; full window: slower, costlier</div></div>
     <div id="fullContextSegs"></div>
   </div>
   <div class="row pref" id="codexAsyncRow">
@@ -501,6 +545,7 @@
 <script src="plugins.js"></script>
 <script src="context.js"></script>
 <script src="plugins/usage/page.js"></script>
+<script src="plugins/gateway/settings.js"></script>
 <script src="start.js"></script>
 </body>
 </html>

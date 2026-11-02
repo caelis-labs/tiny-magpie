@@ -30,7 +30,7 @@ func TestTinyBrandAssetConsistency(t *testing.T) {
 	if !bytes.Contains(read("internal/gui/assets/icons/favicon.svg"), source[1]) {
 		t.Fatal("favicon diverged from Tiny SVG source")
 	}
-	if !bytes.Equal(read("internal/gui/icon.png"), read("build/windows/icon-64.png")) {
+	if !bytes.Contains(read("internal/gui/icon-windows.ico"), read("build/windows/icon-64.png")) {
 		t.Fatal("Windows resource still uses a different app icon")
 	}
 }

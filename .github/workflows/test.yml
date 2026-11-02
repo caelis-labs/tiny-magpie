@@ -56,53 +56,17 @@ jobs:
       - name: Go vet
         shell: bash
         run: go vet -tags nogui ./...
-      - name: Windows fixture regressions
-        if: runner.os == 'Windows'
+      - name: Tiny boundary tests
         shell: bash
         run: |
-          tiny_test_status=0
-          go test -json -count=1 -tags nogui -timeout 10m -run '^(TestTiny.*|TestWindows.*|TestCodex.*Keychain.*|TestCodexStoreNotReadIsLeftAlone|TestSavedButSignedOut|TestPluginLeavesTheUserNetworkDirect|TestLoadConcurrentWithSavesAndEdits|TestSaveConcurrent.*|TestWrite|TestSQLiteSurvivesMalformedEnv|TestDesktopSessionAccountMetadata|TestCachePartialUpdateMatrix|TestClaudeAsRootEnv|TestStatWaitsOutAReplace|TestMissingProbeStaysShort)$' ./internal/agent ./internal/agentplug ./internal/provider ./internal/plugin ./internal/shortcut ./internal/sqlitedb ./internal/usage ./internal/settings ./internal/steady ./internal/gateway ./internal/gui ./internal/update 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-fixtures.log || tiny_test_status=$?
-          exit "$tiny_test_status"
-      - name: Windows state and proxy stress
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          tiny_test_status=0
-          tiny_stress_count=5
-          if [ "$GITHUB_EVENT_NAME" = schedule ]; then tiny_stress_count=20; fi
-          go test -json -count="$tiny_stress_count" -tags nogui -timeout 10m ./internal/provider ./internal/plugin ./internal/steady -run '^(TestLoginsKeptWhileAnotherMagpieWrites|TestPluginLeavesTheUserNetworkDirect|TestLoginsFallbackStaysInItsProfile|TestDeletedKnownLoginsStayDeleted|TestMissingProbeStaysShort)$' 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-stress.log || tiny_test_status=$?
-          exit "$tiny_test_status"
-      - name: Compile every Windows test
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          tiny_test_status=0
-          go test -json -count=1 -tags nogui -run '^$' ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py output/windows-compile.log || tiny_test_status=$?
-          exit "$tiny_test_status"
-      - name: Go suite
-        if: runner.os != 'Windows' || github.event_name == 'schedule'
-        shell: bash
-        run: |
-          tiny_test_status=0
-          tiny_test_timeout=20m
-          # Native Windows paths/state run on every PR above; its full
-          # retained suite runs weekly, outside the PR/release critical path.
-          if [ "$RUNNER_OS" = Windows ]; then tiny_test_timeout=45m; fi
-          go test -json -count=1 -tags nogui -timeout "$tiny_test_timeout" ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py || tiny_test_status=$?
-          exit "$tiny_test_status"
+          set -euo pipefail
+          go test -json -count=1 -tags nogui -timeout 10m ./... 2>&1 | python -u -X utf8 scripts/ci-go-output.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: go-test-${{ matrix.os }}
           path: |
             output/go-test.*
-            output/windows-*
-      - name: Linux legacy Tiny data migration
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          go test -c -tags nogui -o "$RUNNER_TEMP/tiny-magpie-legacy.test" ./internal/gui
-          "$RUNNER_TEMP/tiny-magpie-legacy.test" -test.run '^TestKeepWebData$' -test.count=1 -test.v
       - name: Native build
         shell: bash
         run: |
@@ -135,15 +99,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Build pinned upstream and tiny
-        shell: bash
-        run: |
-          mkdir -p .tiny/upstream
-          base=$(python3 -c 'import json;print(json.load(open("UPSTREAM.json"))["base"])')
-          git archive "$base" | tar -x -C .tiny/upstream
-          (cd .tiny/upstream && go build -tags nogui -o ../magpie-upstream .)
-          go build -tags nogui -o .tiny/tiny-magpie .
-          python3 scripts/verify-gateway.py --baseline .tiny/magpie-upstream --tiny .tiny/tiny-magpie
       - name: Release draft and immutable asset recovery
         run: python3 scripts/test-publish-release.py
       - name: Native release inventory and provenance

@@ -1,5 +1,7 @@
 # Compatibility and acceptance
 
+Current maintenance policy: [Tiny boundary gates](test-scope.md). Measurements below describe earlier snapshots; they do not claim a full upstream-suite run for the latest sync. See [2026-11-02 sync evidence](upstream-sync-2026-11-02.md).
+
 This is an experimental reduction fork, not a new gateway implementation. The integrated upstream baseline is `ba319a7587923fc7a4ea3859658244d591261a59` (see `UPSTREAM.json`). Earlier dated gates below describe their original revision. Automated tests below use isolated directories, fake credentials and fixture vendors. Native observations, exceptions and their limits are recorded in each revision.
 
 ## Reproducible gates

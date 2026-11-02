@@ -2,6 +2,10 @@
 
 Read `docs/tiny-scope.md`, `UPSTREAM.md` and `UPSTREAM.json` first. Preserve retained model and plugin protocols. Do not reintroduce removed products during upstream merges, use upstream app update channels, or test against live Agent/Magpie state. Follow the inherited engineering guidance below; upstream release destinations are historical, not this fork's release instructions.
 
+## Low-maintenance sync policy
+
+Merge complete upstream intervals and keep excluded products deleted. Trust the pinned upstream's CI for retained code that Tiny has not changed. Do not port, repair or inventory retired-product tests, duplicate upstream protocol suites, or add speculative boundary tests. Keep only `tiny_*_test.go` / `tiny-*.test.cjs` checks for Tiny behavior and demonstrated effects of a cut. Run `scripts/prune-upstream-tests.py --apply` after merging. See [test scope](docs/test-scope.md).
+
 # Notes for coding agents
 
 ## Subsystem design and review

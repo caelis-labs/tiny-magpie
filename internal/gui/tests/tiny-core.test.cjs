@@ -42,6 +42,7 @@ for (const engine of ['chromium', 'webkit']) {
  for (const locale of ['en','zh','zh-TW','ja','de']) for (const width of (locale === 'en' ? [1100,440] : [440])) {
   test(`${engine} ${locale} ${width}: explicit classification and retrieval APIs`, async t=>{
    const page=await pageFor(t, engine, {viewport:{width,height:820},reducedMotion:'reduce'});
+   page.setDefaultTimeout(10000);
    await page.addInitScript(()=>Object.defineProperty(navigator,'platform',{value:'MacIntel'}));
    const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));
    const base=fixture(locale,'light',writes,{web:false});
@@ -53,6 +54,7 @@ for (const engine of ['chromium', 'webkit']) {
     return base(route);
    });
    await page.goto('http://magpie.test/?view=gateway&lang=curl');
+   if (await page.locator('#foldConnect').getAttribute('aria-expanded') === 'false') await page.locator('#foldConnect').click();
    await page.locator('#connect').waitFor({state:'visible'});
    for (const [name,path,id] of [['System One','systemone','typesafe/jev-latest'],['Embedding','embeddings','relay/vector'],['Rerank','rerank','relay/rank']]) {
     await page.locator('#connect .opt').filter({hasText:new RegExp('^'+name+'$')}).click();

@@ -18,7 +18,10 @@ function keptView() {
   return OPEN_VIEWS.includes(v) ? v : ""; // one gateway mode leaves out, show() makes Providers
 }
 const firstView = mode === "window" ? keptView() : "";
-if (mode === "window") show(OPEN_VIEWS.includes(firstView) ? firstView : "providers");
+if (mode === "window") show(OPEN_VIEWS.includes(firstView) ? firstView : "providers").then(() => {
+  if (view === "settings" && params.has("tinyUpdates")) { setSetTab("general", true); $("#tinyUpdates").scrollIntoView({block:"start"}); }
+  if (view === "plugins" && params.has("q")) window.pluginQuery?.(params.get("q"));
+});
 // in gateway mode the first page is Providers, Agents' tab gone
 if (gatewayMode) setGatewayMode(true);
 load();

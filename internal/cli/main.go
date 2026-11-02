@@ -17,8 +17,11 @@ import (
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/claudebridge"
+	"github.com/yetone/magpie/internal/claudecode"
+	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/netproxy"
+	"github.com/yetone/magpie/internal/notices"
 	"github.com/yetone/magpie/internal/pluginrt"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/profile"
@@ -75,6 +78,9 @@ func Main(v string) {
 			case "-h", "--help", "help":
 				fmt.Print(usage)
 				return
+			case "licenses":
+				fmt.Print(notices.Text)
+				return
 			}
 		}
 		fmt.Fprintln(os.Stderr, "magpie:", err)
@@ -109,6 +115,14 @@ func Main(v string) {
 }
 
 func run(args []string) error {
+	// a command that saved a provider or a group ends with the agents'
+	// files written, which its save no longer waits for; and a test's run
+	// leaves catalog.Changed as it found it
+	was := catalog.Changed
+	defer func() {
+		agent.SyncCatalogSettled()
+		catalog.Changed = was
+	}()
 	if len(args) == 2 && args[0] == agent.DryRunArg {
 		// Upstream disconnect preview executes against a copied temporary home.
 		return agent.DryRun(args[1])
@@ -116,7 +130,7 @@ func run(args []string) error {
 
 	if len(args) > 0 {
 		switch args[0] {
-		case "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "goroutines", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":
+		case claudetui.Command, "app", "gui", "tray", "panel", "web", "serve", "healthcheck", "heap", "cpu", "goroutines", "providers", "presets", "provider", "models", "model", "groups", "group", "gateway-key", "accounts", "account", "quota", "quotas", "plugin", "plugins", "sync", "import", "claude-code", "claude-mcp-helper", "-Embedding", "version", "--version", "-v", "help", "--help", "-h":
 		default:
 			return fmt.Errorf("unknown tiny-magpie command %q; run tiny-magpie --help", args[0])
 		}
@@ -161,6 +175,8 @@ func run(args []string) error {
 	catalog.Changed = agent.SyncCatalog
 	gateway.StandIn = agent.StandIn
 	gateway.CodexOwnOnly = agent.CodexOwnOnly
+	// Keep only Tiny's private Claude subscription binary current.
+	gateway.WhileServing = append(gateway.WhileServing, claudecode.KeepCurrent)
 	if len(args) == 0 {
 		if hasGUI {
 			return runGUI(true, "")
@@ -210,6 +226,9 @@ func run(args []string) error {
 		return pluginCmd(args)
 	case "claude-code":
 		return claudeCodeCmd(args[1:])
+	case claudetui.Command:
+		leaveSignals()
+		return claudetui.Run(args[1:])
 	case "claude-mcp-helper":
 		return claudebridge.RunMCP(args[1:])
 	case "import":

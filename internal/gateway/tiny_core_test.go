@@ -1,8 +1,8 @@
 package gateway
 
 import (
+	"context"
 	"io"
-"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -56,7 +56,7 @@ func TestTinyOldRedactionDoesNotTransformRequests(t *testing.T) {
 
 func TestTinyDoesNotKeepRequestBodies(t *testing.T) {
 	s := New()
-	s.trace.keepBody(1, provider.Chat, []byte(`{"messages":[{"role":"user","content":"private fixture"}]}`))
+	s.trace.keepBody(1, provider.Chat, []byte(`{"messages":[{"role":"user","content":"private fixture"}]}`), false)
 	if _, ok := s.trace.keptBodyOf(1); ok {
 		t.Fatal("retained removed context-text body")
 	}
