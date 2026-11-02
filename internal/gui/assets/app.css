@@ -209,7 +209,7 @@ code { font: var(--code-style, normal) var(--code-weight, 400) 11.5px var(--code
 /* the traffic lights centre 25.75pt from the top, not 25; they are the window's, drawn in points, so at a larger text size (--zoom, the page's zoom) the header is that many fewer CSS pixels, still level with them */
 body.window.mac .top { padding-left: calc(96px / var(--zoom, 1)); height: calc(50px / var(--zoom, 1)); padding-top: calc(2px / var(--zoom, 1)); }
 body.window.mac .seg { top: calc(50% + 1px / var(--zoom, 1)); } /* 50% centres in the padding box; the 2px top padding puts the flex row a pixel lower */
-.brand { display: flex; align-items: center; gap: 6px; font-weight: 600; letter-spacing: .01em; }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
 body.window:not(.mac):not(.linux):not(.web) .brand { display: none; } /* Windows' title bar above already shows the icon and the name; a browser tab has no title bar of the app's */
 /* app.js removes these controls later; keep them out of the first paint too. */
 body.window :is(#open, #quit),
