@@ -6,6 +6,10 @@ Read `docs/tiny-scope.md`, `UPSTREAM.md` and `UPSTREAM.json` first. Preserve ret
 
 Merge complete upstream intervals and keep excluded products deleted. Trust the pinned upstream's CI for retained code that Tiny has not changed. Do not port, repair or inventory retired-product tests, duplicate upstream protocol suites, or add speculative boundary tests. Keep only `tiny_*_test.go` / `tiny-*.test.cjs` checks for Tiny behavior and demonstrated effects of a cut. Run `scripts/prune-upstream-tests.py --apply` after merging. See [test scope](docs/test-scope.md).
 
+## Release completion and bandwidth
+
+A release is complete when the release workflow succeeds and publishes the requested version. Report the workflow result and release URL, then stop. The maintainer has limited bandwidth: do not download release assets for additional post-release checksum, signature, notarization, mounted-DMG or binary-execution checks unless explicitly requested. Keep the workflow's existing build, integrity, signing and notarization gates. This rule takes precedence over inherited instructions that require independent downloads after publication.
+
 # Notes for coding agents
 
 ## Subsystem design and review
