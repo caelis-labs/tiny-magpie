@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.3](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.2...tiny-v0.3.3) (2026-11-02)
+
+### Fixes
+
+* Automatic update discovery retries failed feed checks after 1/5/15 minutes and refreshes the tray and open pages. Checks use only Tiny releases; downloading and restarting remain explicit actions.
+* Codex disconnect restores configuration without rewriting conversation history.
+* Merge 1,361 upstream commits through `c875e66c24052c34622cd410e8f9e3bf259dc188`, preserving Tiny's model/provider/plugin protocols, authentication and product cuts.
+
+### Added
+
+* Upstream Responses WebSocket transport and HTTP fallback.
+* Optional global shortcut to open the tray panel; unbound by default.
+* Desktop browser management access with upstream key/network guards; off by default.
+
+### Maintenance and upgrade notes
+
+* Tiny keeps focused fork-boundary tests and platform builds; unchanged retained implementations rely on pinned upstream CI. Retired-product tests are not ported. Key-holder `/me` pages remain excluded.
+* If an older version does not show this update automatically, use Settings → General → Check once. The discovery repair takes effect after upgrading.
+* macOS uses the signed/notarized Apple Silicon DMG. Windows/Linux are unsigned. Fixtures and CI do not establish real-account, installed-app upgrade or native Windows/Linux interaction acceptance; see [sync evidence](https://github.com/caelis-labs/tiny-magpie/blob/main/docs/upstream-sync-2026-11-02.md).
+
 ## [0.3.2](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.1...tiny-v0.3.2) (2026-10-27)
 
 
