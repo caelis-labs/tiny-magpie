@@ -133,3 +133,22 @@ func flagArg(args []string) string {
 	}
 	return ""
 }
+
+// ompRoles are the omp fields that run on a model of their own.
+var ompRoles = []string{"subagent", "small", "slow", "plan", "vision", "advisor", "commit", "tiny", "memory"}
+
+// slotKeys are the fields of an agent that each take a model of their own
+// beside its main one: Claude Code's and Claude Desktop's tiers, omp's roles.
+func slotKeys(a *agent.Agent) []string {
+	var out []string
+	for _, f := range a.Fields {
+		switch {
+		case f.Key == "model":
+		case slices.Contains([]string{"opus", "sonnet", "haiku", "fable"}, f.Key):
+			out = append(out, f.Key)
+		case strings.HasPrefix(a.ID, "omp") && slices.Contains(ompRoles, f.Key):
+			out = append(out, f.Key)
+		}
+	}
+	return out
+}

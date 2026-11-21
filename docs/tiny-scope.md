@@ -4,7 +4,7 @@ This file is the product contract. Subsystem references elsewhere in this tree r
 
 ## Kept
 
-- Model discovery and detail, Chat Completions, Responses HTTP/SSE/WebSocket, Anthropic Messages/count_tokens, Gemini generate/stream/count, Embeddings, Rerank, direct System One classification calls (TypeSafe/Jev and compatible Providers), and model-related Codex compatibility routes. Existing Magpie IDs, headers, authentication, aliases, error shapes and conversion rules remain upstream's. Upstream's Responses WebSocket transport and HTTP fallback are retained with Tiny's authentication and product cuts.
+- Model discovery and detail, Chat Completions, Responses HTTP/SSE/WebSocket, Anthropic Messages/count_tokens, Gemini generate/stream/count, Embeddings, Rerank, direct classification calls on System One and Decisions (TypeSafe/Jev and compatible Providers), and model-related Codex compatibility routes. Existing Magpie IDs, headers, authentication, aliases, error shapes and conversion rules remain upstream's. Upstream's Responses WebSocket transport and HTTP fallback are retained with Tiny's authentication and product cuts.
 - All existing API-key/custom/local Providers, built-in subscriptions and community Provider plugins, including their authentication, refresh and quota logic. Claude's real CLI and its private MCP callback are necessary subscription internals.
 - Conventional groups (nested groups included), original scheduling, affinity, keys/accounts, quota/cost accounting, budgets, fallback, cancellation and concurrency. No classifier or intent inference is performed. Imported intent groups fail explicitly until their classifier/intent settings are removed.
 - Provider auth/model/fetch plugins, gateway middleware, asynchronous hooks, routing strategies and usage callbacks. Bun, moejs and upstream manifest/wire formats stay intact. Pure tool/page/agent extensions are unsupported; mixed packages retain their gateway facets.
@@ -15,7 +15,7 @@ This file is the product contract. Subsystem references elsewhere in this tree r
 
 ## Removed from the product
 
-Agent installation/updates/Profiles and automatic account switching in other apps; TUI; Library; session browsing/resume and Agent-log ingestion; full conversation recording; cloud backup/sync; public MCP and extra search/vision/tool execution; image/video/audio services; intent-based intelligent routing; request-content redaction and its custom rules; installed font selection; warm-up, rate-limit reset spending, automatic credit spending and check-in; keep-awake; telemetry/cooperation promotions; application updates from the upstream channel; key-holder self-service `/me` and `/v1/magpie/me` pages.
+Agent installation/updates/Profiles and automatic account switching in other apps; TUI; Library; session browsing/resume and Agent-log ingestion; full conversation recording; cloud backup/sync; public MCP and extra search/vision/tool execution; image/video/audio services; intent-based intelligent routing; request-content redaction and its custom rules; installed font selection; warm-up, rate-limit reset spending and automatic check-in; keep-awake; telemetry/cooperation promotions; application updates from the upstream channel; key-holder self-service `/me` and `/v1/magpie/me` pages.
 
 Images/tool screenshots and client-owned tool calls remain model input. A provider's native search/tool feature is still forwarded. Removing public MCP does not remove Claude's private subscription bridge. Usage storage and pricing needed by routing/key budgets remain; no replacement ledger is introduced.
 
@@ -53,4 +53,5 @@ Whole request bodies are not kept for the removed context-text inspector. Normal
 upstream prompt-size parsing and usage/route metadata remain; this is not a
 replacement accounting implementation. Native authenticated Codex passthrough
 keeps upstream request semantics, while explicit account caps still use routing;
-Tiny-managed accounts do not gain automatic credit/reset spending.
+Codex requests can use existing account credits once the included allowance is exhausted.
+Account and window caps, gateway key restrictions, and the per-account Use credits preference continue to apply.

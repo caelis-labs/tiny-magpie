@@ -26,7 +26,7 @@ func (s *Server) Front() http.Handler {
 var clientPrefixes = []string{
 	"/v1", "/v1beta",
 	"/models", "/chat/completions", "/responses", "/messages",
-	"/systemone", "/embeddings", "/rerank",
+	"/systemone", "/decisions", "/embeddings", "/rerank",
 	"/muse-code/models", CodexPath,
 }
 

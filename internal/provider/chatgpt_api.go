@@ -70,7 +70,12 @@ const (
 	SIWCUsageURL = "https://chatgpt.com/settings/usage"
 )
 
-var siwcClient = &http.Client{Timeout: 30 * time.Second}
+var siwcClient = &http.Client{Timeout: 30 * time.Second, CheckRedirect: KeepsCredentials}
+
+// siwcNoUsage is what a ChatGPT API account's usage line says: OpenAI's
+// API tells no plan usage, and the account added as ChatGPT (Codex's
+// backend) does.
+const siwcNoUsage = "a ChatGPT API account's usage isn't told through OpenAI's API, only at " + SIWCUsageURL + "; the same account added as ChatGPT shows it here"
 
 // ErrSIWCSignIn is an account OpenAI no longer refreshes: it must be
 // signed in again.
@@ -113,6 +118,9 @@ func siwcLoginList() []Login {
 	for i := range ls {
 		if ls[i].Lapsed == "" {
 			ls[i].Lapsed = ls[i].saved.Lapsed
+		}
+		if c, ok := siwcSaved(ls[i].saved); ok {
+			ls[i].Until = chatgptUntil(time.Now(), c.IDToken, c.Access)
 		}
 	}
 	return loginsOf(ls)
@@ -636,6 +644,15 @@ func siwcBody(body []byte) []byte {
 		input, _ := m["input"].([]any)
 		if k = conversationKey(own, input); k != "" {
 			m["prompt_cache_key"] = k
+		}
+	}
+	// GPT-6.2 reads top-level instructions after the input, uncached
+	// every turn: they go first in it (InstructionsAfterInput)
+	if own, _ := m["instructions"].(string); own != "" {
+		if model, _ := m["model"].(string); InstructionsAfterInput(model) {
+			input, _ := m["input"].([]any)
+			m["input"] = append([]any{DeveloperMessage(own)}, input...)
+			delete(m, "instructions")
 		}
 	}
 	if tools, ok := m["tools"].([]any); ok {

@@ -10,3 +10,6 @@ var webPage atomic.Bool
 func gatewayMode(web bool) (bool, string) {
 	return true, "tiny-magpie"
 }
+
+// Tiny usage comes from the gateway.
+func ownSessionsOff() bool { return true }

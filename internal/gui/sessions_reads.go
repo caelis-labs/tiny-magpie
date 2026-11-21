@@ -19,6 +19,12 @@ type readAgentJSON struct {
 	Name  string `json:"name"`
 	Icon  string `json:"icon"`
 	On    bool   `json:"on"`
+	// New: found here and not read, and never turned off on its own
+	// (settings.SessionReads.Kept): an agent installed after "allow
+	// selected", or one left off in its list (baysonfox on X: Antigravity
+	// 2.0's sessions and calls showed only through the gateway, agy CLI's
+	// always). The Sessions page and Usage › Requests ask about these once.
+	New bool `json:"new,omitempty"`
 }
 
 type readsJSON struct {
@@ -30,6 +36,9 @@ type readsJSON struct {
 	// Found: the agents with session history on this computer, and those
 	// the user named
 	Found []readAgentJSON `json:"found"`
+	// Gateway: gateway mode, which reads no agent's files here whatever
+	// the choice (ownSessionsOff), so nothing is asked and none is found
+	Gateway bool `json:"gateway,omitempty"`
 }
 
 func readsNow() readsJSON {
@@ -37,11 +46,12 @@ func readsNow() readsJSON {
 	if s := settings.Shared().SessionReads; s != nil {
 		r = s
 	}
-	out := readsJSON{Found: []readAgentJSON{}}
+	out := readsJSON{Found: []readAgentJSON{}, Gateway: ownSessionsOff()}
 	if r != nil {
 		out.Asked, out.All = r.Asked, r.All
 	}
 	agents := sessions.Found()
+	here := slices.Clone(agents)
 	if r != nil {
 		for a := range r.Agents {
 			if !slices.Contains(agents, a) {
@@ -52,8 +62,11 @@ func readsNow() readsJSON {
 	looks := agentLooks()
 	for _, a := range agents {
 		j := readAgentJSON{Agent: a, Name: a, Icon: "generic", On: r.Reads(a)}
-		if l := looks[a]; l != nil {
-			j.Name, j.Icon = l.SharedName(), l.Icon
+		if r != nil && r.Asked && !j.On {
+			j.New = !r.Kept[a] && slices.Contains(here, a)
+		}
+		if l, ok := looks[a]; ok {
+			j.Name, j.Icon = l.Shared, l.Icon
 		}
 		out.Found = append(out.Found, j)
 	}

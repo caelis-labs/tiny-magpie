@@ -40,8 +40,11 @@ func TestTinyAgentModelAndRestore(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("pick: %d %s", w.Code, w.Body)
 		}
-		if v, _ := edit.GetJSON(path, "model"); v != m {
-			t.Fatalf("model %q", v)
+		if alias, _ := edit.GetJSON(path, "model"); alias != "sonnet" {
+			t.Fatalf("model alias %q, want sonnet", alias)
+		}
+		if v, _ := edit.GetJSON(path, "env.ANTHROPIC_DEFAULT_SONNET_MODEL"); v != m {
+			t.Fatalf("model %q, want %q", v, m)
 		}
 	}
 	a, err := agent.Find("claude")

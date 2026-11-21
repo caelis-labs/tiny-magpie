@@ -18,14 +18,15 @@ const quotaUsage = `usage: tiny-magpie quota [<provider>...] [--json]
        tiny-magpie quota refresh [<provider/account>] [--json]
        tiny-magpie quota history [<provider/account>] [--days N] [--json]
        tiny-magpie quota wait [<provider>] [--timeout 30m]
+       tiny-magpie quota credits [<account>] [on|first|last|off]
 
-Read subscription allowances and API balances. No reset-card, warm-up,
-check-in or credit-spending actions are available.`
+Read subscription allowances and API balances, or configure whether Codex
+requests can use account credits after the included allowance is used up.`
 
 // quotaCmd: magpie quota [<provider>…] [--json]
 func quotaCmd(args []string) error {
-	if len(args) > 1 && (args[1] == "reset" || args[1] == "auto-reset" || args[1] == "credits" || args[1] == "warm" || args[1] == "warm-at") {
-		return fmt.Errorf("tiny-magpie only reads quotas; reset and credit spending are not supported")
+	if len(args) > 1 && (args[1] == "reset" || args[1] == "auto-reset" || args[1] == "warm" || args[1] == "warm-at") {
+		return fmt.Errorf("tiny-magpie does not support quota resets or warm-up")
 	}
 	if len(args) > 1 && args[1] == "reset" {
 		return quotaResetCmd(args[2:])
@@ -490,7 +491,7 @@ func quotaCreditsCmd(args []string) error {
 	case provider.CreditsOn:
 		fmt.Println(green.Render("✓"), user+":", "spends its credits once its allowance is used up, so a task goes on")
 	case provider.CreditsFirst:
-		fmt.Println(green.Render("✓"), user+":", "spends its credits before moving to another account: routing and Codex's sign-in stay on it while it holds credits")
+		fmt.Println(green.Render("✓"), user+":", "spends its credits before moving to another account: routing stays on it while it holds credits")
 	case provider.CreditsLast:
 		fmt.Println(green.Render("✓"), user+":", "spends its credits once its allowance is used up, but only after every other account, key and fallback that isn't on its credits")
 	default:

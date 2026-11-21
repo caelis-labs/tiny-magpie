@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 		addr := l.Addr().String()
 		l.Close()
 		fx.SetRateURL("http://" + addr + "/")
+		os.Setenv("MAGPIE_NOTES_FEED", "http://"+addr+"/") // no test asks the site for notes
 	}
 	os.Exit(testenv.Run(m))
 }
