@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,7 +12,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/gui"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/stats"
 )
 
 // webAddr is where `magpie web` listens unless told: beside the gateway.
@@ -65,6 +65,11 @@ func webCmd(args []string) error {
 	// version manager put on PATH only in the shell's profile, as the app's
 	// does: a service or autostart has none of it (#3803)
 	proc.UserPath()
+	// a container's `magpie web` (the Docker docs' command) is its PID 1
+	// as `magpie serve` is, and is left the processes its children leave
+	// behind: a plugin's backend whose host ended stayed <defunct>, and
+	// the plugin took it for still running (swang20201 on X)
+	proc.KeepReaping(context.Background())
 	w, err := gui.StartWeb(addr, version)
 	if err != nil {
 		return err
@@ -115,6 +120,9 @@ func printWeb(w *gui.Web) {
 		}
 		if gateway.ContainerAddrs() {
 			fmt.Println(muted.Render("  " + containerNote))
+		}
+		if l := containerLine(); l != "" {
+			fmt.Println(l)
 		}
 		fmt.Println(amber.Render("!"), lanWarning())
 	} else if l := proxyLink(key); l != "" {
@@ -202,10 +210,11 @@ func serveCmd(args []string) error {
 		}
 	}
 	proc.UserPath() // as magpie web's (#3803)
+	proc.KeepReaping(context.Background())
 	if web == "" {
 		return serve()
 	}
-	go stats.Run(version, "serve")
+
 	w, err := gui.StartWeb(web, version)
 	if err != nil {
 		return err

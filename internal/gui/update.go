@@ -53,7 +53,8 @@ type updater struct {
 	// it on, any other check stops at found (#2296)
 	fetch         bool
 	asked         time.Time // when the feed was last asked, by the clock or a click
-	done          int64     // downloading: bytes so far, of total (0 when unknown)
+	step          string
+	done          int64 // downloading: bytes so far, of total (0 when unknown)
 	total         int64
 	onReady       func(version string)
 	onChange      func(state, version string)
@@ -66,13 +67,15 @@ type updater struct {
 	// A restart asked for while the gateway is busy waits until it is idle
 	// (#577): waiting since waitFrom, then whenIdle restarts, unless it ran
 	// waitMost first (gaveUp). onWait tells the tray what it waits on.
-	waiting  bool
-	waitFrom time.Time
-	waitGen  int
-	gaveUp   bool
-	whenIdle func() bool
-	onWait   func()
-	loops    sync.WaitGroup // the waits going on
+	installed, followed bool
+	drainMost           time.Duration
+	waiting             bool
+	waitFrom            time.Time
+	waitGen             int
+	gaveUp              bool
+	whenIdle            func() bool
+	onWait              func()
+	loops               sync.WaitGroup // the waits going on
 	// With Settings' AutoRestart, the clock has autoRestart run (the app's
 	// or magpie web's restart) once a downloaded update is ready and the
 	// gateway idle (#2096); autoSkip is the version whose wait the user
@@ -89,6 +92,10 @@ type updateJSON struct {
 	Notes   string `json:"notes,omitempty"`
 	URL     string `json:"url,omitempty"`
 	Stuck   string `json:"stuck,omitempty"` // available: why it can't update itself
+	// Run tells this run of magpie from the next, of the same version:
+	// a page whose restart asked for no update reloads once it changes
+	// (restart.go)
+	Run int64 `json:"run,omitempty"`
 	// available, stuck "not-writable": the folder magpie may not write to
 	StuckDir string `json:"stuckDir,omitempty"`
 	// available, stuck "package": the package manager that installed
@@ -103,10 +110,33 @@ type updateJSON struct {
 	// row says so in the app's language instead of the raw error
 	Network bool   `json:"network,omitempty"`
 	Error   string `json:"error,omitempty"`
-	Done    int64  `json:"done,omitempty"` // downloading: bytes so far
+	// Channel: "stable" or "daily" when the answer is Settings' Stable or
+	// Daily channel's; latest on it, Newest is the newest version out on
+	// every version, when newer than this one: the channel's "up to date"
+	// isn't the newest
+	Channel string `json:"channel,omitempty"`
+	Newest  string `json:"newest,omitempty"`
+	// Ahead: latest on Stable or Daily, this version is newer than the
+	// channel's (Latest). Nothing is installed until the channel passes
+	// it, and "up to date on Daily" read as an update that never came
+	// (realfxw on X: 0.1.4445 on Daily, whose pick was 0.1.4395, restarted
+	// again and again)
+	Ahead bool  `json:"ahead,omitempty"`
+	Done  int64 `json:"done,omitempty"` // downloading: bytes so far
+	// downloading: the step under way, "" before the first
+	// (update.StepDownload, StepRetry, StepVerify, StepUnpack,
+	// StepSignature), and how fast the bytes came over the last seconds,
+	// per second, left out while too little is known
+	Step  string `json:"step,omitempty"`
+	Speed int64  `json:"speed,omitempty"`
 	// blocked: the version this computer wouldn't start, and why (#894)
 	Blocked *update.Blocked `json:"blocked,omitempty"`
-	Total   int64           `json:"total,omitempty"`
+
+	// Quiet: a newer version is out but the header's pill was dismissed
+	// less than update.Quiet ago, and none is urgent, so the pill stays out
+	// (the Version row and Restart to update still offer it)
+	Quiet bool  `json:"quiet,omitempty"`
+	Total int64 `json:"total,omitempty"`
 	// found: the size of the file Download update would fetch, in bytes
 	// (0 when the feed doesn't say)
 	Size int64 `json:"size,omitempty"`
@@ -120,6 +150,9 @@ type updateJSON struct {
 	// (handover.go): Busy is then the Claude subscription's turns alone,
 	// every other request finishing as the new version takes the next
 	Handover bool `json:"handover,omitempty"`
+	// Using, a restart by itself waits for the user to stop using a
+	// window (inUseAt)
+	Using bool `json:"using,omitempty"`
 }
 
 var updates = &updater{}
@@ -344,8 +377,10 @@ func (u *updater) asking() bool {
 // that shows the update before it is put in.
 const freshAfter = 5 * time.Minute
 
-// freshen asks the feed again, as recheck does, when a version downloaded
-// waits and the feed was last asked over freshAfter ago (#910).
+// freshen asks the feed again when a version downloaded waits and the
+// feed was last asked over freshAfter ago (#910), for the notes. recheck
+// leaves the one waiting, which is what the dialog then names and the
+// restart goes into (canlee886, sakamotokurome on X).
 func (u *updater) freshen() {
 	u.mu.Lock()
 	stale := u.state == "ready" && u.staged != "" && time.Since(u.asked) >= freshAfter
@@ -502,11 +537,16 @@ func (u *updater) run() {
 	}
 	// an older download is replaced by this one: until it is in, there is
 	// nothing to install
-	u.state, u.done, u.total, u.staged = "downloading", 0, 0, ""
+	u.state, u.done, u.total, u.staged, u.step = "downloading", 0, 0, "", ""
 	u.mu.Unlock()
 	ctx = update.WithProgress(ctx, func(done, total int64) {
 		u.mu.Lock()
 		u.done, u.total = done, total
+		u.mu.Unlock()
+	})
+	ctx = update.WithStep(ctx, func(step string) {
+		u.mu.Lock()
+		u.step = step
 		u.mu.Unlock()
 	})
 	var staged string
@@ -552,7 +592,7 @@ func (u *updater) install(ask bool) bool {
 		// another magpie updated the binary after this one started: it is
 		// in, and swapping this one's download in would move it aside (the
 		// download is left: it may be the other's, staged at the same name)
-		u.staged = ""
+		u.staged, u.installed = "", true
 		return true
 	}
 	if u.staged == "" {
@@ -583,7 +623,7 @@ func (u *updater) install(ask bool) bool {
 		}
 		return false
 	}
-	u.staged = ""
+	u.staged, u.installed = "", true
 	return true
 }
 
@@ -598,6 +638,7 @@ func (u *updater) wontStart(err error) {
 	}
 	b := update.NoteBlocked(v, err)
 	u.blocked, u.state, u.aside = &b, "blocked", ""
+	u.installed = false
 	u.err = err.Error()
 }
 
@@ -659,7 +700,7 @@ func (u *updater) jsonIn(lang string) updateJSON {
 		}
 	}
 	if u.state == "downloading" {
-		j.Done, j.Total = u.done, u.total
+		j.Done, j.Total, j.Step = u.done, u.total, u.step
 	}
 	if u.state == "blocked" {
 		j.Blocked = u.blocked
@@ -701,10 +742,17 @@ func (u *updater) relang(version, lang string) {
 		return
 	}
 	u.mu.Lock()
-	defer u.mu.Unlock()
 	if u.latest == nil || u.latest.Version != version || rel.Version != version {
+		newer := u.latest != nil && update.Newer(rel.Version, u.latest.Version)
+		u.mu.Unlock()
+		if newer && !settings.Load().NoAutoUpdate {
+			// the feed names a newer version than the one held: it is
+			// checked for, and so downloaded, now (canlee886 on X)
+			u.checkByClock()
+		}
 		return // a check since has its own
 	}
+	defer u.mu.Unlock()
 	c := *u.latest // the download may still be reading the one held
 	c.Notes = rel.Notes
 	u.latest, u.notesIn = &c, lang
@@ -736,7 +784,7 @@ func updateRoutes(mux *http.ServeMux, w Windows) {
 			Error    string        `json:"error,omitempty"`
 		}{Latest: j.Latest, Releases: []update.Note{}}
 		if j.Latest != "" {
-			notes, err := fetchNotes(r.Context(), Version, j.Latest, pageLang(r))
+			notes, _, err := fetchNotes(r.Context(), Version, j.Latest, pageLang(r))
 			if len(notes) == 0 && strings.TrimSpace(j.Notes) != "" {
 				notes = []update.Note{{Version: j.Latest, Notes: j.Notes, URL: j.URL}}
 			}
@@ -920,4 +968,10 @@ func restartInto(web, window bool, view string, bySelf bool) bool {
 func mainShown(w Windows) bool {
 	s, ok := w.(interface{ MainShown() bool })
 	return ok && s.MainShown()
+}
+
+// progMark is how many bytes a download had at a moment.
+type progMark struct {
+	at   time.Time
+	done int64
 }

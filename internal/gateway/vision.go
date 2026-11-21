@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/yetone/magpie/internal/catalog"
+	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/provider"
 )
 
@@ -157,16 +157,16 @@ func missingSeerNote() string {
 // none of its members is marked as taking images.
 func textOnlyNote(p provider.Provider, model string, group string) string {
 	if group != "" {
-		return fmt.Sprintf("; no model in the group %s is marked as taking images: turn on Accepts images for one that does, in its provider's Names & levels in magpie", group)
+		return fmt.Sprintf("; no model in the group %s is marked as taking images: turn on Accepts images for one that does, in its provider's Model settings in magpie", group)
 	}
 	name := p.Name
 	if name == "" {
 		name = p.ID
 	}
 	if v, ok := provider.ImageOverride(p.ID, model); ok && !v {
-		return fmt.Sprintf("; Accepts images is turned off for it in magpie, in Providers → %s → Names & levels", name)
+		return fmt.Sprintf("; Accepts images is turned off for it in magpie, in Providers → %s → Model settings", name)
 	}
-	return fmt.Sprintf("; %s's model list marks it as not taking images: if it does, turn on Accepts images for it in magpie, in Providers → %s → Names & levels", name, name)
+	return fmt.Sprintf("; %s's model list marks it as not taking images: if it does, turn on Accepts images for it in magpie, in Providers → %s → Model settings", name, name)
 }
 
 // noSeerNote is what a request turned away for an image says of why no
@@ -187,8 +187,8 @@ func autoSeerNote(see string) string {
 
 // AutoVision is the model magpie picks to describe images when the
 // Settings name none: a small model that sees, of the models the user
-// enabled on the providers switched on (smallModel) — a
-// Claude account's, a Codex account's, the cheapest of an API key's,
+// enabled on the providers switched on (smallModel) — the provider it is
+// held to's (heldPick, auto_picks.go), a Claude account's, a Codex account's, the cheapest of an API key's,
 // another account's. One with allowance left goes before one whose every
 // account or key is out of it (smallReady), whatever their order: the
 // one out is picked only when every model that sees is, so that agents
@@ -202,10 +202,13 @@ func AutoVision() string {
 
 // autoVision is AutoVision's pick, and whether it has allowance left.
 func autoVision() (string, bool) {
-	if r := seersRanked(nil); len(r) > 0 {
-		return r[0].model, r[0].ready
+	held := heldPick(slotVision)
+	r := seersRankedHeld(nil, held)
+	if len(r) == 0 {
+		return "", false
 	}
-	return "", false
+	settlePick(slotVision, held, slices.ContainsFunc(r, func(s rankedSeer) bool { return providerOfRef(s.model) == held }), providerOfRef(r[0].model))
+	return r[0].model, r[0].ready
 }
 
 // rankedSeer is a model seersRanked names, and whether it has allowance.
@@ -221,8 +224,17 @@ type rankedSeer struct {
 // passed over for the provider's next one (the describers a failed
 // description already asked, describeWith).
 func seersRanked(skip func(string) bool) []rankedSeer {
+	return seersRankedHeld(skip, heldPick(slotVision))
+}
+
+// seersRankedHeld is seersRanked with held, the provider Image
+// recognition's Automatic pick is held to (heldPick), before every other
+// of its readiness: a Claude account added later doesn't take it over.
+func seersRankedHeld(skip func(string) bool, held string) []rankedSeer {
 	tier := func(p provider.Provider) int {
 		switch {
+		case held != "" && p.ID == held:
+			return -1
 		case p.Account != nil && p.Account.Agent == "claude":
 			return 0
 		case p.Account != nil && p.Account.Agent == "codex":
@@ -330,6 +342,10 @@ type sight struct {
 	text string
 	by   string // the model that described it: model, or one in its place
 	err  error
+	// answered means the model call is over, even while a successful inline
+	// description is still being saved. Cancellation must not stop that save.
+	answered   bool
+	persistent bool // inline bytes, never a URL whose contents can change
 	// waiting is how many requests wait on it now, and stop ends the
 	// work of describing it: the last of them to go stops it (sightMu)
 	waiting int
@@ -411,9 +427,18 @@ func (s *Server) describeKeyed(ctx context.Context, model, src, key string) (tex
 		}
 	} else {
 		work, stop := context.WithCancel(context.WithoutCancel(ctx))
-		e = &sight{done: make(chan struct{}), stop: stop}
+		_, persistent := dataURLBytes(src)
+		e = &sight{done: make(chan struct{}), stop: stop, persistent: persistent}
 		s.keepSightLocked(key, e)
-		go s.see(work, e, model, src, key)
+		if persistent {
+			s.beginSightSave()
+		}
+		go func() {
+			if persistent {
+				defer s.endSightSave()
+			}
+			s.see(work, e, model, src, key)
+		}()
 	}
 	e.waiting++
 	s.sightMu.Unlock()
@@ -428,12 +453,14 @@ func (s *Server) describeKeyed(ctx context.Context, model, src, key string) (tex
 		return e.text, e.by, e.err
 	case <-ctx.Done():
 		s.sightMu.Lock()
-		if e.waiting--; e.waiting == 0 {
+		e.waiting--
+		answered := e.answered
+		if e.waiting == 0 && !answered {
 			select {
 			case <-e.done:
 			default:
-				// no one waits for it now: it stops, and the next to send
-				// the image asks again
+				// no one waits for work still in the model: it stops, and the
+				// next to send the image asks again
 				s.forgetSightLocked(key, e)
 				if e.stop != nil {
 					e.stop()
@@ -441,6 +468,12 @@ func (s *Server) describeKeyed(ctx context.Context, model, src, key string) (tex
 			}
 		}
 		s.sightMu.Unlock()
+		if answered {
+			// The model has answered: let its successful description finish
+			// saving before the request returns, so an immediate restart or
+			// handover can't read an older cache.
+			<-e.done
+		}
 		return "", model, ctx.Err()
 	}
 }
@@ -450,12 +483,23 @@ func (s *Server) see(work context.Context, e *sight, model, src, key string) {
 	text, by, err := s.describeWith(work, model, src, visionSystem, "Describe this image.")
 	s.sightMu.Lock()
 	e.text, e.by, e.err = text, by, err
-	switch {
-	case err != nil:
+	e.answered = true
+	if err != nil {
 		// a failure isn't kept: the next request asks again
 		s.forgetSightLocked(key, e)
-	case s.sights[key] == nil:
-		// answered as the last to wait went: kept for the next
+	}
+	s.sightMu.Unlock()
+
+	if err == nil && e.persistent {
+		// Persist before releasing the waiters: an immediate restart must
+		// find this description. A write failure only loses that saving.
+		s.saveSight(key, text, by)
+	}
+
+	s.sightMu.Lock()
+	if err == nil && s.sights[key] == nil {
+		// answered as the last to wait went (or while it was being saved):
+		// kept for the next, as before
 		s.keepSightLocked(key, e)
 	}
 	close(e.done)
@@ -783,7 +827,7 @@ func smallModelWhere(p provider.Provider, kind string, keep func(catalog.Model) 
 // endpoints found that support image input", vLLM's "is not a multimodal
 // model", and the plain "does not support image input" / "image input is
 // not supported" / "不支持图片" of the rest.
-var imageRefusedWords = regexp.MustCompile("(?i)unknown variant [`'\"\\\\]*(?:image_url|input_image|image)\\b|image_url is only supported by certain models|no endpoints found that support image|not a multi-?modal model|(?:does not|doesn't|do not|don't|cannot|can't|unable to) (?:support|accept|process|handle|take|read) (?:the )?(?:image|images|vision|multi-?modal)|\\b(?:image|images|vision|multi-?modal|image_url|input_image)(?: (?:input|inputs|content|parts?))? (?:is |are )?(?:not supported|unsupported|not enabled|not allowed)|不支持(?:图片|图像|多模态|视觉|识图)")
+var imageRefusedWords = lazyre.New("(?i)unknown variant [`'\"\\\\]*(?:image_url|input_image|image)\\b|image_url is only supported by certain models|no endpoints found that support image|not a multi-?modal model|(?:does not|doesn't|do not|don't|cannot|can't|unable to) (?:support|accept|process|handle|take|read) (?:the )?(?:image|images|vision|multi-?modal)|\\b(?:image|images|vision|multi-?modal|image_url|input_image)(?: (?:input|inputs|content|parts?))? (?:is |are )?(?:not supported|unsupported|not enabled|not allowed)|不支持(?:图片|图像|多模态|视觉|识图)")
 
 // imageRefused says a failure was the model turning the request's image
 // away: what a describer fixes by describing it, not what another

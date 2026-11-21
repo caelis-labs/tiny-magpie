@@ -1,8 +1,6 @@
 package provider
 
-// Tiny holds an account at its reported quota rather than offering credit
-// spending. Vendor quota freshness remains upstream's; preference fields
-// stay readable for configuration compatibility.
+// These settings govern routing of requests to Codex accounts.
 
 import (
 	"fmt"
@@ -12,24 +10,31 @@ import (
 )
 
 // CodexCredits says whether the Codex account user spends its credits
-// once a usage window is used up. Tiny disables this product policy.
-func CodexCredits(user string) bool { return false }
+// once a usage window is used up: true unless the user turned it off.
+func CodexCredits(user string) bool {
+	return !slices.Contains(settings.Load().CodexNoCredits, accountKey(user))
+}
 
 // CodexCreditsLast says whether the Codex account user, which spends its
 // credits, spends them only after everything else: once a usage window is
 // used up, routing tries it after every account, key and fallback not on
 // its credits (gateway's creditsLast) rather than in its place. Off unless
 // the user set it, so a setting saved before it keeps its order.
-func CodexCreditsLast(user string) bool { return false }
+func CodexCreditsLast(user string) bool {
+	user = accountKey(user)
+	s := settings.Load()
+	return user != "" && slices.Contains(s.CodexCreditsLast, user) && !slices.Contains(s.CodexNoCredits, user)
+}
 
 // CodexCreditsFirst says whether the Codex account user, which spends its
 // credits, spends them before routing moves on: a window used up sends
-// neither requests nor Codex's sign-in to another account while it goes
-// on on its credits (gateway's creditsFirst, NextLogin), where by default
-// an account all but used up waits behind every one with room (Smart)
-// and Codex is signed in to another (jojonas_xyz on X). Off unless the
+// requests stay on the account while it holds credits. Off unless the
 // user set it.
-func CodexCreditsFirst(user string) bool { return false }
+func CodexCreditsFirst(user string) bool {
+	user = accountKey(user)
+	s := settings.Load()
+	return user != "" && slices.Contains(s.CodexCreditsFirst, user) && !slices.Contains(s.CodexNoCredits, user) && !slices.Contains(s.CodexCreditsLast, user)
+}
 
 // Ways a Codex account spends its credits, for SetCodexCreditsMode.
 const (
@@ -90,10 +95,16 @@ func SetCodexCreditsMode(user, mode string) error {
 // HoldCaps is the shares of its windows at which routing holds the
 // account user of p, of agent, as used up: its usage cap and its windows'
 // own (account_caps.go), and for a Codex account set not to spend its
-// credits 100% of any window with no cap. Holds() is false when nothing
-// holds it before the vendor does.
+// credits, or a Claude account set not to spend extra usage
+// (claude_extra.go), 100% of any window with no cap. Holds() is false
+// when nothing holds it before the vendor does.
 func HoldCaps(p Provider, agent, user string) WindowCaps {
 	c := p.CapsOf(user)
-	c.Credits = agent == "codex" && user != "" && !CodexCredits(user)
+	switch agent {
+	case "codex":
+		c.Credits = user != "" && !CodexCredits(user)
+	case "claude":
+		c.Credits = !ClaudeExtraUsage()
+	}
 	return c
 }

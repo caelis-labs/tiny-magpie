@@ -20,3 +20,7 @@ __pycache__/
 # Finder metadata from native installer checks
 .DS_Store
 /internal/update/launcher-*.com
+/internal/gui/assets.zip
+/.overlay/
+/internal/conptypair/amd64/
+/internal/conptypair/arm64/

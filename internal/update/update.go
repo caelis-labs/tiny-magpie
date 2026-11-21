@@ -18,7 +18,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/appdir"
+	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/source"
@@ -38,6 +38,7 @@ type Release struct {
 	Notes   string           `json:"notes"`   // markdown
 	URL     string           `json:"url"`     // the release page
 	Assets  map[string]Asset `json:"assets"`  // by file name
+
 }
 
 // Asset is one downloadable file of a release.
@@ -76,7 +77,7 @@ func Released(v string) bool {
 }
 
 // describe matches what git describe adds after a tag: commits since, hash.
-var describe = regexp.MustCompile(`^\d+-g[0-9a-f]+`)
+var describe = lazyre.New(`^\d+-g[0-9a-f]+`)
 
 // Newer reports whether version a comes after b. A pre-release comes before
 // the release it leads up to.
@@ -433,7 +434,7 @@ func relaunchScript(bundle string, window, quiet bool, log string, waits []strin
 }
 
 // bundleExecutableKey finds the program an app's Info.plist names.
-var bundleExecutableKey = regexp.MustCompile(`<key>CFBundleExecutable</key>\s*<string>([^<]+)</string>`)
+var bundleExecutableKey = lazyre.New(`<key>CFBundleExecutable</key>\s*<string>([^<]+)</string>`)
 
 // bundleExecutable is the name of the program in bundle's Contents/MacOS:
 // the one its Info.plist names, else this one's own when it runs from
@@ -473,7 +474,7 @@ func runAfterExit(pid int, command string) error {
 	cmd := proc.Command("/bin/sh", "-c", script)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = nil, nil, nil
 	detach(cmd)
-	return cmd.Start()
+	return proc.StartReaped(cmd)
 }
 
 // relaunchOpen is the open command Relaunch runs for bundle. -n asks
@@ -1010,7 +1011,7 @@ func RelaunchArgs(window bool, view string) []string {
 }
 
 // AwaitPredecessor blocks, for a while at most, until the magpie that
-// relaunched this one has exited.
+// relaunched this one has exited; on Windows its WebView2 too (awaitGone).
 func AwaitPredecessor() {
 	reportStarted() // first: the one that started this waits for it
 	pid, err := strconv.Atoi(os.Getenv("MAGPIE_REPLACES"))
@@ -1018,9 +1019,7 @@ func AwaitPredecessor() {
 	if err != nil || pid <= 0 {
 		return
 	}
-	for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline) && alive(pid); {
-		time.Sleep(100 * time.Millisecond)
-	}
+	awaitGone(pid)
 }
 
 type progressKey struct{}
@@ -1031,6 +1030,31 @@ func WithProgress(ctx context.Context, f func(done, total int64)) context.Contex
 	return context.WithValue(ctx, progressKey{}, f)
 }
 
+type stepKey struct{}
+
+// The steps an update made under WithStep's ctx goes through, in order.
+// After the download its percent says nothing, and a Mac's unpack and
+// signature check take seconds: each says its name instead (esir_tech on
+// Discord, a percent that sat still).
+const (
+	StepDownload  = "download"  // the bytes coming in
+	StepRetry     = "retry"     // the connection broke off or stalled: waiting to try again
+	StepVerify    = "verify"    // the file checked against its SHA-256
+	StepUnpack    = "unpack"    // the Mac's zip unpacked
+	StepSignature = "signature" // the Mac app's signature checked
+)
+
+// WithStep has an update made under ctx say each step it starts.
+func WithStep(ctx context.Context, f func(step string)) context.Context {
+	return context.WithValue(ctx, stepKey{}, f)
+}
+
+func step(ctx context.Context, s string) {
+	if f, ok := ctx.Value(stepKey{}).(func(string)); ok {
+		f(s)
+	}
+}
+
 // retryWaits are the pauses before each try after the first: a
 // connection that drops at the start or part way (GitHub's asset host from
 // some networks: AIMetaPhD on X, "EOF" at 0.1.1618) is tried again, from
@@ -1038,8 +1062,8 @@ func WithProgress(ctx context.Context, f func(done, total int64)) context.Contex
 var retryWaits = []time.Duration{2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 30 * time.Second}
 
 // download fetches a to path and checks its hash. A connection that drops
-// is tried again after each of retryWaits, asking with Range for what is
-// still missing; the hash is checked over the whole file, the bytes kept
+// is tried again after each of retryWaits, over HTTP/1.1 (OverHTTP1),
+// asking with Range for what is still missing; the hash is checked over the whole file, the bytes kept
 // from the tries before included.
 func download(ctx context.Context, a Asset, path string) (err error) {
 	defer func() {
@@ -1057,6 +1081,7 @@ func download(ctx context.Context, a Asset, path string) (err error) {
 	}
 	for try := 0; try <= len(retryWaits); try++ {
 		if try > 0 {
+			step(ctx, StepRetry)
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -1066,6 +1091,11 @@ func download(ctx context.Context, a Asset, path string) (err error) {
 		if err = fetchPart(ctx, a, path); err == nil || ctx.Err() != nil || !Network(err) {
 			break
 		}
+		// the tries after a connection that broke go over HTTP/1.1: a
+		// proxy that cuts HTTP/2 streams part way cuts every try made
+		// over it the same way, while HTTP/1.1 through it holds
+		// (biubiu8802 on X: "unexpected EOF" on each try)
+		ctx = netproxy.OverHTTP1(ctx)
 	}
 	if err != nil {
 		if cerr := clearFile(path); cerr != nil {
@@ -1105,6 +1135,9 @@ type NetError struct {
 }
 
 func (e *NetError) Error() string {
+	if s, ok := e.Err.(statusError); ok {
+		return fmt.Sprintf("download %s: %s, on every try", e.File, string(s))
+	}
 	cause := e.Err
 	var ue *url.Error
 	if errors.As(cause, &ue) {
@@ -1114,6 +1147,23 @@ func (e *NetError) Error() string {
 }
 
 func (e *NetError) Unwrap() error { return e.Err }
+
+// statusError is a reply a host gives when it is busy, not a refusal of
+// the file: its status line.
+type statusError string
+
+func (s statusError) Error() string { return string(s) }
+
+// busyStatus is a status trying again may get past: the host or its
+// gateway overloaded or timed out, or asking for a pause.
+func busyStatus(code int) bool {
+	switch code {
+	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return false
+}
 
 // Network reports whether err is a download the network broke off, which
 // trying again may get through.
@@ -1189,6 +1239,12 @@ func fetchPart(ctx context.Context, a Asset, path string) error {
 			have = 0
 			continue
 		}
+		if res.StatusCode == http.StatusPartialContent && have > 0 && !restarted &&
+			!strings.HasPrefix(res.Header.Get("Content-Range"), fmt.Sprintf("bytes %d-", have)) {
+			res.Body.Close()
+			have = 0
+			continue
+		}
 		break
 	}
 	defer res.Body.Close()
@@ -1197,6 +1253,8 @@ func fetchPart(ctx context.Context, a Asset, path string) error {
 		flag = os.O_WRONLY | os.O_APPEND
 	case res.StatusCode == http.StatusOK:
 		have = 0 // the whole file again
+	case busyStatus(res.StatusCode):
+		return fail(&NetError{File: name, Err: statusError(res.Status)})
 	default:
 		if u != a.URL {
 			return fail(&MirrorError{Mirror: mirror, Err: fmt.Errorf("download %s through the mirror %s: %s", name, mirror, res.Status)})
@@ -1237,6 +1295,7 @@ func fetchPart(ctx context.Context, a Asset, path string) error {
 		return fail(fmt.Errorf("%s size is %d, want %d", name, fi.Size(), a.Size))
 	}
 	// the whole file, what earlier tries kept included, against the feed's
+	step(ctx, StepVerify)
 	if !strings.EqualFold(fileHash(path), a.SHA256) {
 		err = fmt.Errorf("%s does not match its checksum", name)
 		if u != a.URL {
@@ -1288,7 +1347,7 @@ func OpenBeside(bundle string, window, quiet bool) error {
 	cmd := proc.Command("/bin/sh", "-c", retried(openBeside(bundle, window, quiet), openWaits))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = nil, nil, nil
 	detach(cmd)
-	return cmd.Start()
+	return proc.StartReaped(cmd)
 }
 
 // openBeside is the open command OpenBeside runs for bundle.

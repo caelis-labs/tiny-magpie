@@ -21,7 +21,7 @@ func TestTinyClassifiersAndRetrievalInventory(t *testing.T) {
 		t.Fatal("TypeSafe missing from Add provider")
 	}
 	p := provider.Provider{ID: "fixture", Name: "Fixture", Chat: "http://127.0.0.1:1/v1", Key: "fixture"}
-	if err := catalog.SaveLive(p.ID, p.Chat, []catalog.Model{{ID: "chat", Name: "Chat"}, {ID: "vector", Name: "Vector", Retrieval: "embedding"}, {ID: "rerank-1", Name: "Rank", Retrieval: "rerank"}}); err != nil {
+	if err := catalog.SaveLive(p.ID, p.Chat, []catalog.Model{{ID: "chat", Name: "Chat"}, {ID: "vector", Name: "Vector", Retrieval: "embedding"}, {ID: "rerank-1", Name: "Rank", Serves: "rerank"}}); err != nil {
 		t.Fatal(err)
 	}
 	info := providerInfo(p, nil)
@@ -32,7 +32,7 @@ func TestTinyClassifiersAndRetrievalInventory(t *testing.T) {
 
 func TestTinyRetiredSettingsHaveNoAPI(t *testing.T) {
 	h := builtinHome(t)
-	for _, path := range []string{"/api/privacy-model", "/api/masking", "/api/settings/redact-rules", "/api/settings/redact-rule", "/api/settings/codex-credits", "/api/plugins/builtin"} {
+	for _, path := range []string{"/api/privacy-model", "/api/masking", "/api/settings/redact-rules", "/api/settings/redact-rule", "/api/plugins/builtin", "/api/settings/agent-telemetry", "/api/settings/search-count", "/api/signin/export", "/api/usage/codex-reset"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, nil))
 		if w.Code != 404 {

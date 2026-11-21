@@ -21,6 +21,8 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/yetone/magpie/internal/gateway"
+	"github.com/yetone/magpie/internal/plugin"
+	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/update"
 )
 
@@ -35,7 +37,7 @@ type webHost struct{ quit func() }
 func (webHost) HidePanel()                       {}
 func (webHost) ShowMain(string)                  {}
 func (h webHost) Quit()                          { h.quit() }
-func (webHost) OpenURL(string) error             { return nil } // the page opens links itself
+func (webHost) OpenURL(u string) error           { return openOnHost(u) }
 func (webHost) Copy(string) bool                 { return false }
 func (webHost) FitPanel(int, Glide)              {}
 func (webHost) TintPanel([4]uint8, int) bool     { return false }
@@ -48,8 +50,19 @@ func (webHost) ChooseFolder(string) (string, error) {
 	return "", errors.New("in the browser magpie can't show a folder picker: type the folder's path")
 }
 
-// Web is a started `magpie web`: its address and the link that signs a
-// browser in.
+// openOnHost opens an app's import link (cindy://, lody://, ...) on this
+// computer, the one magpie runs on: the apps' databases it reads for "added"
+// are here, so the link must open here and not in the browser that views the
+// page, which may be another machine's (Jealousy_Du on X). A web page's own
+// https links stay the page's to open. Tests stand in for the system.
+var openOnHost = func(u string) error {
+	if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+		return nil // the page opens links itself
+	}
+	return proc.OpenBrowser(u)
+}
+
+// Web is a running Web GUI with the address and link that signs a browser in.
 type Web struct {
 	Addr, Link string
 	key        string
@@ -135,6 +148,10 @@ func (w *Web) Wait() error {
 	if err != nil {
 		return err
 	}
+	// the plugin hosts end, waited for, first: one still running at the
+	// exec is a child nothing waits for after it, <defunct> under this
+	// pid from then on (#3285)
+	plugin.EndHosts()
 	return update.Reexec(exe, os.Args[1:], append(os.Environ(), webRunKey+"="+w.key))
 }
 
@@ -189,9 +206,10 @@ func CheckWebKey(k string) error {
 
 // webGuard lets through requests with the key: in the link's k, which it
 // trades for a cookie (kept for keep, or the browser session when 0) and
-// a clean address, or in that cookie. A page opened without it gets a
-// form to paste the key into (webSignIn), which says why it was turned
-// away, so a bookmark doesn't send anyone back to the start-up log.
+// a clean address, or in that cookie. A page without the key gets a
+// form to paste it into (webSignInPath),
+// which says why it was turned away, so a bookmark doesn't send anyone
+// back to the start-up log.
 func webGuard(cookie, key string, keep time.Duration, next http.Handler) http.Handler {
 	same := func(v string) bool { return subtle.ConstantTimeCompare([]byte(v), []byte(key)) == 1 }
 	signIn := func(rw http.ResponseWriter, r *http.Request, back string) {
@@ -253,8 +271,9 @@ func webGuard(cookie, key string, keep time.Duration, next http.Handler) http.Ha
 		if len(sent) > 0 {
 			why, short = "This browser's sign-in cookie holds a key that isn't this magpie web's: the key changed after it signed in (MAGPIE_WEB_KEY changed, or a start without it made a new one).", "its cookie holds another key"
 		}
+		lead := "open the link magpie web printed when it started: it carries the key. "
 		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept"), "text/html") {
-			http.Error(rw, "open the link magpie web printed when it started: it carries the key. "+why, http.StatusUnauthorized)
+			http.Error(rw, lead+why, http.StatusUnauthorized)
 			return
 		}
 		log.Printf("magpie web: turned away %s from %s: %s", r.URL.Path, r.RemoteAddr, short)
@@ -293,7 +312,7 @@ func webTurnedAway(rw http.ResponseWriter, r *http.Request, back, why string) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	rw.Header().Set("Cache-Control", "no-store")
 	rw.WriteHeader(http.StatusUnauthorized)
-	fmt.Fprintf(rw, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>magpie web</title>
+	fmt.Fprintf(rw, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>magpie web</title>
 <style>body{font:15px/1.5 system-ui,sans-serif;max-width:32em;margin:12vh auto;padding:0 16px;color:#222;background:#fafafa}@media(prefers-color-scheme:dark){body{color:#ddd;background:#1c1c1e}}input,button{font:inherit;padding:.4em .6em}input{width:100%%;box-sizing:border-box;margin:.5em 0}</style></head>
 <body><h1>magpie web</h1><p>%s</p><p>Paste the key (MAGPIE_WEB_KEY, or the k= in the link magpie web printed when it started):</p>
 <form method="post" action="%s"><input type="hidden" name="back" value="%s"><input type="password" name="key" autocomplete="current-password" autofocus required><button type="submit">Sign in</button></form></body></html>`,
@@ -329,16 +348,64 @@ func LANAddrs() []string {
 }
 
 // webServed is all `magpie web` on port serves: the gateway's client
-// routes, judged by the gateway (onePort), and the page and its API behind
-// the allow list and the key.
+// routes, judged by the gateway (onePort) and never by box, and the page
+// and its API behind the allow list and the key, or box's sign-in.
 func webServed(port, key string, keep time.Duration, page http.Handler) http.Handler {
-	return onePort(gateway.AllowGuard(webHandler(port, key, keep, page)))
+	return onePort(gateway.AllowGuard(gateway.ClientCertGuard(webHandler(port, key, keep, page))))
 }
 
 // webHandler is what `magpie web` on port serves: the page and its API
-// behind the key, compressed for the browser.
+// behind the key, or box's sign-in, compressed for the browser.
 func webHandler(port, key string, keep time.Duration, page http.Handler) http.Handler {
-	return webCompressed(webGuard("magpie_web_"+port, key, keep, page))
+	return webCompressed(webGuard("magpie_web_"+port, key, keep, webOwnPage(page)))
+}
+
+// webOwnPage turns away a request for /api that another page sent with
+// the page's cookie. The cookie is SameSite=Lax, so a browser sends it
+// with any request one site sends another, and a site is the registrable
+// domain without the port: a page on another port of 127.0.0.1 or of the
+// LAN address, or on a sibling name behind the same reverse proxy, could
+// POST a stdio MCP server to /api/library/servers/save as text/plain in
+// no-cors mode and start it with /api/library/mcp/check, which is code run
+// as the user. Only the page itself may write: a write (any method but
+// GET, HEAD and OPTIONS) is judged by net/http's CrossOriginProtection,
+// which takes the browser's Sec-Fetch-Site (same-origin, or none for what
+// the user did) and, from a browser too old to send it, an Origin that is
+// absent or names the request's own Host or MAGPIE_PUBLIC_URL. A read is
+// turned away too when the browser says another origin sent it, so that
+// no GET route that does something (an import read once, a sign-in
+// started) is any page's to call, whether or not it answers.
+//
+// The desktop window's /api is served in the process, over no port, and
+// has no cookie for another page to borrow, so this is for the browser's
+// page alone.
+func webOwnPage(next http.Handler) http.Handler {
+	cop := http.NewCrossOriginProtection()
+	if u, err := url.Parse(gateway.PublicURL()); err == nil && u.Host != "" && (u.Scheme == "http" || u.Scheme == "https") {
+		// behind a proxy that passes on a Host of its own, the page's
+		// address is the one the user named
+		if err := cop.AddTrustedOrigin(u.Scheme + "://" + u.Host); err != nil {
+			log.Printf("magpie web: MAGPIE_PUBLIC_URL %s is no origin: %v", u, err)
+		}
+	}
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(rw, r)
+			return
+		}
+		err := cop.Check(r)
+		if err == nil {
+			if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+				err = errors.New("Sec-Fetch-Site " + site)
+			}
+		}
+		if err != nil {
+			log.Printf("magpie web: turned away %s %s from another page (Origin %q): %v", r.Method, r.URL.Path, r.Header.Get("Origin"), err)
+			http.Error(rw, "magpie's API answers magpie's own page only", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(rw, r)
+	})
 }
 
 // webCompressed gzips what `magpie web` sends a browser that takes it: the

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/autostart"
+	"github.com/yetone/magpie/internal/ccswitchlink"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/omarchy"
 	"github.com/yetone/magpie/internal/proc"
@@ -73,6 +75,8 @@ type host struct {
 	panel *application.WebviewWindow
 	main  *application.WebviewWindow
 	tray  *application.SystemTray
+	// remote shows another magpie's page (remote_app.go); main thread only
+	remote *application.WebviewWindow
 	// flapping is set while the tray bird plays its flap, so a second
 	// click in it doesn't start another over it
 	flapping atomic.Bool
@@ -217,10 +221,11 @@ func (h *host) fitPanel(height int, g Glide) {
 		return
 	}
 	h.glides.Add(1)
-	h.panel.SetSize(h.panelW(), height)
 	if windowOpen(h.panel) {
-		_ = h.tray.PositionWindow(h.panel, 6)
+		h.sizeOpenPanel(h.panel, h.panelW(), height)
+		return
 	}
+	h.panel.SetSize(h.panelW(), height)
 }
 
 // zoom is the text size the pages are drawn at, as a factor.
@@ -286,10 +291,11 @@ func (h *host) zoomWindows() {
 		return
 	}
 	setPageZoom(h.panel, z)
-	h.panel.SetSize(w, ht)
 	if windowOpen(h.panel) {
-		_ = h.tray.PositionWindow(h.panel, 6)
+		h.sizeOpenPanel(h.panel, w, ht)
+		return
 	}
+	h.panel.SetSize(w, ht)
 }
 
 // windowsOptions are the app's Windows options. Portable, WebView2 keeps
@@ -297,15 +303,21 @@ func (h *host) zoomWindows() {
 // a folder a portable magpie must not leave behind (#508). Installed, it
 // stays there, so what the pages kept isn't lost. The browser arguments
 // the user set in WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS, which Wails' loader
-// blanks before WebView2 can read them, are merged into Wails' own (#2753).
+// blanks before WebView2 can read them, are merged into Wails' own (#2753),
+// after magpie's own (sharedFrameProcess).
+// Display changes are read with a callback made once (screens_windows.go).
+// Chromium's occlusion tracking is off (occlusionOff).
 func windowsOptions() application.WindowsOptions {
 	disabled, enabled, other := webView2Args(webview2env.Args)
+	disabled = sharedFrameProcess(disabled, enabled)
+	disabled = occlusionOff(disabled, enabled)
 	return application.WindowsOptions{
 		DisableQuitOnLastWindowClosed: true,
 		WebviewUserDataPath:           appdir.WebView(),
 		DisabledFeatures:              disabled,
 		EnabledFeatures:               enabled,
 		AdditionalBrowserArgs:         other,
+		WndProcInterceptor:            appWndProc,
 	}
 }
 
@@ -331,6 +343,7 @@ func Run(version string, showMain bool, link string) error {
 	// magpie before, which hands it the gateway (handover.go).
 	startExe, _ = update.Executable()
 	handoverHost.Store(true)
+	pausable.Store(true) // the gateway paused from its menu (gatewaypause.go)
 	before := 0
 	if startExe != "" {
 		before = takeOver(startExe)
@@ -345,8 +358,9 @@ func Run(version string, showMain bool, link string) error {
 	}
 	// a restart magpie made by itself: back as it was, taking no focus
 	// (quiet_restart.go)
-	quiet := takeQuietRestart()
+	quiet, minimised := takeQuietRestart()
 	quietShow.Store(quiet && showMain)
+	quietMinimised.Store(quiet && showMain && minimised)
 	// before the first webview, which opens WebKit's data where programName says
 	keepWebData()
 	go func() {
@@ -370,7 +384,7 @@ func Run(version string, showMain bool, link string) error {
 	// the pages open at the saved text size: Windows' and Linux's webviews
 	// take it as they are made (the Zoom options below), the Mac's once
 	// the app has started (applyZoom)
-	h.textSize.Store(int64(settings.Load().TextSize))
+	h.textSize.Store(int64(settings.Shared().TextSize))
 	zoom := h.zoom()
 	handler := devShell(h)
 	ownPage := handler == nil
@@ -387,7 +401,8 @@ func Run(version string, showMain bool, link string) error {
 	}
 	// a quiet start joins the Dock once started (below): Wails activates
 	// an app that starts in it
-	policy := dockPolicy(settings.Load().Dock && !quiet)
+	policy := dockPolicy(settings.Shared().Dock && !quiet)
+	webView2Prepare()
 	h.app = application.New(application.Options{
 		// Windows and Linux start a new process for a magpie:// link (or a
 		// second launch); it hands its arguments to the running one and quits.
@@ -412,11 +427,12 @@ func Run(version string, showMain bool, link string) error {
 		// leaves both to it: the failover goes on through the new one, and
 		// so do the threads.
 		OnShutdown: func() {
+			unhookNoActivate()
 			proc.EndProbes()
 
 		},
 		// Wails exits on some webview errors; say why before it does.
-		ErrorHandler: func(err error) { log.Println("magpie:", err) },
+		ErrorHandler: func(err error) { webView2Failed(h.app, err) },
 	})
 	// Windows without the WebView2 runtime can make no window: Wails would
 	// exit on the first, with nothing on screen to say why (#1806). The
@@ -437,7 +453,7 @@ func Run(version string, showMain bool, link string) error {
 		// Command-Q asks first while agents are connected (quitask.go). The
 		// role's item sends terminate:, which logging out and shutting down
 		// send too, so it is replaced rather than the app's ShouldQuit set
-		appQuit = askingQuit(appMenu, trayText(trayLang(settings.Load().Lang, systemLang), "Quit magpie"), func() { go h.AskQuit() })
+		appQuit = askingQuit(appMenu, trayText(trayLang(settings.Shared().Lang, systemLang), "Quit magpie"), func() { go h.AskQuit() })
 		h.app.Menu.Set(appMenu)
 	}
 	if Started != nil {
@@ -456,21 +472,60 @@ func Run(version string, showMain bool, link string) error {
 		e.Cancel()
 	})
 
-	h.panel = h.makePanel()
-	h.main = h.makeMain("/?" + theme)
+	// The Mac's panel is made the first time it is opened (panelWin): made
+	// here, its page and WebContent process (~67 MB) sat hidden for as long
+	// as magpie ran, for a user who never opens it too. Elsewhere it is made
+	// now, as the made-again path hasn't been run in a real window there.
+	if !panelOnFirstOpen(runtime.GOOS) {
+		h.panel = h.makePanel()
+	}
+	// So is its main window, when magpie starts without it (at login,
+	// `magpie tray`, or for the panel): it is made by openMain when first
+	// shown, the way lightweight mode makes one again, and its page's
+	// WebContent process (~69 MB) isn't kept until then.
+	if !mainOnFirstOpen(runtime.GOOS, showMain) {
+		h.main = h.makeMain("/?" + theme)
+	}
 	onFonts = h.fontsChanged
 
 	// the menu in the page's language, relabelled when that changes (#301)
-	labels := trayMenuLabels(trayLang(settings.Load().Lang, systemLang), version, "")
+	labels := trayMenuLabels(trayLang(settings.Shared().Lang, systemLang), version, "", pausedNow())
 	menu := h.app.NewMenu()
 	open := menu.Add(labels.open).OnClick(func(*application.Context) { h.ShowMain("") })
 	menu.AddSeparator()
+	// the gateway paused, or resumed, without quitting (gatewaypause.go);
+	// what couldn't be done opens the window on Settings, which says it
+	pause := menu.Add(labels.pause).OnClick(func(*application.Context) {
+		go func() {
+			var r pauseJSON
+			if pausedNow() {
+				r = resumeGateway()
+			} else {
+				r = pauseGateway()
+			}
+			if r.Error != "" || r.Fix != nil {
+				log.Printf("gateway pause: %s %s", r.Agent, r.Error)
+				h.ShowMain("settings")
+			}
+		}()
+	})
+	menu.AddSeparator()
 	ver := menu.Add(labels.version).SetEnabled(false)
-	found := ""
+	var found, ready string
 	available := menu.Add("").SetHidden(true).OnClick(func(*application.Context) { h.ShowMain("/?view=settings&tinyUpdates=1") })
 	restart := menu.Add(labels.restart).SetHidden(true)
 	restart.OnClick(func(*application.Context) {
 		// the window comes back if it was open; the tray alone if not
+		if updates.json().State != "ready" {
+			// no update: magpie as it is (restart.go), its requests
+			// handed over where the gateway can be
+			go func() {
+				if restartSelfNow(false, h.MainShown(), "") {
+					leave(h.app.Quit)
+				}
+			}()
+			return
+		}
 		now := func() bool {
 			if restartToUpdate(false, h.MainShown(), "") {
 				leave(h.app.Quit)
@@ -481,14 +536,14 @@ func Run(version string, showMain bool, link string) error {
 		updates.restartAsked(now)
 	})
 	quit := menu.Add(labels.quit).OnClick(func(*application.Context) { go h.AskQuit() })
-	var ready string // the version waiting for a restart; on the main thread
 	relabel := func() {
-		l := trayMenuLabels(trayLang(settings.Load().Lang, systemLang), version, ready)
+		l := trayMenuLabels(trayLang(settings.Shared().Lang, systemLang), version, ready, pausedNow())
 		if waiting, b := updates.waitingFor(); waiting && ready != "" {
-			l.restart = trayRestartNow(trayLang(settings.Load().Lang, systemLang), b)
+			l.restart = trayRestartNow(trayLang(settings.Shared().Lang, systemLang), b)
 		}
 		available.SetLabel(trayText(trayLang(settings.Load().Lang, systemLang), "Update available: %s", found))
 		open.SetLabel(l.open)
+		pause.SetLabel(l.pause)
 		ver.SetLabel(l.version)
 		restart.SetLabel(l.restart)
 		quit.SetLabel(l.quit)
@@ -498,10 +553,10 @@ func Run(version string, showMain bool, link string) error {
 		}
 	}
 	onLang = func() { application.InvokeSync(relabel) }
+	onPaused = onLang
 	updates.onReady = func(v string) {
 		application.InvokeSync(func() {
 			ready = v
-			restart.SetHidden(false)
 			relabel()
 		})
 	}
@@ -529,6 +584,13 @@ func Run(version string, showMain bool, link string) error {
 	// before the item is made, which starts as hidden as AppKit kept it
 	hiddenAtStart := bringTrayBack()
 	h.tray = h.app.SystemTray.New()
+	// the Mac's clicks on the item go to its action from the first one
+	// (mpOwnClicks). Installed with the panel, which is made the first
+	// time it is opened (panelOnFirstOpen), the first click after each
+	// start went through the button's own mouse-down tracking: the panel
+	// came up and went again at once (Refeccd on Discord: "每次更新后，
+	// 第一次在菜单栏点击唤起主界面会出现闪退现象").
+	trayOwnClicks()
 	if runtime.GOOS == "linux" {
 		// set before the tray starts, it is the item's id too, which
 		// Omarchy's bar pins it by (Wails calls it "Wails" otherwise)
@@ -548,7 +610,9 @@ func Run(version string, showMain bool, link string) error {
 		})
 	}
 	h.tray.SetMenu(menu)
-	h.tray.AttachWindow(h.panel).WindowOffset(6)
+	if h.panel != nil { // one made later hangs itself on the icon (makePanel)
+		h.tray.AttachWindow(h.panel).WindowOffset(6)
+	}
 	// before Wails removes the item as the app quits, which would forget
 	// where the user put the icon (trayshown_darwin.go; nothing elsewhere)
 	h.app.OnShutdown(func() { keepTrayPlace() })
@@ -577,9 +641,22 @@ func Run(version string, showMain bool, link string) error {
 	h.setTrayInBar(barIcon(h)["on"])
 	go h.lighten()
 	h.watchAlerts()
+	// a double-click opens the main window where the tray tells one apart
+	// (trayDoubleClicks: Windows); its first click opened the panel, which
+	// openMain hides, and its last release is no click of its own
+	var double trayDouble
+	if trayDoubleClicks(runtime.GOOS) {
+		h.tray.OnDoubleClick(func() {
+			double.doubled(time.Now())
+			h.ShowMain("")
+		})
+	}
 	// the quick panel by the icon, or the main window if the user would
 	// rather (Settings → Click the tray icon to)
 	h.tray.OnClick(func() {
+		if double.swallow(time.Now()) {
+			return
+		}
 		if cmdClick() {
 			return // Command-drag moves the icon; the system handles it
 		}
@@ -589,7 +666,7 @@ func Run(version string, showMain bool, link string) error {
 		if runtime.GOOS == "darwin" {
 			go h.flap()
 		}
-		if settings.Load().Tray == "window" {
+		if settings.Shared().Tray == "window" {
 			h.ShowMain("")
 			return
 		}
@@ -605,11 +682,20 @@ func Run(version string, showMain bool, link string) error {
 	markReady := func() { h.readyOnce.Do(func() { close(h.ready) }) }
 	if runtime.GOOS == "windows" {
 		h.main.OnWindowEvent(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) { markReady() })
+		h.mendOnWake()
 	} else {
 		h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-			plainTitlebar(h.main) // Linux: the page's header is the title bar; the Mac: a plain one's corners
-			nameWindow(h.panel, panelTitle)
-			ownFrame(h.panel) // KDE: no title bar of KWin's on it (#1283)
+			if runtime.GOOS != "darwin" {
+				plainTitlebar(h.main) // Linux: the page's header is the title bar
+			}
+			// The Mac's is done as the window is first shown (reveal): it
+			// makes a window of its own (toolbarRounder), which deadlocks the
+			// main thread while a hidden background launch (an update's
+			// relaunch) is still inside FBSWorkspaceScenesClient on macOS 26.
+			if h.panel != nil { // one made later is named as it is (madeAgain)
+				nameWindow(h.panel, panelTitle)
+				ownFrame(h.panel) // KDE: no title bar of KWin's on it (#1283)
+			}
 			markReady()
 		})
 	}
@@ -620,8 +706,12 @@ func Run(version string, showMain bool, link string) error {
 		h.whenReady(h.applyZoom)
 	}
 	if showMain {
-		h.whenReady(func() { h.ShowMain(argView(OpenView)) })
-	} else if quiet && settings.Load().Dock {
+		view := argView(OpenView)
+		if OpenUninstall {
+			view = uninstallView
+		}
+		h.whenReady(func() { h.ShowMain(view) })
+	} else if quiet && settings.Shared().Dock {
 		// kept out of the Dock to start (Mac options above), it joins
 		// now without coming to the front
 		h.whenReady(func() { setDock(true, false) })
@@ -635,6 +725,16 @@ func Run(version string, showMain bool, link string) error {
 	// Windows and Linux also report the start's own link as an event.
 	var skip sync.Once
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(e *application.ApplicationEvent) {
+		// a ccswitch:// link the Mac's Launch Services still sends here, from
+		// an older magpie's claim: CC Switch opens it and has its scheme back
+		if l := e.Context().URL(); ccswitchlink.Is(l) {
+			go func() {
+				if err := ccswitchlink.Forward(l); err != nil {
+					log.Println("ccswitch:// link:", err)
+				}
+			}()
+			return
+		}
 		u := ImportLink([]string{e.Context().URL()})
 		dup := false
 		if u == link {
@@ -651,6 +751,7 @@ func Run(version string, showMain bool, link string) error {
 	if ownPage {
 		startAppPage(h, gw)
 	}
+	defer unhookNoActivate()
 	return h.app.Run()
 }
 
@@ -670,9 +771,8 @@ func singleInstance(h *host) *application.SingleInstanceOptions {
 	if runtime.GOOS == "darwin" || !sessionBus() {
 		return nil
 	}
-	sum := sha256.Sum256([]byte(settings.Dir()))
 	return &application.SingleInstanceOptions{
-		UniqueID: "dev.caelis.tiny-magpie.i" + hex.EncodeToString(sum[:6]),
+		UniqueID: instanceID(),
 		OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 			args := d.Args
 			if len(args) > 0 {
@@ -684,6 +784,8 @@ func singleInstance(h *host) *application.SingleInstanceOptions {
 			case len(args) == 1 && args[0] == "tray":
 			case len(args) == 1 && args[0] == "panel":
 				h.whenReady(func() { application.InvokeAsync(h.togglePanel) })
+			case slices.Equal(args, shortcut.UninstallArgs):
+				h.whenReady(func() { h.ShowMain(uninstallView) })
 			case len(args) == 2 && (args[0] == "gui" || args[0] == "app"):
 				h.whenReady(func() { h.ShowMain(argView(args[1])) })
 			default:
@@ -691,6 +793,12 @@ func singleInstance(h *host) *application.SingleInstanceOptions {
 			}
 		},
 	}
+}
+
+// instanceID is the single instance's id, the config dir's.
+func instanceID() string {
+	sum := sha256.Sum256([]byte(settings.Dir()))
+	return "dev.caelis.tiny-magpie.i" + hex.EncodeToString(sum[:6])
 }
 
 // flap plays trayFlap on the tray icon, a frame every 30ms as they were
@@ -789,6 +897,14 @@ func panelOptions(goos, theme string) application.WebviewWindowOptions {
 // icon runs it (see omarchy.AddWidget).
 var OpenPanel bool
 
+// OpenUninstall opens the window on Settings › Uninstall magpie, asking
+// (Windows' Installed apps, shortcut.UninstallArgs).
+var OpenUninstall bool
+
+// uninstallView is Settings' About part with Uninstall magpie's question
+// open (uninstallMagpie in app.js).
+const uninstallView = "settings&tab=about&uninstall=1"
+
 // OpenView is the tab the window opens on, as `magpie gui settings` asks:
 // a restart to update comes back where it was asked for.
 var OpenView string
@@ -802,9 +918,14 @@ var Started func()
 // version leaving the menu bar, panel, window and Dock to it while it
 // finishes its requests: one bird. Hidden, the item's visibility is kept by
 // AppKit for the app, the new version's item and every later one too, so it
-// is forgotten once the hide is made.
+// is forgotten once the hide is made. Hiding forgets where the item sits
+// too ("NSStatusItem Preferred Position Item-0"), the place the new
+// version's item shares, so the item is renamed first, as on a quit
+// (keepTrayPlace): every update put the icon back at the default spot,
+// in Ice's hidden section (imty42 on X, #3873).
 func (h *host) leaveMenuBar() {
 	application.InvokeSync(func() {
+		keepTrayPlace()
 		h.tray.Hide()
 		forgetTrayHiddenLater()
 		hideWebview(h.panel)
@@ -867,11 +988,39 @@ func (h *host) togglePanelNow() {
 			hideWebview(h.panel)
 			return
 		}
-		_ = h.tray.PositionWindow(h.panel, 6)
+		h.placeByIcon(h.panel)
 		showWebview(h.panel).Focus()
+		h.tellPanelSide()
 		return
 	}
 	h.tray.ToggleWindow()
+	if h.panel.IsVisible() {
+		h.tellPanelSide()
+	}
+}
+
+// placeByIcon places the panel by the tray icon. On the Mac, Wails puts
+// the window it places at a pop-up menu's level, over a screenshot tool's
+// (zyh6036 on X), so it goes back to a menu bar extra's (setPanelLevel).
+func (h *host) placeByIcon(w *application.WebviewWindow) {
+	_ = h.tray.PositionWindow(w, 6)
+	setPanelLevel(w)
+}
+
+// tellPanelSide tells the panel, just placed, which of its edges opens the
+// main window: the one nearest the tray (panelOpenAt). Wayland doesn't say
+// where the compositor put a window, so there it goes by the system.
+func (h *host) tellPanelSide() {
+	b := h.panel.Bounds()
+	panel := panelRect{b.X, b.Y, b.Width, b.Height}
+	var screen panelRect
+	known := !waylandSession(runtime.GOOS, os.Getenv)
+	if s, err := h.panel.GetScreen(); err == nil && s != nil {
+		screen = panelRect{s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height}
+	} else {
+		known = false
+	}
+	h.panel.ExecJS(panelOpenAtJS(panelOpenAt(runtime.GOOS, panel, screen, known)))
 }
 
 // placePanel puts the panel, about to open, under Hyprland's bar at the

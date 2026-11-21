@@ -20,6 +20,12 @@ type gatewayFixJSON struct {
 	Port    string `json:"port,omitempty"`
 	Version string `json:"version,omitempty"`
 	Error   string `json:"error,omitempty"` // the system's own words
+	// Name, Tailscale and Alt: for "taken", the program that has the port
+	// and whether it is Tailscale's serve or funnel, with another port to
+	// give that (gateway.PortHeld); left out when the holder isn't read
+	Name      string `json:"name,omitempty"`
+	Tailscale bool   `json:"tailscale,omitempty"`
+	Alt       string `json:"alt,omitempty"`
 }
 
 func gatewayFixRoutes(mux *http.ServeMux) {
@@ -74,13 +80,28 @@ func startHere() gatewayFixJSON {
 			}
 			out.PID = pid
 			out.Path, _ = proc.Executable(pid)
-			if proc.IsMagpie(out.Path) {
+			if proc.RunsMagpie(pid, out.Path) {
 				// a magpie took it back as soon as the other quit
 				out.Reason = "respawned"
 			} else if proc.IsForwarder(out.Path) {
 				out.Reason = "container"
 			}
 			break
+		}
+	}
+	if out.Reason == "taken" {
+		if h := gateway.LastHeld(); h != nil || out.PID == 0 {
+			if h == nil {
+				if n, ok := gateway.NoteHeld(); ok {
+					h = &n
+				}
+			}
+			if h != nil {
+				out.Name, out.Tailscale, out.Alt = h.Name, h.Tailscale, h.Alt
+				if out.PID == 0 {
+					out.PID, out.Path = h.PID, h.Path
+				}
+			}
 		}
 	}
 	return out

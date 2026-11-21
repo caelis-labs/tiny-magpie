@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"time"
+
+	"github.com/yetone/magpie/internal/lazyre"
 )
 
 // Tiny consumes only its own GitHub releases. GitHub's asset digest binds
@@ -69,7 +70,7 @@ func releaseList(ctx context.Context) ([]githubRelease, error) {
 	return releases, nil
 }
 
-var tinyTagVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
+var tinyTagVersion = lazyre.New(`^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
 
 func tinyVersion(r githubRelease) string {
 	v, ok := strings.CutPrefix(r.Tag, "tiny-v")

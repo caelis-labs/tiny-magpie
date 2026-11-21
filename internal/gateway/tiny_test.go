@@ -15,18 +15,18 @@ func TestTinyRemovedSurface(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("MAGPIE_NO_ACCOUNTS", "1")
 	h := New().Handler()
-	for _, path := range []string{"/v1/images/generations", "/images/edits", "/v1/videos", "/v1/audio/transcriptions", "/mcp/any", "/mcp/magpie/tools", "/alpha/search"} {
+	for _, path := range []string{"/v1/images/generations", "/images/edits", "/v1/videos", "/v1/audio/transcriptions", "/mcp/any", "/mcp/magpie/tools", "/alpha/search", "/v1/magpie/native/example/chat", "/v1/magpie/update", "/v1/magpie/quotas/codex-reset", "/v1/magpie/usage/requests"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("POST", path, strings.NewReader(`{}`)))
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: %d %s", path, w.Code, w.Body)
 		}
 	}
-	for _, path := range []string{"/me", "/v1/magpie/me"} {
+	for _, path := range []string{"/me", "/v1/magpie/me", "/deepseek-chat", "/join", "/v1/realtime", "/v1/magpie/library"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != http.StatusNotFound {
-			t.Errorf("rejected key page %s: %d", path, w.Code)
+			t.Errorf("removed route %s: %d", path, w.Code)
 		}
 	}
 	w := httptest.NewRecorder()

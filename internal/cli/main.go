@@ -110,8 +110,9 @@ func Main(v string) {
 		if msg := err.Error(); msg != "" {
 			fmt.Fprintln(os.Stderr, "magpie:", msg)
 		}
-		os.Exit(code)
+		endProcess(code)
 	}
+	endProcess(0)
 }
 
 func run(args []string) error {
@@ -155,7 +156,7 @@ func run(args []string) error {
 			fmt.Println("tiny-magpie", version)
 			return nil
 		case "healthcheck":
-			return healthcheck()
+			return healthcheck(args[1:])
 		case "heap":
 			return heapCmd(args[1:])
 		case "cpu":
@@ -564,6 +565,17 @@ func profiles(args []string) error {
 			return err
 		}
 		fmt.Println(green.Render("✓"), "deleted profile", bold.Render(args[1]))
+		return nil
+	case "rename":
+		// a flag is never taken for a name to write (magpie snow --help
+		// wrote "--help" into a profile)
+		if len(args) != 3 || strings.HasPrefix(args[2], "-") {
+			return fmt.Errorf("usage: magpie rename <old> <new>")
+		}
+		if err := profile.Rename(args[1], args[2]); err != nil {
+			return err
+		}
+		fmt.Println(green.Render("✓"), "renamed profile", bold.Render(args[1]), "to", bold.Render(args[2]))
 		return nil
 	}
 	return nil

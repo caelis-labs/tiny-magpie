@@ -2,10 +2,11 @@ package update
 
 import (
 	"context"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/yetone/magpie/internal/lazyre"
 )
 
 // Note is one release's notes, as the app shows them after an update.
@@ -71,21 +72,36 @@ var BackCounts = []int{10, 20, 50, 100}
 
 // NotesBack reads only Tiny's release API, never the upstream notes feed.
 func NotesBack(ctx context.Context, upto string, count int, lang string) ([]Note, error) {
- list, err := releaseList(ctx)
- if err != nil { return nil, err }
- var notes []Note
- for _, r := range list {
-  if v := tinyVersion(r); v != "" {
-   notes = append(notes, Note{Version: v, Notes: InLang(r.Body, lang), URL: r.URL})
-  }
- }
- return Back(notes, upto, count), nil
+	list, err := releaseList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var notes []Note
+	for _, r := range list {
+		if v := tinyVersion(r); v != "" {
+			notes = append(notes, Note{Version: v, Notes: InLang(r.Body, lang), URL: r.URL})
+		}
+	}
+	return Back(notes, upto, count), nil
 }
 
 // Between keeps the notes of the releases after after up to and including
 // upto, newest first, at most MostNotes; with after "" only upto's. Each
 // one's Install section is taken out, and one left empty is dropped.
 func Between(notes []Note, after, upto string) []Note {
+	return capNotes(between(notes, after, upto))
+}
+
+// capNotes keeps the newest MostNotes of notes, newest first.
+func capNotes(notes []Note) []Note {
+	if most := MostNotes(); len(notes) > most {
+		return notes[:most]
+	}
+	return notes
+}
+
+// between is Between with every release kept.
+func between(notes []Note, after, upto string) []Note {
 	var out []Note
 	seen := map[string]bool{}
 	for _, n := range notes {
@@ -108,9 +124,6 @@ func Between(notes []Note, after, upto string) []Note {
 		out = append(out, n)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return Newer(out[i].Version, out[j].Version) })
-	if most := MostNotes(); len(out) > most {
-		out = out[:most]
-	}
 	return out
 }
 
@@ -143,7 +156,7 @@ func Back(notes []Note, upto string, n int) []Note {
 	return out
 }
 
-var heading = regexp.MustCompile(`^(#{1,6})\s+(.*?)\s*#*\s*$`)
+var heading = lazyre.New(`^(#{1,6})\s+(.*?)\s*#*\s*$`)
 
 // installHeadings are the Install section's heading in each language the
 // notes come in: the Chinese notes call it 安装, and every release's own

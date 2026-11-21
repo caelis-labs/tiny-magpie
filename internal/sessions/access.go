@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/yetone/magpie/internal/settings"
@@ -42,7 +43,28 @@ func Reads(agent string) bool {
 	return currentReads().Reads(agent)
 }
 
+// readsNone is the answer while OwnOff holds: no agent's files are read.
+var readsNone = &settings.SessionReads{Asked: true}
+
+// OwnOff, when set and true, is gateway mode on magpie web's page
+// (gui.gatewayMode; paultian on Discord): the page lists what came
+// through this gateway from other computers, never this computer's own
+// agents' session files, so no agent's files are read, whatever
+// SessionReads says. Gateway-recorded sessions (the usage ledger and the
+// gateway's own store) are not behind this gate and still show. It is
+// asked on every Reads, so it must be cheap.
+var OwnOff atomic.Pointer[func() bool]
+
+// ownOff is whether OwnOff is set and says so.
+func ownOff() bool {
+	f := OwnOff.Load()
+	return f != nil && (*f)()
+}
+
 func currentReads() *settings.SessionReads {
+	if ownOff() {
+		return readsNone
+	}
 	if r := settings.Shared().SessionReads; r != nil {
 		return r
 	}
@@ -125,6 +147,12 @@ func SetReads(all *bool, agents map[string]bool) error {
 				}
 				r.Agents[a] = on
 			}
+			for a := range cur.Kept {
+				if r.Kept == nil {
+					r.Kept = map[string]bool{}
+				}
+				r.Kept[a] = true
+			}
 		}
 		if all != nil {
 			r.All = *all
@@ -134,6 +162,21 @@ func SetReads(all *bool, agents map[string]bool) error {
 				r.Agents = map[string]bool{}
 			}
 			r.Agents[a] = on
+			// an agent turned off on its own (all not sent: Keep off,
+			// Settings › Privacy) is kept off and not asked about again;
+			// one left off in the first choice's list is (Kept)
+			switch {
+			case on:
+				delete(r.Kept, a)
+			case all == nil:
+				if r.Kept == nil {
+					r.Kept = map[string]bool{}
+				}
+				r.Kept[a] = true
+			}
+		}
+		if len(r.Kept) == 0 {
+			r.Kept = nil
 		}
 		return r
 	})
@@ -169,6 +212,10 @@ func allowed(fs []file) []file {
 // their folders only (nothing in them is read): those the consent lists.
 // WSL distros are not looked into; allow all covers them.
 func Found() []string {
+	// gateway mode reads none of them, so it asks about none (OwnOff)
+	if ownOff() {
+		return nil
+	}
 	exists := func(p string) bool {
 		if p == "" {
 			return false
@@ -185,7 +232,11 @@ func Found() []string {
 			}
 		}
 	}
-	add("claude", filepath.Join(ClaudeDir(), "projects"))
+	var claude []string
+	for _, d := range ClaudeDirs() {
+		claude = append(claude, filepath.Join(d, "projects"))
+	}
+	add("claude", claude...)
 	var desktop []string
 	for _, d := range callDesktopDirs() {
 		desktop = append(desktop, filepath.Join(d, "local-agent-mode-sessions"), filepath.Join(d, "claude-code-sessions"))
@@ -207,15 +258,28 @@ func Found() []string {
 	add("qoder-cn", filepath.Join(QoderDir("qoder-cn"), "projects"))
 	add("grok", filepath.Join(GrokDir(), "sessions"))
 	add("workbuddy", filepath.Join(WorkBuddyDir(), "projects"))
+	add("workbuddy-ai", filepath.Join(WorkBuddyAIDir(), "projects"))
 	add("codebuddy", filepath.Join(CodeBuddyDir(), "projects"))
 	add("omp", filepath.Join(OmpDir(), "sessions"))
 	add("droid", filepath.Join(FactoryDir(), "sessions"))
 	add("cursor", filepath.Join(CursorDir(), "chats"), filepath.Join(cursorDataDir(), "projects"), cursorEditorDB())
 	add("hermes", HermesDirs()...)
 	add("alma", almaDB())
+	add("openmausbot", ombDB())
+	add("liveagent", liveagentSessions())
 	add("minimax-code", minimaxSessions())
-	add("kimi", kimiSessions())
+	kimi := []string{kimiSessions()}
+	for _, sh := range kimiWorkShares() {
+		kimi = append(kimi, filepath.Join(kimiWorkRuntime(sh), "home", "sessions"))
+	}
+	add("kimi", kimi...)
 	add("agy", filepath.Join(AgyDir(), "brain"))
+	add("antigravity", antigravityConversations(), filepath.Join(AntigravityInsidersDir(), "conversations"))
 	add("gemini", geminiTmpDir())
+	var devin []string
+	for _, d := range DevinCLIDirs() {
+		devin = append(devin, filepath.Join(d, "sessions.db"), filepath.Join(d, "sessions"))
+	}
+	add("devin", devin...)
 	return out
 }

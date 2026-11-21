@@ -57,7 +57,7 @@ const archiveQueue = 16
 // is read whole into memory once, for its secrets to be taken out, while
 // its call is uploaded, one call at a time.
 func archiveLimit() int64 {
-	mb := settings.Load().RequestArchiveMaxMB
+	mb := settings.Shared().RequestArchiveMaxMB
 	if mb <= 0 {
 		mb = 32
 	}
@@ -83,6 +83,11 @@ type wire struct {
 func archiving(r *http.Request, res *captureResponseWriter, start time.Time, body []byte) *wire {
 	// tiny never captures or uploads full requests, including legacy consent.
 	return nil
+}
+
+// archiveOwn leaves Tiny’s own calls out of the request archive.
+func archiveOwn(c Call, sent *http.Request, body []byte, status int, head http.Header, answer []byte) string {
+	return ""
 }
 
 // archiveName is where the archive keeps c, "<date>/<id>", or "" when it
@@ -123,6 +128,12 @@ type Archived struct {
 	Call     Call        `json:"call"` // as Recent calls has it, its bodies below
 	Request  ArchivePart `json:"request"`
 	Response ArchivePart `json:"response"`
+	// Upstream: each request magpie sent upstream for it, its headers
+	// both ways (wire_headers.go), their secrets taken out; none in an
+	// archive from before them
+	Upstream []UpstreamHeaders `json:"upstream,omitempty"`
+	// UpstreamMore: the upstream requests past those, not kept
+	UpstreamMore int `json:"upstreamMore,omitempty"`
 }
 
 // ArchivePart is one way of a call: the request, or the response.
@@ -162,15 +173,6 @@ var (
 // archive queues c's upload; c.wire is set.
 func archive(c Call) {
 	w := c.wire
-	archiveOnce.Do(func() {
-		archiveJobs = make(chan archiveJob, archiveQueue)
-		go func() {
-			for j := range archiveJobs {
-				upload(j)
-				archivePending.Done()
-			}
-		}()
-	})
 	// the response's file is the job's now, and the request's body goes
 	// to one, so nothing whole is held while the call waits
 	req := &spool{limit: archiveLimit()}
@@ -181,7 +183,23 @@ func archive(c Call) {
 	if res == nil {
 		res = &spool{}
 	}
-	j := archiveJob{c: c, w: w, resHead: w.res.Header().Clone(), req: req, res: res}
+	queueArchive(archiveJob{c: c, w: w, resHead: w.res.Header().Clone(), req: req, res: res})
+}
+
+// queueArchive puts j in the upload queue, or drops it when the queue is
+// full.
+func queueArchive(j archiveJob) {
+	w := j.w
+	archiveOnce.Do(func() {
+		archiveJobs = make(chan archiveJob, archiveQueue)
+		go func() {
+			for j := range archiveJobs {
+				upload(j)
+				archivePending.Done()
+			}
+		}()
+	})
+	req, res := j.req, j.res
 	archivePending.Add(1)
 	select {
 	case archiveJobs <- j:
@@ -216,6 +234,9 @@ func upload(j archiveJob) {
 		Response: ArchivePart{Status: c.Status, Headers: scrubHeaders(j.resHead),
 			Body: string(redact.ScrubJSON(resBody)), Size: j.res.size, Truncated: j.res.cut()},
 	}
+	if h := j.c.headers.masked(); h != nil {
+		a.Upstream, a.UpstreamMore = h.Upstream, h.More
+	}
 	// as it reads in the bucket: a query's & and a body's <tags> as they are
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -231,6 +252,9 @@ func upload(j archiveJob) {
 	if err != nil {
 		archiveFailed(j.w.name, err)
 		return
+	}
+	if k, ok := j.w.to.(archiveKeeper); ok {
+		bucketAdded(k, "archive/"+j.w.name+".json", int64(buf.Len())) // kept under its size (archive_bucket.go)
 	}
 	archiveMu.Lock()
 	archiveErr = ""

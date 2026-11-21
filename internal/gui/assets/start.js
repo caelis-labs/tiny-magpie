@@ -15,7 +15,8 @@ function keptView() {
   if (asked === "agents" || OPEN_VIEWS.includes(asked)) return asked;
   let v = "";
   try { v = localStorage.getItem("magpie.lastView") || ""; } catch { /* none kept */ }
-  return OPEN_VIEWS.includes(v) ? v : ""; // one gateway mode leaves out, show() makes Providers
+  // one gateway mode leaves out, show() makes Providers; one left out of the sidebar isn't reopened
+  return OPEN_VIEWS.includes(v) && !navMine().includes(v) ? v : "";
 }
 const firstView = mode === "window" ? keptView() : "";
 if (mode === "window") show(OPEN_VIEWS.includes(firstView) ? firstView : "providers").then(() => {

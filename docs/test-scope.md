@@ -21,10 +21,8 @@ implementations, shortcuts or browser-access internals just because upstream
 added them. Shared fixtures provide isolation, not positive tests for removed
 products.
 
-For this sync, demonstrated regressions are the updater's six-hour wait after
-feed errors, available-update state not reaching open windows/tray, and Codex
-disconnect rewriting conversation history. Their focused tests and fault
-injections are recorded in the sync report.
+The sync reports record each interval’s demonstrated regressions and the
+checks that cover them.
 
 CI runs scope checks, Go vet, Tiny boundary tests and native builds on three
 platforms; Chromium/WebKit check the reduced UI. Release identity, packaging
