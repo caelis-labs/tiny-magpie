@@ -2,17 +2,21 @@
 
 ## [0.3.4](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.3...tiny-v0.3.4) (2026-11-21)
 
+### Codex credits
 
-### Bug Fixes
+* Codex requests can continue on available credits after the included allowance reaches 100%. OpenAI determines eligibility and debits the balance. Tiny reads balance updates from Codex responses and rate-limit events.
+* **Use credits** on the account card and `tiny-magpie quota credits <account> on|first|last|off` control the account's preference. Account and window caps and gateway key restrictions still apply.
 
-* restore Codex credits and sync Magpie upstream ([78f5812](https://github.com/caelis-labs/tiny-magpie/commit/78f581245cbe3577a1b2170bdf60a54406b56a7e))
+### Gateway and desktop
 
+* Merge 2,620 upstream commits through `1b360f08c208d75da393f083f667a57bac8f9772`, including Responses WebSocket, streaming, retry and usage-accounting improvements.
+* Serve explicit Decisions and System One requests. Existing Tiny catalog caches retain their embedding and rerank model kinds.
+* Keep the Tiny sidebar wordmark on one line. The existing width check hides the complete wordmark when space runs out.
 
-### Performance Improvements
+### Scope and validation
 
-* a TOML file is parsed from its own bytes, not a joined copy ([5a02584](https://github.com/caelis-labs/tiny-magpie/commit/5a0258447609c10be970890fe99e3895441fcec8))
-* a TOML key's dotted name is built in one reused buffer ([c8d4712](https://github.com/caelis-labs/tiny-magpie/commit/c8d47121b44c0879151d4030b6d7a829e08fa7c9))
-* the remote-magpie follower reads providers.json's kept parse ([79a30eb](https://github.com/caelis-labs/tiny-magpie/commit/79a30eb9cc12b956dada7833ce919c917fd6c983))
+* Tiny keeps model and provider protocols, account pools, routing, and its own update channel. Hosted chat and join pages, memory and Library, public MCP and Code Mode, session ingestion, media endpoints, remote configuration following and chained updates stay outside the product.
+* Gateway and UI checks use isolated fixtures. Real Codex account eligibility and debits, installed upgrades, and native Windows/Linux interaction remain unverified. [Sync evidence](https://github.com/caelis-labs/tiny-magpie/blob/main/docs/upstream-sync-2026-11-21.md)
 
 ## [0.3.3](https://github.com/caelis-labs/tiny-magpie/compare/tiny-v0.3.2...tiny-v0.3.3) (2026-11-02)
 
